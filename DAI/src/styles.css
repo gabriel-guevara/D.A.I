@@ -1,0 +1,7 @@
+/* You can add global styles to this file, and also import other style files */
+
+@import 'tailwindcss';
+
+/* Clases Tailwind que ahora llegan desde la base de datos (colores de badges, avatares, etc.).
+   Tailwind solo genera CSS de las clases que ve en el código, así que se listan aquí. */
+@source inline("bg-amber-100 bg-amber-50 bg-amber-500 bg-blue-100 bg-blue-50 bg-blue-900 bg-blue-950 bg-emerald-50 bg-emerald-500 bg-indigo-100 bg-purple-100 bg-purple-50 bg-red-50 bg-red-500 bg-red-600 bg-red-700 bg-rose-100 bg-rose-50 bg-slate-100 bg-slate-400 bg-slate-50 bg-yellow-500 border-l-amber-500 border-l-blue-500 border-l-emerald-500 border-l-red-500 text-amber-600 text-amber-700 text-blue-600 text-blue-700 text-emerald-600 text-emerald-700 text-indigo-600 text-indigo-700 text-purple-700 text-red-600 text-red-700 text-rose-700 text-slate-600 text-white");

@@ -1,0 +1,135 @@
+<div class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <div class="rounded-xl shadow-xl overflow-hidden bg-white">
+      <div class="h-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500"></div>
+
+      <div class="px-8 pt-6 pb-8">
+        <!-- Logo -->
+        <div class="flex justify-center mb-3">
+          <div class="w-11 h-11 rounded-lg bg-blue-700 flex items-center justify-center text-white font-bold text-sm">
+            DAI
+          </div>
+        </div>
+
+        <h1 class="text-center text-xl font-bold text-slate-800">Acceso</h1>
+        <p class="text-center text-sm text-slate-500 mt-1 mb-6">
+          Sistema de Digitalización y Almacenamiento de Información DAI
+        </p>
+
+        @if (errorMessage()) {
+        <div class="mb-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+          {{ errorMessage() }}
+        </div>
+        }
+
+        <!-- Usuario y contraseña -->
+        @if (step() === 'credentials') {
+        <!-- Esto es para el paso de credenciales y segundo factor -->
+        <form (ngSubmit)="onSubmitCredentials()">
+          <label class="block text-sm font-medium text-slate-700 mb-1">
+            Usuario
+            <span class="text-slate-400 font-normal text-xs ml-1">@empresa.gob | @corporacion.com</span>
+          </label>
+          <div class="relative mb-4">
+            <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M16 12a4 4 0 1 0-8 0 4 4 0 0 0 8 0Zm0 0v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-9 9" />
+              </svg>
+            </span>
+            <!-- El ngModel se usa para enlazar el valor del input con la propiedad username del componente -->
+            <input type="email" name="username" placeholder="ej. t.soto@empresa.com" [ngModel]="username()"
+              (ngModelChange)="username.set($event)"
+              class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-sm font-medium text-slate-700">Contraseña</label>
+            <!-- Esto aun no realiza nada solo esta como ejemplo del frontend -->
+            <a href="javascript:void(0)" class="text-xs font-medium text-blue-600 hover:underline">
+              ¿Olvidó su contraseña?
+            </a>
+          </div>
+          <div class="relative mb-8">
+            <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M16.5 10.5V7.5a4.5 4.5 0 1 0-9 0v3M6 10.5h12a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 18 21H6a1.5 1.5 0 0 1-1.5-1.5V12A1.5 1.5 0 0 1 6 10.5Z" />
+              </svg>
+            </span>
+            <!-- Esta es la funcionalidad de mostrar y ocultar la contraseña -->
+            <input [type]="showPassword() ? 'text' : 'password'" name="password" placeholder="••••••••••••"
+              [ngModel]="password()" (ngModelChange)="password.set($event)"
+              class="w-full pl-9 pr-9 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            <button type="button" (click)="togglePassword()"
+              class="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </button>
+          </div>
+
+          <button type="submit"
+            class="w-full flex items-center justify-center gap-2 bg-blue-900 hover:bg-blue-950 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M16.5 10.5V7.5a4.5 4.5 0 1 0-9 0v3M6 10.5h12a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 18 21H6a1.5 1.5 0 0 1-1.5-1.5V12A1.5 1.5 0 0 1 6 10.5Z" />
+            </svg>
+            Continuar
+          </button>
+        </form>
+        }
+
+        <!-- Segundo factor -->
+        @if (step() === 'twofactor') {
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <span class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-700">
+              <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 12.75 11.25 15 15 9.75M21 12c0 4.556-3.03 8.25-9 9.75C6.03 20.25 3 16.556 3 12V6.5l9-3.5 9 3.5V12Z" />
+              </svg>
+              Segundo Factor (2FA)
+            </span>
+          </div>
+
+          <!-- Aqui se muestra el mensaje de error si el token es incorrecto y el tiempo la funcionalidad del tiempo
+           esta medio meh pero para ejemplo esta bien-->
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm text-slate-600">Token de seguridad dinámico</span>
+            <span class="text-xs text-blue-600 font-medium">Expira en {{ countdown() }}s</span>
+          </div>
+
+          <div class="grid grid-cols-6 gap-2 mb-6">
+            @for (digit of otpDigits(); track $index) {
+            <input [id]="'otp-' + $index" type="text" inputmode="numeric" maxlength="1" [value]="digit"
+              (input)="onDigitInput($index, $event)" (keydown)="onDigitKeydown($index, $event)"
+              class="w-full h-12 text-center text-lg font-semibold rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            }
+          </div>
+
+          <button type="button" (click)="onVerify()" [disabled]="isVerifying()"
+            class="w-full flex items-center justify-center gap-2 bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M16.5 10.5V7.5a4.5 4.5 0 1 0-9 0v3M6 10.5h12a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 18 21H6a1.5 1.5 0 0 1-1.5-1.5V12A1.5 1.5 0 0 1 6 10.5Z" />
+            </svg>
+            {{ isVerifying() ? 'Verificando...' : 'Verificar e Iniciar Sesión' }}
+          </button>
+
+          <button type="button" (click)="backToCredentials()"
+            class="w-full text-center text-xs text-slate-400 hover:text-slate-600 mt-3">
+            ← Volver
+          </button>
+        </div>
+        }
+
+        <div class="bg-slate-50 px-8 py-3 flex items-center justify-between text-xs border-t border-slate-100">
+          <span class="text-slate-400">Soporte TI DAI</span>
+          <a href="mailto:soporte@dai-gob.seg" class="text-blue-600 font-medium">soporte@dai.seg</a>
+        </div>
+      </div>
+    </div>
+  </div>

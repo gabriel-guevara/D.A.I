@@ -1,0 +1,237 @@
+<div class="min-h-screen bg-slate-50 flex">
+  <app-barraizq active="biblioteca"></app-barraizq>
+
+  <div class="flex-1 flex flex-col min-w-0">
+    <app-navbar></app-navbar>
+
+    <main class="flex-1 overflow-y-auto p-6 space-y-5">
+      <div>
+        <p class="text-[10px] font-semibold text-blue-600 flex items-center gap-1.5 mb-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+          REPO-CENTRAL // 01 · SISTEMA EN LÍNEA
+        </p>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 class="text-xl font-bold text-slate-800">Biblioteca Central de Documentos</h1>
+            <p class="text-sm text-slate-500 mt-1">
+              Repositorio seguro de expedientes, contratos y archivos digitalizados bajo estricto
+              marco de gobernanza documental e indexación criptográfica.
+            </p>
+          </div>
+          <div class="flex items-center gap-2 text-xs shrink-0">
+            <button class="border border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50">
+              📁 Crear Carpeta
+            </button>
+            <button class="border border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50">
+              ⇩ Exportar Metadatos
+            </button>
+            <button class="bg-blue-900 hover:bg-blue-950 text-white rounded-lg px-3 py-1.5 font-medium">
+              ⇧ Subir Archivo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estadísticas -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-400">Expedientes Totales</p>
+            <p class="text-2xl font-bold text-slate-800 mt-1">1,420</p>
+            <p class="text-xs text-emerald-600 mt-1">↑ +58 este mes</p>
+          </div>
+          <span class="text-2xl">📁</span>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-400">Tasa Indexación OCR</p>
+            <p class="text-2xl font-bold text-slate-800 mt-1">99.4%</p>
+            <p class="text-xs text-slate-400 mt-1">1,412 analizados</p>
+          </div>
+          <span class="text-2xl">🔄</span>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-400">Cifrado Cuántico / AES</p>
+            <p class="text-2xl font-bold text-slate-800 mt-1">100%</p>
+            <p class="text-xs text-slate-400 mt-1">Claves HSM Validadas</p>
+          </div>
+          <span class="text-2xl">🔒</span>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-400">Firmas Digitales</p>
+            <p class="text-2xl font-bold text-slate-800 mt-1">892</p>
+            <p class="text-xs text-slate-400 mt-1">PAdES-LTV / eIDAS</p>
+          </div>
+          <span class="text-2xl">✒️</span>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative flex-1 min-w-[200px]">
+            <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.34-4.34M18 10.5a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              placeholder="Filtrar por nombre o folio"
+              [ngModel]="searchText()"
+              (ngModelChange)="searchText.set($event)"
+              class="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <select class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
+            <option>Último mes</option>
+            <option>Últimos 3 meses</option>
+            <option>Todo el histórico</option>
+          </select>
+          <select class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
+            <option>Tipo: Todos</option>
+            <option>PDF</option>
+            <option>Excel</option>
+            <option>Word</option>
+            <option>TIFF</option>
+          </select>
+          <select class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
+            <option>Departamento</option>
+            <option>Legal</option>
+            <option>Finanzas</option>
+            <option>Talento & RH</option>
+            <option>Operaciones</option>
+          </select>
+          <select class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
+            <option>Más reciente primero</option>
+            <option>Más antiguo primero</option>
+            <option>Tamaño</option>
+          </select>
+        </div>
+
+        @if (activeFilters().length > 0) {
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="text-slate-400">FILTROS ACTIVOS:</span>
+            @for (f of activeFilters(); track f) {
+              <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 rounded-full px-2.5 py-1 font-medium">
+                {{ f }}
+                <button (click)="removeFilter(f)" class="hover:text-blue-900">✕</button>
+              </span>
+            }
+            <button (click)="clearFilters()" class="text-slate-400 hover:text-slate-600 underline">Limpiar todos</button>
+            <span class="ml-auto text-slate-400">Índice SH-256 Activo ●</span>
+          </div>
+        }
+      </div>
+
+      <!-- Barra de acción masiva -->
+      @if (selectedCount() > 0) {
+        <div class="bg-slate-900 text-white rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <span class="font-medium">{{ selectedCount() }} documentos seleccionados · 18.4 MB acumulados</span>
+          <div class="flex items-center gap-2">
+            <button class="bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5">⇩ Descargar ZIP</button>
+            <button class="bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5">↔ Mover</button>
+            <button class="bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5">🔒 Permisos</button>
+            <button class="bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5">🗄 Archivar</button>
+            <button (click)="clearSelection()" class="text-white/60 hover:text-white px-2">✕</button>
+          </div>
+        </div>
+      }
+
+      <!-- Tabla de documentos -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[11px] text-slate-400 border-b border-slate-100">
+              <th class="px-4 py-3 w-8">
+                <input type="checkbox" [checked]="allSelected()" (change)="toggleSelectAll()" class="rounded" />
+              </th>
+              <th class="px-2 py-3">DOCUMENTO & VERSIÓN</th>
+              <th class="px-2 py-3">CÓDIGO FOLIO</th>
+              <th class="px-2 py-3">DEPARTAMENTO</th>
+              <th class="px-2 py-3">AUTOR / REGISTRO</th>
+              <th class="px-4 py-3 text-right">TAMAÑO</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (doc of visibleDocuments(); track doc.id) {
+              <tr class="hover:bg-slate-50 transition-colors cursor-pointer" (click)="openDocument(doc)">
+                <td class="px-4 py-3" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="doc.selected" (change)="toggleSelectDoc(doc)" class="rounded" />
+                </td>
+                <td class="px-2 py-3">
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0"
+                      [ngClass]="formatIconClass(doc.format)"
+                    >
+                      {{ doc.format.toUpperCase() }}
+                    </div>
+                    <div class="min-w-0">
+                      <p class="font-medium text-blue-700 hover:underline truncate max-w-xs">
+                        {{ doc.name }} <span class="text-slate-400 font-normal">{{ doc.version }}</span>
+                      </p>
+                      <p class="text-[10px] text-slate-400">{{ doc.hashLabel }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-2 py-3 text-xs text-slate-500 whitespace-nowrap">{{ doc.folio }}</td>
+                <td class="px-2 py-3">
+                  <span class="text-[11px] font-medium rounded-full px-2 py-0.5" [ngClass]="doc.departamentoColor">
+                    ● {{ doc.departamento }}
+                  </span>
+                </td>
+                <td class="px-2 py-3">
+                  <p class="text-xs font-medium text-slate-600">{{ doc.autor }}</p>
+                  <p class="text-[10px] text-slate-400">{{ doc.autorEmail }}</p>
+                </td>
+                <td class="px-4 py-3 text-xs text-slate-500 text-right whitespace-nowrap">{{ doc.tamano }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-400">
+                  No se encontraron documentos con ese criterio.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="flex items-center justify-between px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
+          <span>Mostrando 1-{{ visibleDocuments().length }} de 1,420 documentos</span>
+          <div class="flex items-center gap-3">
+            <span>Filas:
+              <select class="border border-slate-200 rounded px-1.5 py-0.5 ml-1">
+                <option>25</option>
+                <option>50</option>
+                <option>100</option>
+              </select>
+            </span>
+            <div class="flex items-center gap-1">
+              <button class="px-2 py-1 rounded hover:bg-slate-100">‹</button>
+              <button class="w-6 h-6 rounded bg-blue-700 text-white">1</button>
+              <button class="w-6 h-6 rounded hover:bg-slate-100">2</button>
+              <button class="w-6 h-6 rounded hover:bg-slate-100">3</button>
+              <span>...</span>
+              <button class="w-6 h-6 rounded hover:bg-slate-100">57</button>
+              <button class="px-2 py-1 rounded hover:bg-slate-100">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cadena de custodia -->
+      <div class="bg-blue-900 text-white rounded-xl px-5 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div>
+          <p class="font-semibold">🔗 Cadena de Custodia Inmutable DAI</p>
+          <p class="text-blue-100">Cada consulta, descarga o modificación genera un sello de tiempo RFC-3161 auditado en tiempo real.</p>
+        </div>
+        <button class="bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5 font-medium whitespace-nowrap">
+          Ver Registro de Auditoría
+        </button>
+      </div>
+    </main>
+  </div>
+</div>

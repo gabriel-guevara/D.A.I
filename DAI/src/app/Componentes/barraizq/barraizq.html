@@ -1,0 +1,43 @@
+<aside class="w-60 bg-white border-r border-slate-200 flex flex-col shrink-0">
+  <div class="h-16 flex items-center gap-2 px-5 border-b border-slate-100">
+    <div class="w-8 h-8 rounded-md bg-blue-700 flex items-center justify-center text-white font-bold text-xs">
+      DAI
+    </div>
+    <div class="leading-tight">
+      <p class="text-sm font-semibold text-slate-800">DAI</p>
+      <p class="text-[10px] text-slate-400">Gestión Documental</p>
+    </div>
+  </div>
+
+  <nav class="flex-1 py-4 px-3 space-y-1">
+    @for (item of navItems; track item.id) {
+      <a
+        [routerLink]="item.route"
+        class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+        [ngClass]="item.id === active
+          ? 'bg-blue-50 text-blue-700'
+          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'"
+      >
+        <span class="flex items-center gap-2">
+          <span
+            class="w-1.5 h-1.5 rounded-full"
+            [ngClass]="item.id === active ? 'bg-blue-600' : 'bg-transparent'"
+          ></span>
+          {{ item.label }}
+        </span>
+        @if (item.badge) {
+          <span class="text-[10px] font-semibold bg-red-500 text-white rounded-full px-1.5 py-0.5">
+            {{ item.badge }}
+          </span>
+        }
+      </a>
+    }
+  </nav>
+
+  <div class="p-4 border-t border-slate-100">
+    <div class="rounded-lg bg-slate-50 border border-slate-100 p-3 text-center">
+      <p class="text-[11px] font-semibold text-slate-600">ISO 27001 & ENS</p>
+      <p class="text-[10px] text-slate-400 mt-0.5">Ayuda & Soporte</p>
+    </div>
+  </div>
+</aside>

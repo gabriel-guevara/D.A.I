@@ -1,0 +1,9 @@
+# Archivos de entorno con claves secretas
+.env
+
+# Carpetas de dependencias
+node_modules/
+
+dist/
+
+.angular/
