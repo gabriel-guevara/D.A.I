@@ -2,11 +2,6 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-/**
- * Base de la API. En desarrollo `ng serve` la redirige al backend (ver proxy.conf.json).
- * En producción sirve el front y la API bajo el mismo dominio (reverse proxy: /api -> backend)
- * o cambia esta constante por la URL absoluta de la API.
- */
 export const API_URL = 'https://d-a-i.onrender.com/api';
 
 type Params = Record<string, string | number | boolean | null | undefined>;
@@ -31,7 +26,11 @@ export class ApiService {
   biblioteca<T = unknown>(filtros: { q?: string; departamento?: string; formato?: string; dias?: number } = {}) {
     return this.get<T>('/documentos', filtros);
   }
-
+  documento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}`); }
+  auditoriaDocumento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}/auditoria`); }
+  eliminarDocumento(id: string): Observable<void> {
+    return this.http.delete<void>(`${API_URL}/documentos/${encodeURIComponent(id)}`);
+  }
 
   // Búsqueda avanzada
   buscar<T = unknown>(q: string, algoritmo: 'semantica' | 'exacta') { return this.get<T>('/busqueda', { q, algoritmo }); }
@@ -39,6 +38,7 @@ export class ApiService {
 
   // Notificaciones
   notificaciones<T = unknown>() { return this.get<T>('/notificaciones'); }
+  notificacionesResumen<T = unknown>() { return this.get<T>('/notificaciones/resumen'); }
   marcarLeida(id: string): Observable<void> {
     return this.http.patch<void>(`${API_URL}/notificaciones/${encodeURIComponent(id)}/leida`, {});
   }

@@ -8,7 +8,7 @@ router.get('/', async (_req, res) => {
     query(`SELECT id, nombre, color_clase AS "colorClase" FROM departamentos ORDER BY nombre`),
     query(`SELECT id, nombre FROM tipos_documentales ORDER BY id`),
     query(`SELECT id, nombre, punto_clase AS "puntoClase" FROM clasificaciones ORDER BY nivel_minimo DESC`),
-    query(`SELECT id, nombre, color_clase AS "colorClase" FROM niveles_acceso ORDER BY rango DESC, nombre`),
+    query(`SELECT id, nombre, rango, color_clase AS "colorClase" FROM niveles_acceso ORDER BY rango DESC, nombre`),
     query(`SELECT id, clave, nombre FROM roles ORDER BY id`),
   ]);
   res.json({

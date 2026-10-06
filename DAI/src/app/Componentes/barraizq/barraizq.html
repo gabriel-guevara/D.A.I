@@ -25,9 +25,12 @@
           ></span>
           {{ item.label }}
         </span>
-        @if (item.badge) {
-          <span class="text-[10px] font-semibold bg-red-500 text-white rounded-full px-1.5 py-0.5">
-            {{ item.badge }}
+        @if (badgeDe(item.id) > 0) {
+          <span
+            class="text-[10px] font-semibold bg-red-500 text-white rounded-full px-1.5 py-0.5"
+            [attr.aria-label]="badgeDe(item.id) + ' notificaciones sin leer'"
+          >
+            {{ textoBadge(badgeDe(item.id)) }}
           </span>
         }
       </a>
