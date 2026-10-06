@@ -115,7 +115,10 @@ router.get('/:id/auditoria', requireRole('super-admin', 'compliance'), async (re
     `SELECT a.id, a.accion, a.ip, a.creado_en, u.nombre AS usuario
        FROM auditoria a LEFT JOIN usuarios u ON u.id = a.usuario_id
       WHERE a.documento_id = $1 ORDER BY a.creado_en DESC LIMIT 100`, [req.params.id]);
-  res.json(rows.map((a) => ({ id: `AUD-${a.id}`, accion: a.accion, usuario: a.usuario, ip: a.ip, cuando: haceCuanto(a.creado_en, true) })));
+  res.json(rows.map((a) => ({
+    id: `AUD-${a.id}`, accion: a.accion, usuario: a.usuario ?? 'Sistema', ip: a.ip,
+    cuando: haceCuanto(a.creado_en, true), fecha: fechaHoraUTC(a.creado_en),
+  })));
 });
 
 /** Enviar a la papelera de seguridad (borrado lógico) y avisar a admin/cumplimiento. */
