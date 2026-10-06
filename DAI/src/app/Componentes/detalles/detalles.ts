@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, HostListener, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
@@ -22,6 +22,25 @@ interface DocDetalle {
   firmadoPor: string | null;
 }
 
+interface RegistroAuditoria {
+  id: string;
+  accion: string;
+  usuario: string;
+  ip: string | null;
+  cuando: string;
+  fecha: string;
+}
+
+const ETIQUETAS_ACCION: Record<string, string> = {
+  login: 'Inicio de sesión',
+  ver_documento: 'Consulta del documento',
+  descargar: 'Descarga del original',
+  editar_version: 'Edición de versión',
+  eliminar: 'Envío a papelera de seguridad',
+  aprobar_ocr: 'Aprobación e indexación OCR',
+  invitar_usuario: 'Invitación de usuario',
+};
+
 @Component({
   selector: 'app-document-detail',
   standalone: true,
@@ -36,6 +55,12 @@ export class detalles {
   totalPages = signal(18);
   zoom = signal(100);
 
+  // Panel "Historial de Auditoría"
+  auditOpen = signal(false);
+  auditLoading = signal(false);
+  auditError = signal('');
+  auditRows = signal<RegistroAuditoria[]>([]);
+
   constructor(private route: ActivatedRoute, private router: Router, private api: ApiService) {
     const id = this.route.snapshot.paramMap.get('id');
     this.documentId.set(id);
@@ -49,6 +74,40 @@ export class detalles {
       error: (err) =>
         this.error.set(err.status === 404 ? 'Documento no encontrado o sin permisos de acceso.' : 'No se pudo cargar el documento.'),
     });
+  }
+
+  openAudit(): void {
+    const id = this.documentId();
+    if (!id) return;
+    this.auditOpen.set(true);
+    this.auditLoading.set(true);
+    this.auditError.set('');
+
+    // Solo Super Administrador y Oficial de Cumplimiento: para el resto el servidor responde 403
+    this.api.auditoriaDocumento<RegistroAuditoria[]>(id).subscribe({
+      next: (rows) => {
+        this.auditRows.set(rows);
+        this.auditLoading.set(false);
+      },
+      error: (err) => {
+        this.auditRows.set([]);
+        this.auditLoading.set(false);
+        this.auditError.set(
+          err.status === 403
+            ? 'Solo el Super Administrador y el Oficial de Cumplimiento pueden consultar la auditoría.'
+            : 'No se pudo cargar el historial de auditoría.',
+        );
+      },
+    });
+  }
+
+  @HostListener('document:keydown.escape')
+  closeAudit(): void {
+    this.auditOpen.set(false);
+  }
+
+  accionLabel(accion: string): string {
+    return ETIQUETAS_ACCION[accion] ?? accion;
   }
 
   backToDashboard(): void {

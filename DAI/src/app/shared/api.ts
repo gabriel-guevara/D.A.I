@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
  * En producción sirve el front y la API bajo el mismo dominio (reverse proxy: /api -> backend)
  * o cambia esta constante por la URL absoluta de la API.
  */
-export const API_URL = '/api';
+export const API_URL = 'https://d-a-i.onrender.com/api';
 
 type Params = Record<string, string | number | boolean | null | undefined>;
 
@@ -32,6 +32,7 @@ export class ApiService {
     return this.get<T>('/documentos', filtros);
   }
   documento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}`); }
+  auditoriaDocumento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}/auditoria`); }
   eliminarDocumento(id: string): Observable<void> {
     return this.http.delete<void>(`${API_URL}/documentos/${encodeURIComponent(id)}`);
   }
