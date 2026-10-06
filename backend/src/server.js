@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { config } from './config.js';
 import { pool } from './db.js';
 import { requireAuth } from './middleware/auth.js';
+import { aplicarMigraciones } from './migrate.js';
 import auth from './routes/auth.js';
 import catalogos from './routes/catalogos.js';
 import dashboard from './routes/dashboard.js';
@@ -41,5 +42,8 @@ app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: config.isProd ? 'Error interno del servidor' : err.message });
 });
+
+// Actualiza el esquema si hace falta (idempotente). Si falla, la API arranca igual y lo deja en el log.
+await aplicarMigraciones().catch((e) => console.error('Migración no aplicada:', e.message));
 
 app.listen(config.port, () => console.log(`API DAI escuchando en http://localhost:${config.port}`));

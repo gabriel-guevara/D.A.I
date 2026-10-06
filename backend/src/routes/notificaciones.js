@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { query } from '../db.js';
-import { haceCuanto, idValido } from '../lib/format.js';
+import { fechaHoraCO, haceCuanto, idValido } from '../lib/format.js';
 
 const router = Router();
-const CATEGORIAS = ['edicion', 'version', 'eliminado', 'seguridad'];
+const CATEGORIAS = ['edicion', 'version', 'eliminado', 'seguridad', 'consulta'];
 
 /** Lista del usuario autenticado (misma forma que Notification del front). */
 router.get('/', async (req, res) => {
@@ -18,6 +18,7 @@ router.get('/', async (req, res) => {
   res.json(rows.map((n) => ({
     id: String(n.id), category: n.categoria, borderColor: n.borde_clase, badge: n.badge, badgeColor: n.badge_clase,
     icon: n.icono ?? '🔔', title: n.titulo, description: n.descripcion, time: haceCuanto(n.creado_en, true),
+    fecha: fechaHoraCO(n.creado_en), creadoEn: n.creado_en.toISOString(),
     meta: n.meta, actions: n.acciones, read: n.leida,
   })));
 });

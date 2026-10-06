@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
+import { notificarConsulta } from '../lib/notify.js';
 import { escapeLike, fechaCorta, fechaHoraCO, formatBytes, hashCorto, haceCuanto, idValido } from '../lib/format.js';
 
 const router = Router();
@@ -67,6 +68,7 @@ router.get('/:id', async (req, res) => {
     `SELECT e.nombre FROM documento_etiquetas de JOIN etiquetas e ON e.id = de.etiqueta_id
       WHERE de.documento_id = $1 ORDER BY e.nombre`, [r.id]);
   await registrarAuditoria(req, 'ver_documento', r.id);
+  await notificarConsulta(req, { id: r.id, nombre: r.nombre, folio: r.folio });
 
   res.json({
     id: String(r.id), nombre: r.nombre, version: r.version_actual, folio: r.folio, formato: r.formato,
