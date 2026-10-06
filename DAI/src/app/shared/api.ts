@@ -31,11 +31,7 @@ export class ApiService {
   biblioteca<T = unknown>(filtros: { q?: string; departamento?: string; formato?: string; dias?: number } = {}) {
     return this.get<T>('/documentos', filtros);
   }
-  documento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}`); }
-  auditoriaDocumento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}/auditoria`); }
-  eliminarDocumento(id: string): Observable<void> {
-    return this.http.delete<void>(`${API_URL}/documentos/${encodeURIComponent(id)}`);
-  }
+
 
   // Búsqueda avanzada
   buscar<T = unknown>(q: string, algoritmo: 'semantica' | 'exacta') { return this.get<T>('/busqueda', { q, algoritmo }); }

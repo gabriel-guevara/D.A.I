@@ -13,19 +13,36 @@ export function formatBytes(b) {
   return `${b} B`;
 }
 
-/** "14 Oct 2024" */
-export function fechaCorta(d) {
-  if (!d) return '';
-  const x = new Date(d);
-  return `${pad(x.getUTCDate())} ${MESES[x.getUTCMonth()]} ${x.getUTCFullYear()}`;
+// Todas las fechas se muestran en hora de Colombia (America/Bogota, UTC-5, sin horario de verano).
+const ZONA = 'America/Bogota';
+const fmtPartes = new Intl.DateTimeFormat('en-US', {
+  timeZone: ZONA, year: 'numeric', month: 'numeric', day: 'numeric',
+  hour: 'numeric', minute: '2-digit', hourCycle: 'h23',
+});
+
+function partes(d) {
+  const o = {};
+  for (const p of fmtPartes.formatToParts(new Date(d))) o[p.type] = p.value;
+  return { anio: +o.year, mes: +o.month, dia: +o.day, hora: +o.hour % 24, minuto: o.minute };
 }
 
-/** "15 Ene 2025, 09:42 UTC" */
-export function fechaHoraUTC(d) {
+/** "14 Oct 2024" (día en hora de Colombia) */
+export function fechaCorta(d) {
   if (!d) return '';
-  const x = new Date(d);
-  return `${fechaCorta(x)}, ${pad(x.getUTCHours())}:${pad(x.getUTCMinutes())} UTC`;
+  const p = partes(d);
+  return `${pad(p.dia)} ${MESES[p.mes - 1]} ${p.anio}`;
 }
+
+/** "15 Ene 2025, 4:42 a. m." (hora de Colombia, formato de 12 horas) */
+export function fechaHoraCO(d) {
+  if (!d) return '';
+  const p = partes(d);
+  const h12 = p.hora % 12 || 12;
+  return `${fechaCorta(d)}, ${h12}:${p.minuto} ${p.hora < 12 ? 'a. m.' : 'p. m.'}`;
+}
+
+/** Alias por compatibilidad: ahora devuelve hora de Colombia, no UTC. */
+export const fechaHoraUTC = fechaHoraCO;
 
 /** "Hace 12 min" (corto) o "Hace 12 minutos" (largo). Más de 2 días: fecha corta. */
 export function haceCuanto(d, largo = false) {

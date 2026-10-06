@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
-import { escapeLike, fechaCorta, fechaHoraUTC, formatBytes, hashCorto, haceCuanto, idValido } from '../lib/format.js';
+import { escapeLike, fechaCorta, fechaHoraCO, formatBytes, hashCorto, haceCuanto, idValido } from '../lib/format.js';
 
 const router = Router();
 
@@ -73,7 +73,7 @@ router.get('/:id', async (req, res) => {
     departamento: r.departamento ?? null, tipo: r.tipo ?? null, clasificacion: r.clasificacion ?? null,
     hash: r.hash_sha256, hashCorto: hashCorto(r.hash_sha256),
     autor: r.autor_nombre, autorLinea: `${r.autor_nombre}${r.departamento ? ` — ${r.departamento}` : ''}`,
-    fechaCreacion: fechaHoraUTC(r.creado_en), tamano: formatBytes(r.tamano_bytes), paginas: r.paginas,
+    fechaCreacion: fechaHoraCO(r.creado_en), tamano: formatBytes(r.tamano_bytes), paginas: r.paginas,
     etiquetas: tags.rows.map((x) => x.nombre),
     retencion: r.retencion_anios ? `${r.retencion_anios} Años${r.vence_retencion ? ` (Vence ${new Date(r.vence_retencion).getUTCFullYear()})` : ''}` : null,
     cifrado: r.cifrado_aes, ocr: r.ocr_procesado, firmadoPor: r.firmado_por, firmaValida: r.firma_valida,
@@ -117,7 +117,7 @@ router.get('/:id/auditoria', requireRole('super-admin', 'compliance'), async (re
       WHERE a.documento_id = $1 ORDER BY a.creado_en DESC LIMIT 100`, [req.params.id]);
   res.json(rows.map((a) => ({
     id: `AUD-${a.id}`, accion: a.accion, usuario: a.usuario ?? 'Sistema', ip: a.ip,
-    cuando: haceCuanto(a.creado_en, true), fecha: fechaHoraUTC(a.creado_en),
+    cuando: haceCuanto(a.creado_en, true), fecha: fechaHoraCO(a.creado_en),
   })));
 });
 
