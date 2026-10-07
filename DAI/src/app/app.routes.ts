@@ -7,6 +7,7 @@ import { Busqueda } from './Componentes/busqueda/busqueda';
 import { Notificaciones } from './Componentes/notificaciones/notificaciones';
 import { roles } from './Componentes/roles/roles';
 import { detalles } from './Componentes/detalles/detalles';
+import { UsuariosGestion } from './Componentes/usuarios/usuarios';
 import { authGuard } from './shared/auth-guard';
 
 export const routes: Routes = [
@@ -17,6 +18,7 @@ export const routes: Routes = [
   { path: 'digitalizacion', component: Digitalizacion, canActivate: [authGuard] },
   { path: 'busqueda', component: Busqueda, canActivate: [authGuard] },
   { path: 'notificaciones', component: Notificaciones, canActivate: [authGuard] },
+  { path: 'roles/usuarios', component: UsuariosGestion, canActivate: [authGuard] },
   { path: 'roles', component: roles, canActivate: [authGuard] },
   { path: 'documento/:id', component: detalles, canActivate: [authGuard] },
   { path: '**', redirectTo: 'login' },

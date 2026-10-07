@@ -22,6 +22,11 @@ export class Navbar {
    * Si ya se está en esa pantalla, Angular solo actualiza los query params
    * y el componente de Búsqueda reacciona a ese cambio.
    */
+  /** "Nuevo Documento" lleva a Digitalización (OCR), donde se ingresan los documentos. */
+  nuevoDocumento(): void {
+    this.router.navigate(['/digitalizacion']);
+  }
+
   onSearchSubmit(): void {
     const query = this.searchQuery().trim();
     this.router.navigate(['/busqueda'], {

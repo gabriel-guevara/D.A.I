@@ -1,9 +1,11 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
 import { ApiService } from '../../shared/api';
+import { AuthService } from '../../shared/auth';
 
 type RoleKey = 'super-admin' | 'compliance' | 'ocr-operator' | 'read-only';
 
@@ -30,6 +32,7 @@ interface SecurityUser {
   mfaMethod: string;
   nivel: string;
   nivelColor: string;
+  activo?: boolean;
   ultimoAcceso: string;
 }
 
@@ -41,6 +44,11 @@ interface SecurityUser {
 })
 export class roles {
   private api = inject(ApiService);
+  private router = inject(Router);
+  private auth = inject(AuthService);
+
+  /** Solo el Super Administrador ve los botones de edición (el servidor también lo exige). */
+  esSuperAdmin = computed(() => this.auth.currentUser()?.rolClave === 'super-admin');
 
   constructor() {
     // Solo Super Administrador y Oficial de Cumplimiento pueden ver esta pantalla (el backend responde 403 al resto)
@@ -101,8 +109,13 @@ export class roles {
     this.selectedMfa.set('todos');
   }
 
-  inviteUser(): void {
-    this.confirmationMessage.set('Invitación enviada. El usuario recibirá un correo para activar su credencial corporativa.');
-    setTimeout(() => this.confirmationMessage.set(null), 3500);
+  /** "Crear Usuario": abre la pantalla de gestión en la pestaña de alta. */
+  crearUsuario(): void {
+    this.router.navigate(['/roles/usuarios'], { queryParams: { tab: 'crear' } });
+  }
+
+  /** "Editar" en una fila: abre la pestaña de modificación con ese usuario ya seleccionado. */
+  editarUsuario(id: string): void {
+    this.router.navigate(['/roles/usuarios'], { queryParams: { tab: 'modificar', id } });
   }
 }

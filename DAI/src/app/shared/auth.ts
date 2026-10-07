@@ -7,6 +7,8 @@ export interface CurrentUser {
   name: string;
   role: string;
   email: string;
+  rolClave?: string; // 'super-admin' | 'compliance' | 'ocr-operator' | 'read-only'
+  nivel?: string;
 }
 
 interface LoginStep1 { mfaToken: string; metodo: string; }

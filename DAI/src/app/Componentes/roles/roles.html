@@ -21,8 +21,8 @@
           <span class="bg-red-50 text-red-700 font-medium rounded-full px-3 py-1.5">
             ⚠ No Política de Bloqueo (SSO / SAML)
           </span>
-          <button (click)="inviteUser()" class="bg-blue-900 hover:bg-blue-950 text-white rounded-lg px-3 py-1.5 font-medium">
-            + Invitar / Crear Usuario
+          <button (click)="crearUsuario()" class="bg-blue-900 hover:bg-blue-950 text-white rounded-lg px-3 py-1.5 font-medium">
+            + Crear Usuario
           </button>
         </div>
       </div>
@@ -135,6 +135,9 @@
               <th class="px-2 py-3">SEGURIDAD 2FA</th>
               <th class="px-2 py-3">NIVEL CONFIDENCIALIDAD</th>
               <th class="px-4 py-3 text-right">ÚLTIMO ACCESO</th>
+              @if (esSuperAdmin()) {
+                <th class="px-4 py-3 text-right">ACCIONES</th>
+              }
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
@@ -149,7 +152,12 @@
                       {{ u.initials }}
                     </div>
                     <div class="min-w-0">
-                      <p class="font-medium text-slate-700 truncate">{{ u.name }}</p>
+                      <p class="font-medium text-slate-700 truncate">
+                        {{ u.name }}
+                        @if (u.activo === false) {
+                          <span class="ml-1 text-[9px] font-semibold bg-slate-100 text-slate-500 rounded px-1.5 py-0.5 align-middle">INACTIVO</span>
+                        }
+                      </p>
                       <p class="text-[10px] text-slate-400 truncate">{{ u.email }}</p>
                     </div>
                   </div>
@@ -172,10 +180,15 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 text-xs text-slate-500 text-right whitespace-nowrap">{{ u.ultimoAcceso }}</td>
+                @if (esSuperAdmin()) {
+                  <td class="px-4 py-3 text-right">
+                    <button (click)="editarUsuario(u.id)" class="text-xs text-blue-600 font-medium hover:underline">Editar</button>
+                  </td>
+                }
               </tr>
             } @empty {
               <tr>
-                <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-400">
+                <td [attr.colspan]="esSuperAdmin() ? 7 : 6" class="px-4 py-8 text-center text-sm text-slate-400">
                   No se encontraron usuarios con ese criterio.
                 </td>
               </tr>

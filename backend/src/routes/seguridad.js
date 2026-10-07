@@ -47,7 +47,6 @@ router.get('/usuarios', async (_req, res) => {
 // Crear y modificar usuarios
 // ---------------------------------------------------------------------------------------------
 const MFA_METODOS = ['TOTP', 'TOTP 2 Dispositivos', 'FIDO2 Yubikey', 'Push OTP Dispositivo', 'SMS Backup', 'eOTP CorpID'];
-const ROLES_QUE_PUEDE_ASIGNAR_CUMPLIMIENTO = ['ocr-operator', 'read-only'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Valida el cuerpo. En "crear" nombre, email, contraseña, rol y nivel son obligatorios; en "modificar" todo es opcional. */
@@ -104,12 +103,8 @@ async function resolverCatalogos(db, d) {
   };
 }
 
-/**
- * Crea un usuario activo con contraseña inicial.
- * Super Administrador: cualquier rol y nivel. Oficial de Cumplimiento: solo Operador OCR o Lector,
- * y con un nivel igual o inferior al suyo (así nadie puede darse o dar más privilegios de los que tiene).
- */
-router.post('/usuarios', async (req, res) => {
+/** Crea un usuario activo con contraseña inicial (solo Super Administrador). */
+router.post('/usuarios', requireRole('super-admin'), async (req, res) => {
   const v = validarUsuario(req.body ?? {}, true);
   if (v.error) return res.status(400).json({ error: v.error });
   const d = v.datos;
@@ -118,15 +113,6 @@ router.post('/usuarios', async (req, res) => {
   if (!rol) return res.status(400).json({ error: 'El rol seleccionado no existe.' });
   if (!nivel) return res.status(400).json({ error: 'El nivel seleccionado no existe.' });
   if (d.departamento && !dep) return res.status(400).json({ error: 'El departamento seleccionado no existe.' });
-
-  if (req.user.rol !== 'super-admin') {
-    if (!ROLES_QUE_PUEDE_ASIGNAR_CUMPLIMIENTO.includes(rol.clave)) {
-      return res.status(403).json({ error: 'Solo un Super Administrador puede asignar ese rol.' });
-    }
-    if (nivel.rango > req.user.rango) {
-      return res.status(403).json({ error: 'No puedes asignar un nivel de confidencialidad superior al tuyo.' });
-    }
-  }
 
   const hash = await bcrypt.hash(d.password, 12);
   try {

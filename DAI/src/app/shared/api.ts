@@ -2,7 +2,10 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-export const API_URL = 'https://d-a-i.onrender.com/api';
+import { API_URL } from './config';
+
+// Se reexporta para que el resto de archivos puedan seguir importándola desde './api'
+export { API_URL };
 
 type Params = Record<string, string | number | boolean | null | undefined>;
 
@@ -51,6 +54,15 @@ export class ApiService {
   usuarios<T = unknown>() { return this.get<T>('/seguridad/usuarios'); }
   invitarUsuario(body: { nombre: string; email: string; rol?: string; departamento?: string; nivel?: string }) {
     return this.http.post<{ id: string }>(`${API_URL}/seguridad/usuarios/invitar`, body);
+  }
+
+  // Alta y modificación de usuarios (solo Super Administrador; Cumplimiento puede crear con límites)
+  catalogos<T = unknown>() { return this.get<T>('/catalogos'); }
+  crearUsuario(body: Record<string, unknown>) {
+    return this.http.post<{ id: string }>(`${API_URL}/seguridad/usuarios`, body);
+  }
+  modificarUsuario(id: string, body: Record<string, unknown>) {
+    return this.http.patch<{ ok: boolean }>(`${API_URL}/seguridad/usuarios/${encodeURIComponent(id)}`, body);
   }
 
   // Digitalización (OCR)

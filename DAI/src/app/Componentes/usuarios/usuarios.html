@@ -1,0 +1,308 @@
+<div class="min-h-screen bg-slate-50 flex">
+  <app-barraizq active="roles"></app-barraizq>
+
+  <div class="flex-1 flex flex-col min-w-0">
+    <app-navbar></app-navbar>
+
+    <main class="flex-1 overflow-y-auto p-6 space-y-5">
+      <!-- Encabezado -->
+      <div>
+        <button (click)="volver()" class="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1 mb-1">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+          </svg>
+          Roles y Permisos
+        </button>
+        <h1 class="text-xl font-bold text-slate-800">Gestión de Usuarios</h1>
+        <p class="text-sm text-slate-500 mt-1 max-w-2xl">
+          Cree cuentas nuevas y asígneles su rol, nivel de confidencialidad y método de verificación en dos pasos.
+        </p>
+      </div>
+
+      <!-- Pestañas -->
+      <div>
+        <div class="flex items-center gap-1 border-b border-slate-200">
+          <button
+            (click)="setTab('crear')"
+            class="px-4 py-2 text-sm font-medium -mb-px border-b-2"
+            [ngClass]="tab() === 'crear' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+          >
+            Crear usuario
+          </button>
+          <button
+            (click)="setTab('modificar')"
+            [disabled]="!esSuperAdmin()"
+            class="px-4 py-2 text-sm font-medium -mb-px border-b-2 disabled:cursor-not-allowed"
+            [ngClass]="
+              tab() === 'modificar'
+                ? 'border-blue-600 text-blue-700'
+                : esSuperAdmin()
+                  ? 'border-transparent text-slate-500 hover:text-slate-700'
+                  : 'border-transparent text-slate-300'
+            "
+          >
+            Modificar usuario
+            @if (!esSuperAdmin()) {
+              <span aria-hidden="true">🔒</span>
+            }
+          </button>
+        </div>
+        @if (!esSuperAdmin()) {
+          <p class="text-[11px] text-slate-400 mt-2">
+            Solo el Super Administrador puede modificar usuarios. Usted puede crear cuentas de Operador OCR o Lector
+            con un nivel de confidencialidad igual o inferior al suyo.
+          </p>
+        }
+      </div>
+
+      <!-- Avisos -->
+      @if (mensajeOk()) {
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-2.5">✅ {{ mensajeOk() }}</div>
+      }
+      @if (mensajeError()) {
+        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5" role="alert">{{ mensajeError() }}</div>
+      }
+
+      <!-- Formulario reutilizado por las dos pestañas -->
+      <ng-template #formulario let-modo="modo" let-f="f">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Nombre completo *</label>
+            <input
+              type="text"
+              maxlength="120"
+              [ngModel]="f.nombre"
+              (ngModelChange)="parche(modo, { nombre: $event })"
+              placeholder="Ej. Lic. Ana María Torres"
+              class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Correo institucional *</label>
+            <input
+              type="email"
+              maxlength="160"
+              [ngModel]="f.email"
+              (ngModelChange)="parche(modo, { email: $event })"
+              placeholder="usuario@dai.corp"
+              class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-slate-600 mb-1">
+              {{ modo === 'crear' ? 'Contraseña inicial *' : 'Nueva contraseña (déjela vacía para no cambiarla)' }}
+            </label>
+            <div class="flex flex-wrap items-center gap-2">
+              <input
+                [type]="verPassword() ? 'text' : 'password'"
+                maxlength="72"
+                autocomplete="new-password"
+                [ngModel]="f.password"
+                (ngModelChange)="parche(modo, { password: $event })"
+                placeholder="Mínimo 8 caracteres, con letras y números"
+                class="flex-1 min-w-[220px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                type="button"
+                (click)="verPassword.set(!verPassword())"
+                class="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
+              >
+                {{ verPassword() ? 'Ocultar' : 'Mostrar' }}
+              </button>
+              <button
+                type="button"
+                (click)="generarPassword(modo)"
+                class="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
+              >
+                Generar contraseña
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Compártala con la persona por un canal seguro.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Rol *</label>
+            <select
+              [ngModel]="f.rol"
+              (ngModelChange)="parche(modo, { rol: $event })"
+              [disabled]="modo === 'editar' && esMiCuenta()"
+              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              <option value="">Seleccione un rol…</option>
+              @for (r of rolesDisponibles(); track r.clave) {
+                <option [value]="r.clave">{{ r.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Nivel de confidencialidad *</label>
+            <select
+              [ngModel]="f.nivel"
+              (ngModelChange)="parche(modo, { nivel: $event })"
+              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700"
+            >
+              <option value="">Seleccione un nivel…</option>
+              @for (n of nivelesDisponibles(); track n.id) {
+                <option [value]="n.nombre">{{ n.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Departamento / Área</label>
+            <select
+              [ngModel]="f.departamento"
+              (ngModelChange)="parche(modo, { departamento: $event })"
+              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700"
+            >
+              <option value="">Sin departamento</option>
+              @for (d of catalogos()?.departamentos ?? []; track d.id) {
+                <option [value]="d.nombre">{{ d.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Verificación en dos pasos (2FA)</label>
+            <select
+              [ngModel]="f.mfaMetodo"
+              (ngModelChange)="parche(modo, { mfaMetodo: $event })"
+              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700"
+            >
+              @for (m of opciones2fa(f.mfaMetodo); track m) {
+                <option [value]="m">{{ m }}</option>
+              }
+            </select>
+          </div>
+
+          @if (modo === 'editar') {
+            <div class="md:col-span-2">
+              <label class="inline-flex items-center gap-2 text-sm text-slate-700" [class.opacity-50]="esMiCuenta()">
+                <input
+                  type="checkbox"
+                  [ngModel]="f.activo"
+                  (ngModelChange)="parche(modo, { activo: $event })"
+                  [disabled]="esMiCuenta()"
+                  class="w-4 h-4 rounded border-slate-300"
+                />
+                Cuenta activa (si se desactiva, la persona pierde el acceso de inmediato)
+              </label>
+              @if (esMiCuenta()) {
+                <p class="text-[11px] text-slate-400 mt-1">Esta es su propia cuenta: no puede cambiarse el rol ni desactivarla.</p>
+              }
+            </div>
+          }
+        </div>
+      </ng-template>
+
+      <!-- ======================= PESTAÑA: CREAR ======================= -->
+      @if (tab() === 'crear') {
+        <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-5 max-w-3xl">
+          <h2 class="text-sm font-semibold text-slate-800">Datos del nuevo usuario</h2>
+
+          <ng-container *ngTemplateOutlet="formulario; context: { modo: 'crear', f: formCrear() }"></ng-container>
+
+          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <button
+              (click)="crearUsuario()"
+              [disabled]="guardando()"
+              class="bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-4 py-2"
+            >
+              {{ guardando() ? 'Creando…' : 'Crear usuario' }}
+            </button>
+            <button
+              (click)="volver()"
+              class="text-sm border border-slate-200 rounded-lg px-4 py-2 text-slate-600 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </section>
+      }
+
+      <!-- ====================== PESTAÑA: MODIFICAR ====================== -->
+      @if (tab() === 'modificar') {
+        <div class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 items-start">
+          <!-- Lista de usuarios -->
+          <section class="bg-white rounded-xl border border-slate-200 p-3 space-y-3">
+            <input
+              type="text"
+              [ngModel]="busqueda()"
+              (ngModelChange)="busqueda.set($event)"
+              placeholder="Buscar por nombre o correo"
+              class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <ul class="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
+              @if (cargandoUsuarios()) {
+                <li class="px-2 py-4 text-xs text-slate-400">Cargando usuarios…</li>
+              } @else if (errorCarga()) {
+                <li class="px-2 py-4 text-xs text-red-600">{{ errorCarga() }}</li>
+              } @else {
+                @for (u of usuariosFiltrados(); track u.id) {
+                  <li>
+                    <button
+                      (click)="seleccionar(u)"
+                      class="w-full flex items-center gap-3 px-2 py-2.5 text-left rounded-lg hover:bg-slate-50"
+                      [ngClass]="seleccionado()?.id === u.id ? 'bg-blue-50' : ''"
+                    >
+                      <span
+                        class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
+                        [ngClass]="u.avatarColor"
+                      >
+                        {{ u.initials }}
+                      </span>
+                      <span class="min-w-0">
+                        <span class="block text-sm font-medium text-slate-700 truncate">
+                          {{ u.name }}
+                          @if (!u.activo) {
+                            <span class="ml-1 text-[9px] font-semibold bg-slate-100 text-slate-500 rounded px-1.5 py-0.5 align-middle">INACTIVO</span>
+                          }
+                        </span>
+                        <span class="block text-[10px] text-slate-400 truncate">{{ u.email }}</span>
+                      </span>
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="px-2 py-4 text-xs text-slate-400">No se encontraron usuarios.</li>
+                }
+              }
+            </ul>
+          </section>
+
+          <!-- Formulario de edición -->
+          <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-5">
+            @if (seleccionado(); as sel) {
+              <div class="flex items-center justify-between gap-3">
+                <h2 class="text-sm font-semibold text-slate-800">Modificar: {{ sel.name }}</h2>
+                <span class="text-[11px] text-slate-400">Último acceso: {{ sel.ultimoAcceso }}</span>
+              </div>
+
+              <ng-container *ngTemplateOutlet="formulario; context: { modo: 'editar', f: formEditar() }"></ng-container>
+
+              <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+                <button
+                  (click)="guardarCambios()"
+                  [disabled]="guardando()"
+                  class="bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-4 py-2"
+                >
+                  {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+                </button>
+                <button
+                  (click)="descartarCambios()"
+                  class="text-sm border border-slate-200 rounded-lg px-4 py-2 text-slate-600 hover:bg-slate-50"
+                >
+                  Descartar cambios
+                </button>
+              </div>
+            } @else {
+              <p class="text-sm text-slate-400 py-10 text-center">Seleccione un usuario de la lista para modificarlo.</p>
+            }
+          </section>
+        </div>
+      }
+    </main>
+  </div>
+</div>
