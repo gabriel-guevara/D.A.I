@@ -52,6 +52,17 @@ export class Dashboard {
     this.router.navigate(['/biblioteca']);
   }
 
+  goToDigitalizacion(): void {
+    this.router.navigate(['/digitalizacion']);
+  }
+
+  gotoBusqueda(): void {
+    this.router.navigate(['/busqueda']);
+  }
+
+  goToNotificaciones(): void {
+    this.router.navigate(['/notificaciones']);
+  }
 
   openDocument(doc: DocRow): void {
     this.router.navigate(['/documento', doc.id]);

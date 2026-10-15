@@ -110,8 +110,8 @@ export class detalles {
     return ETIQUETAS_ACCION[accion] ?? accion;
   }
 
-  backToDashboard(): void {
-    this.router.navigate(['/dashboard']);
+  backtoBilbioteca(): void {
+    this.router.navigate(['/biblioteca']);
   }
 
   prevPage(): void {

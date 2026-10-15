@@ -46,8 +46,6 @@ interface FormUsuario {
 const FORM_VACIO: FormUsuario = {
   nombre: '', email: '', password: '', rol: '', departamento: '', nivel: '', mfaMetodo: 'TOTP', activo: true,
 };
-
-const METODOS_2FA = ['TOTP', 'TOTP 2 Dispositivos', 'FIDO2 Yubikey', 'Push OTP Dispositivo', 'SMS Backup', 'eOTP CorpID'];
 // Mismas reglas que el servidor: el Oficial de Cumplimiento solo puede crear estos roles
 const ROLES_CUMPLIMIENTO = ['ocr-operator', 'read-only'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -64,7 +62,6 @@ export class UsuariosGestion {
   private router = inject(Router);
   private auth = inject(AuthService);
 
-  metodos2fa = METODOS_2FA;
 
   tab = signal<Tab>('crear');
   catalogos = signal<Catalogos | null>(null);
@@ -174,10 +171,6 @@ export class UsuariosGestion {
     this.verPassword.set(false);
   }
 
-  /** Los métodos 2FA del catálogo, más el actual del usuario si no estuviera en la lista. */
-  opciones2fa(actual: string): string[] {
-    return actual && !METODOS_2FA.includes(actual) ? [...METODOS_2FA, actual] : METODOS_2FA;
-  }
 
   // ------------------------------------------------------------------ formularios
   parche(modo: Modo, cambios: Partial<FormUsuario>): void {
@@ -208,11 +201,10 @@ export class UsuariosGestion {
     if (nombre.length < 2 || nombre.length > 120) return 'El nombre debe tener entre 2 y 120 caracteres.';
     if (!EMAIL_RE.test(f.email.trim())) return 'Ingrese un correo institucional válido.';
     if (crear || f.password) {
-      if (f.password.length < 8 || f.password.length > 72) return 'La contraseña debe tener entre 8 y 72 caracteres.';
+      if (f.password.length < 8 || f.password.length > 72) return 'La contraseña debe tener entre 8 y 12 caracteres.';
       if (!/[A-Za-z]/.test(f.password) || !/\d/.test(f.password)) return 'La contraseña debe incluir al menos una letra y un número.';
     }
     if (!f.rol) return 'Seleccione un rol.';
-    if (!f.nivel) return 'Seleccione un nivel de confidencialidad.';
     return null;
   }
 

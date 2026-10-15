@@ -7,22 +7,15 @@
     <main class="flex-1 overflow-y-auto p-6 space-y-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="text-[10px] font-semibold text-blue-600 flex items-center gap-1.5 mb-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-            GESTIÓN DE ACCESO BASADO EN ROLES (RBAC) · Nodo: DSO-27001 · PBL-AC-2024
-          </p>
-          <h1 class="text-xl font-bold text-slate-800">Gestión de Usuarios, Roles y Permisos de Seguridad</h1>
+          <h1 class="text-2xl font-bold text-slate-800">Gestión de Usuarios, Roles y Permisos de Seguridad</h1>
           <p class="text-sm text-slate-500 mt-1 max-w-2xl">
-            Control de acceso basado en roles (RBAC), matriz de privilegios de gobierno cloud y
-            asignación criptográfica de credenciales corporativas DAI.
+            Control de acceso basado en roles
           </p>
         </div>
-        <div class="flex flex-wrap items-center gap-2 text-xs shrink-0">
-          <span class="bg-red-50 text-red-700 font-medium rounded-full px-3 py-1.5">
-            ⚠ No Política de Bloqueo (SSO / SAML)
-          </span>
-          <button (click)="crearUsuario()" class="bg-blue-900 hover:bg-blue-950 text-white rounded-lg px-3 py-1.5 font-medium">
-            + Crear Usuario
+        <div class="flex flex-wrap items-center gap-2 text-[16px] shrink-0">
+          <button (click)="crearUsuario()" class=" flex justify-center items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white rounded-lg px-3 py-1.5 font-medium">
+            <img width="20" height="20" src="https://img.icons8.com/material-outlined/24/filled-plus-2-math.png" alt="filled-plus-2-math"/>
+            <span>Crear Usuario</span>
           </button>
         </div>
       </div>
@@ -32,31 +25,6 @@
           ✅ {{ confirmationMessage() }}
         </div>
       }
-
-      <!-- Tarjetas de roles -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        @for (card of roleCards(); track card.key) {
-          <div
-            class="bg-white rounded-xl border p-4 transition-colors"
-            [ngClass]="selectedRole() === card.key ? 'border-blue-400 ring-1 ring-blue-200' : 'border-slate-200'"
-          >
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xl">{{ card.icon }}</span>
-              <span class="text-[10px] font-semibold rounded-full px-2 py-0.5" [ngClass]="card.badgeColor">
-                {{ card.badge }}
-              </span>
-            </div>
-            <p class="text-sm font-semibold text-slate-800">{{ card.name }}</p>
-            <p class="text-xs text-slate-500 mt-1 leading-relaxed">{{ card.description }}</p>
-            <div class="flex items-center justify-between mt-3">
-              <span class="text-xs font-semibold text-slate-700">{{ card.assignedCount }} ASIGNADOS</span>
-              <button (click)="filterByRole(card.key)" class="text-xs text-blue-600 font-medium hover:underline">
-                Ver matriz →
-              </button>
-            </div>
-          </div>
-        }
-      </div>
 
       <!-- Filtros -->
       <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
@@ -81,34 +49,13 @@
             (ngModelChange)="selectedRole.set($event)"
             class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600"
           >
-            <option value="todos">Todos los Roles (Total)</option>
-            <option value="super-admin">Super Administrador</option>
+            <option value="todos">Todos los Roles</option>
+            <option value="super-admin">Administrador</option>
             <option value="compliance">Oficial Cumplimiento</option>
             <option value="ocr-operator">Operador OCR / Ingesta</option>
             <option value="read-only">Lector Restringido</option>
           </select>
 
-          <select
-            [ngModel]="selectedMfa()"
-            (ngModelChange)="selectedMfa.set($event)"
-            class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600"
-          >
-            <option value="todos">Estado 2FA: Todos</option>
-            <option value="fido2">FIDO2 / Hardware</option>
-            <option value="totp">TOTP</option>
-            <option value="sms">SMS Backup</option>
-          </select>
-
-          <select
-            [ngModel]="selectedNivel()"
-            (ngModelChange)="selectedNivel.set($event)"
-            class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600"
-          >
-            <option value="todos">Nivel Confidencialidad: Todos</option>
-            @for (n of niveles; track n) {
-              <option [value]="n">{{ n }}</option>
-            }
-          </select>
 
           @if (searchText() || selectedRole() !== 'todos' || selectedNivel() !== 'todos' || selectedMfa() !== 'todos') {
             <button (click)="resetFiltros()" class="text-xs text-slate-400 hover:text-slate-600 underline">
@@ -116,12 +63,6 @@
             </button>
           }
         </div>
-
-        <p class="text-[11px] text-slate-400">
-          <span class="font-semibold text-slate-500">DIRECTIVA INSTITUCIONAL DAI:</span>
-          Rotación obligatoria cada 90 días. Hardware Tokens FIDO2 exigidos para Nivel 5.
-          <button class="text-red-600 font-medium hover:underline ml-1">{{ cuentasEnRiesgo() }} Cuentas en Riesgo</button>
-        </p>
       </div>
 
       <!-- Tabla de usuarios -->
@@ -132,8 +73,6 @@
               <th class="px-4 py-3">USUARIO INSTITUCIONAL</th>
               <th class="px-2 py-3">DEPARTAMENTO / ÁREA</th>
               <th class="px-2 py-3">ROL ASIGNADO</th>
-              <th class="px-2 py-3">SEGURIDAD 2FA</th>
-              <th class="px-2 py-3">NIVEL CONFIDENCIALIDAD</th>
               <th class="px-4 py-3 text-right">ÚLTIMO ACCESO</th>
               @if (esSuperAdmin()) {
                 <th class="px-4 py-3 text-right">ACCIONES</th>
@@ -168,21 +107,10 @@
                     {{ u.rolLabel }}
                   </span>
                 </td>
-                <td class="px-2 py-3">
-                  <span class="inline-flex items-center gap-1.5 text-xs text-slate-600">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    {{ u.mfaMethod }}
-                  </span>
-                </td>
-                <td class="px-2 py-3">
-                  <span class="text-[11px] font-medium rounded-full px-2 py-0.5" [ngClass]="u.nivelColor">
-                    {{ u.nivel }}
-                  </span>
-                </td>
                 <td class="px-4 py-3 text-xs text-slate-500 text-right whitespace-nowrap">{{ u.ultimoAcceso }}</td>
                 @if (esSuperAdmin()) {
                   <td class="px-4 py-3 text-right">
-                    <button (click)="editarUsuario(u.id)" class="text-xs text-blue-600 font-medium hover:underline">Editar</button>
+                    <button (click)="editarUsuario(u.id)" class="text-2xs text-blue-600 font-medium hover:underline">Editar</button>
                   </td>
                 }
               </tr>
@@ -210,19 +138,6 @@
         </div>
       </div>
 
-      <!-- Trazabilidad -->
-      <div class="bg-blue-900 text-white rounded-xl px-5 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div>
-          <p class="font-semibold">🔗 Trazabilidad Criptográfica Inmutable</p>
-          <p class="text-blue-100">
-            Toda modificación de privilegios, otorgamiento o revocación de credenciales queda sellada
-            en un Ledger de Auditoría DAI mediante firma HSM eIDAS.
-          </p>
-        </div>
-        <button class="bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5 font-medium whitespace-nowrap">
-          Ver Bitácora Forense (Log)
-        </button>
-      </div>
     </main>
   </div>
 </div>
