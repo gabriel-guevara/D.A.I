@@ -100,7 +100,7 @@
                 autocomplete="new-password"
                 [ngModel]="f.password"
                 (ngModelChange)="parche(modo, { password: $event })"
-                placeholder="Mínimo 8 caracteres, con letras y números"
+                placeholder="Mínimo 10 caracteres, con letras y números"
                 class="flex-1 min-w-[220px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <button
@@ -232,6 +232,9 @@
                           @if (!u.activo) {
                             <span class="ml-1 text-[9px] font-semibold bg-slate-100 text-slate-500 rounded px-1.5 py-0.5 align-middle">INACTIVO</span>
                           }
+                          @if (!u.mfaActivo) {
+                            <span class="ml-1 text-[9px] font-semibold bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 align-middle" title="Configurará el 2FA en su próximo ingreso">SIN 2FA</span>
+                          }
                         </span>
                         <span class="block text-[10px] text-slate-400 truncate">{{ u.email }}</span>
                       </span>
@@ -269,6 +272,33 @@
                   Descartar cambios
                 </button>
               </div>
+
+              <!-- Restablecer 2FA: solo Super Administrador, sobre OTRA cuenta, confirmando con su propio código -->
+              @if (!esMiCuenta()) {
+                <div class="pt-4 border-t border-slate-100 space-y-2">
+                  <h3 class="text-[14px] text-slate-900 font-bold">Verificación en dos pasos</h3>
+                  @if (sel.mfaActivo) {
+                    <p class="text-[12px] text-slate-500">
+                      Si la persona perdió su teléfono y sus códigos de recuperación, restablezca su 2FA: se cerrarán sus
+                      sesiones y en su próximo ingreso deberá configurar una app nueva. La acción queda auditada.
+                    </p>
+                    <div class="flex flex-wrap items-end gap-2">
+                      <label class="block">
+                        <span class="text-[12px] text-slate-600">Su código 2FA (confirmación)</span>
+                        <input type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456"
+                          [ngModel]="codigoRestablecer()" (ngModelChange)="codigoRestablecer.set($event)"
+                          class="mt-1 block w-36 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </label>
+                      <button type="button" (click)="restablecer2fa()" [disabled]="restableciendo()"
+                        class="text-sm border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-60 rounded-lg px-4 py-2">
+                        {{ restableciendo() ? 'Restableciendo…' : 'Restablecer 2FA' }}
+                      </button>
+                    </div>
+                  } @else {
+                    <p class="text-[12px] text-amber-700">Esta cuenta aún no tiene 2FA: lo configurará obligatoriamente en su próximo ingreso.</p>
+                  }
+                </div>
+              }
             } @else {
               <p class="text-sm text-slate-400 py-10 text-center">Seleccione un usuario de la lista para modificarlo.</p>
             }

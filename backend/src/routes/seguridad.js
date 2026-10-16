@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
+import { errorContrasena } from '../lib/contrasena.js';
+import { leerSegundoFactor, quitar2fa, verificarSegundoFactor } from '../lib/mfa.js';
+import { BLOQUEO_MIN, clave2fa, estaBloqueado, limpiarFallos, MENSAJE_BLOQUEO, registrarFallo } from '../lib/intentos.js';
 import { fechaCorta, haceCuanto, iniciales, idValido } from '../lib/format.js';
 
 const router = Router();
@@ -25,6 +28,7 @@ router.get('/roles', async (_req, res) => {
 router.get('/usuarios', async (_req, res) => {
   const { rows } = await query(
     `SELECT u.id, u.nombre, u.email, u.avatar_clase, u.mfa_metodo, u.ultimo_acceso, u.activo,
+            u.mfa_secreto IS NOT NULL AS mfa_activo,
             dep.nombre AS departamento, r.clave AS rol, r.nombre AS rol_nombre, r.color_clase AS rol_color,
             n.nombre AS nivel, n.color_clase AS nivel_color
        FROM usuarios u
@@ -37,7 +41,7 @@ router.get('/usuarios', async (_req, res) => {
     return {
       id: String(u.id), name: u.nombre, email: u.email, initials: iniciales(u.nombre), avatarColor: u.avatar_clase,
       departamento: u.departamento ?? '—', rol: u.rol, rolLabel: u.rol_nombre, rolColor: u.rol_color,
-      mfaMethod: u.mfa_metodo, nivel: u.nivel, nivelColor: u.nivel_color, activo: u.activo,
+      mfaMethod: u.mfa_metodo, mfaActivo: u.mfa_activo, nivel: u.nivel, nivelColor: u.nivel_color, activo: u.activo,
       ultimoAcceso: !u.activo ? 'Invitación pendiente' : dias === null ? 'Nunca' : dias < 2 ? haceCuanto(u.ultimo_acceso) : fechaCorta(u.ultimo_acceso),
     };
   }));
@@ -63,11 +67,10 @@ function validarUsuario(b, crear) {
     d.email = b.email.trim();
   }
   if (crear || (typeof b.password === 'string' && b.password !== '')) {
-    const p = b.password;
-    // bcrypt solo usa los primeros 72 bytes: por eso ese es el máximo
-    if (typeof p !== 'string' || p.length < 8 || Buffer.byteLength(p) > 72) return err('La contraseña debe tener entre 8 y 72 caracteres.');
-    if (!/[A-Za-z]/.test(p) || !/\d/.test(p)) return err('La contraseña debe incluir al menos una letra y un número.');
-    d.password = p;
+    // Misma política que el cambio de contraseña del propio usuario (lib/contrasena.js)
+    const error = errorContrasena(b.password, { email: d.email ?? b.email });
+    if (error) return err(error);
+    d.password = b.password;
   }
   if (crear || b.rol !== undefined) {
     if (typeof b.rol !== 'string' || !b.rol) return err('Seleccione un rol.');
@@ -170,7 +173,11 @@ router.patch('/usuarios/:id', requireRole('super-admin'), async (req, res) => {
       if (d.departamento !== undefined) poner('departamento_id', dep?.id ?? null);
       if (d.mfaMetodo !== undefined) poner('mfa_metodo', d.mfaMetodo);
       if (d.activo !== undefined) poner('activo', d.activo);
-      if (d.password !== undefined) poner('password_hash', await bcrypt.hash(d.password, 12));
+      if (d.password !== undefined) {
+        poner('password_hash', await bcrypt.hash(d.password, 12));
+        // Contraseña restablecida por el administrador: las sesiones abiertas de ese usuario se cierran.
+        sets.push('sesion_version = sesion_version + 1', 'password_cambiado_en = now()');
+      }
 
       params.push(t.id);
       await c.query(`UPDATE usuarios SET ${sets.join(', ')} WHERE id = $${params.length}`, params);
@@ -185,6 +192,39 @@ router.patch('/usuarios/:id', requireRole('super-admin'), async (req, res) => {
     if (e.code === '23505') return res.status(409).json({ error: 'Ya existe un usuario con ese correo.' });
     throw e;
   }
+});
+
+/**
+ * Restablece el 2FA de OTRO usuario (perdió el teléfono y sus códigos de recuperación). Solo Super Administrador,
+ * confirmando con SU propio código (step-up) y quedando auditado. El usuario no queda bloqueado: en su próximo
+ * ingreso, tras la contraseña, el sistema le obliga a configurar un autenticador nuevo. Sus sesiones abiertas se cierran.
+ */
+router.post('/usuarios/:id/restablecer-2fa', requireRole('super-admin'), async (req, res) => {
+  if (!idValido(req.params.id)) return res.status(404).json({ error: 'Usuario no encontrado.' });
+  if (String(req.params.id) === String(req.user.id))
+    return res.status(400).json({ error: 'Para cambiar su propio autenticador use "Seguridad de mi cuenta".' });
+  const factor = leerSegundoFactor(req.body);
+  if (factor.error) return res.status(400).json({ error: factor.error });
+
+  const clave = clave2fa(req.user.id);
+  if (await estaBloqueado(clave)) return res.status(429).json({ error: MENSAJE_BLOQUEO });
+  if (!(await verificarSegundoFactor(req.user.id, factor))) {
+    const f = await registrarFallo(clave);
+    await registrarAuditoria(req, '2fa_fallido', null, { tipo: factor.tipo, accion: 'restablecer_2fa' });
+    if (f.recienBloqueado) await registrarAuditoria(req, 'bloqueo_temporal', null, { motivo: factor.tipo, minutos: BLOQUEO_MIN });
+    return res.status(403).json({ error: 'Su código de verificación no es correcto.' }); // 403: la sesión sigue siendo válida
+  }
+  await limpiarFallos(clave);
+
+  const resultado = await withTransaction(async (c) => {
+    const { rows: [t] } = await c.query(`SELECT id, email, mfa_secreto IS NOT NULL AS tenia FROM usuarios WHERE id = $1 FOR UPDATE`, [req.params.id]);
+    if (!t) return null;
+    await quitar2fa(c, t.id);
+    return t;
+  });
+  if (!resultado) return res.status(404).json({ error: 'Usuario no encontrado.' });
+  await registrarAuditoria(req, 'restablecer_2fa', null, { usuarioId: String(resultado.id), email: resultado.email, teniaActivo: resultado.tenia });
+  res.json({ ok: true });
 });
 
 /** Invita a un usuario: queda inactivo y sin contraseña hasta que active su cuenta. */

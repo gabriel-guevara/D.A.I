@@ -1,0 +1,228 @@
+<div class="min-h-screen bg-slate-50 flex">
+  <app-barraizq active="cuenta"></app-barraizq>
+
+  <div class="flex-1 flex flex-col min-w-0">
+    <app-navbar></app-navbar>
+
+    <main class="flex-1 overflow-y-auto p-6 space-y-5">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-800">Seguridad de mi cuenta</h1>
+        <p class="text-sm text-slate-500 mt-1">
+          Verificación en dos pasos, códigos de recuperación y contraseña de
+          <span class="font-medium text-slate-700">{{ estado()?.email }}</span>.
+        </p>
+      </div>
+
+      @if (avisoRecuperacion() !== null) {
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
+          <p class="font-bold">Entró con un código de recuperación</p>
+          <p>
+            Le quedan {{ avisoRecuperacion() }} código(s). Si perdió su teléfono, configure ahora una app nueva con
+            «Cambiar de teléfono o app» y genere códigos nuevos.
+          </p>
+        </div>
+      }
+
+      @if (errorCarga()) {
+        <div class="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{{ errorCarga() }}</div>
+      }
+
+      <!-- Campo de segundo factor (app o recuperación), reutilizado en los tres formularios -->
+      <ng-template #campoFactor let-f="f" let-cual="cual">
+        <label class="block">
+          <span class="block text-[14px] text-slate-900 font-bold">{{ f.usarRecuperacion ? 'Código de recuperación' : 'Código de su app autenticadora' }}</span>
+          <input type="text" [attr.inputmode]="f.usarRecuperacion ? 'text' : 'numeric'" autocomplete="one-time-code"
+            [attr.maxlength]="f.usarRecuperacion ? 11 : 6" [placeholder]="f.usarRecuperacion ? 'XXXXX-XXXXX' : '123456'"
+            [ngModel]="f.valor" (ngModelChange)="parcheFactor(cual, { valor: $event })"
+            class="mt-1 w-full max-w-56 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </label>
+        <button type="button" (click)="parcheFactor(cual, { usarRecuperacion: !f.usarRecuperacion })"
+          class="text-[12px] text-blue-600 hover:underline mt-1">
+          {{ f.usarRecuperacion ? 'Usar el código de mi app' : 'No tengo mi teléfono: usar un código de recuperación' }}
+        </button>
+      </ng-template>
+
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+        <!-- ============================================================ 2FA -->
+        <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <img width="24" height="24" src="https://img.icons8.com/ios-filled/50/shield.png" alt="" />
+              <h2 class="text-[15px] font-bold text-slate-800">Verificación en dos pasos (2FA)</h2>
+            </div>
+            @if (estado(); as e) {
+              @if (e.mfaActivo) {
+                <span class="text-[12px] font-semibold rounded-full px-2.5 py-0.5 bg-emerald-100 text-emerald-700">Activa</span>
+              } @else {
+                <span class="text-[12px] font-semibold rounded-full px-2.5 py-0.5 bg-red-100 text-red-700">No activa</span>
+              }
+            }
+          </div>
+
+          @if (estado(); as e) {
+            @if (e.mfaActivo) {
+              <dl class="grid grid-cols-2 gap-3 text-[13px]">
+                <div class="rounded-lg bg-slate-50 border border-slate-100 p-3">
+                  <dt class="text-slate-500">Activada el</dt>
+                  <dd class="font-medium text-slate-800">{{ e.mfaActivadoEn ?? '—' }}</dd>
+                </div>
+                <div class="rounded-lg border p-3" [ngClass]="pocosCodigos() ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'">
+                  <dt class="text-slate-500">Códigos de recuperación sin usar</dt>
+                  <dd class="font-medium" [ngClass]="pocosCodigos() ? 'text-amber-800' : 'text-slate-800'">{{ e.codigosRestantes }} de 10</dd>
+                </div>
+              </dl>
+              @if (e.codigosRestantes === 0) {
+                <p class="text-[12px] text-amber-800">No tiene códigos de recuperación: si pierde su teléfono no podrá entrar. Genérelos ahora.</p>
+              }
+            } @else {
+              <p class="text-[13px] text-slate-600">
+                Su cuenta aún no tiene la verificación en dos pasos. Cierre sesión y vuelva a entrar: el sistema le
+                pedirá configurarla.
+              </p>
+            }
+
+            @if (ok2fa()) {
+              <div class="text-[13px] text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">{{ ok2fa() }}</div>
+            }
+
+            @if (e.mfaActivo && panel() === 'ninguno') {
+              <div class="flex flex-wrap gap-2">
+                <button type="button" (click)="abrirPanel('reconfigurar')"
+                  class="text-[13px] border border-slate-200 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                  Cambiar de teléfono o app
+                </button>
+                <button type="button" (click)="abrirPanel('codigos')"
+                  class="text-[13px] border border-slate-200 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                  Generar nuevos códigos de recuperación
+                </button>
+              </div>
+            }
+
+            @if (error2fa()) {
+              <div class="text-[13px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{{ error2fa() }}</div>
+            }
+
+            <!-- Cambiar de teléfono: 1) confirmar identidad, 2) escanear el QR nuevo y confirmar -->
+            @if (panel() === 'reconfigurar') {
+              <div class="border-t border-slate-100 pt-4 space-y-3">
+                @if (!alta()) {
+                  <p class="text-[13px] text-slate-600">Confirme su identidad. Su app actual sigue funcionando hasta que confirme la nueva.</p>
+                  <label class="block">
+                    <span class="text-[14px] text-slate-900 font-bold">Contraseña actual</span>
+                    <input type="password" autocomplete="current-password" [ngModel]="passwordReconf()" (ngModelChange)="passwordReconf.set($event)"
+                      class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </label>
+                  <ng-container *ngTemplateOutlet="campoFactor; context: { f: factorReconf(), cual: 'reconf' }"></ng-container>
+                  <div class="flex gap-2 pt-1">
+                    <button type="button" (click)="iniciarReconfiguracion()" [disabled]="ocupado2fa()"
+                      class="bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-4 py-2">
+                      {{ ocupado2fa() ? 'Verificando…' : 'Continuar' }}
+                    </button>
+                    <button type="button" (click)="cerrarPanel()" class="text-sm border border-slate-200 rounded-lg px-4 py-2 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                  </div>
+                } @else {
+                  <app-alta-2fa [alta]="alta()!" />
+                  <label class="block">
+                    <span class="text-[14px] text-slate-900 font-bold">Código de la app NUEVA</span>
+                    <input type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456"
+                      [ngModel]="codigoNuevaApp()" (ngModelChange)="codigoNuevaApp.set($event)" (keydown.enter)="confirmarReconfiguracion()"
+                      class="mt-1 w-full max-w-56 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </label>
+                  <div class="flex gap-2">
+                    <button type="button" (click)="confirmarReconfiguracion()" [disabled]="ocupado2fa()"
+                      class="bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-4 py-2">
+                      {{ ocupado2fa() ? 'Confirmando…' : 'Confirmar app nueva' }}
+                    </button>
+                    <button type="button" (click)="cerrarPanel()" class="text-sm border border-slate-200 rounded-lg px-4 py-2 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Regenerar códigos de recuperación -->
+            @if (panel() === 'codigos') {
+              <div class="border-t border-slate-100 pt-4 space-y-3">
+                @if (codigosNuevos().length) {
+                  <app-codigos-recuperacion [codigos]="codigosNuevos()" [cuenta]="e.email" />
+                  <button type="button" (click)="cerrarPanel()" class="text-sm border border-slate-200 rounded-lg px-4 py-2 text-slate-600 hover:bg-slate-50">
+                    Ya los guardé
+                  </button>
+                } @else {
+                  <p class="text-[13px] text-slate-600">Se generarán 10 códigos nuevos y los anteriores dejarán de servir.</p>
+                  <ng-container *ngTemplateOutlet="campoFactor; context: { f: factorCodigos(), cual: 'codigos' }"></ng-container>
+                  <div class="flex gap-2 pt-1">
+                    <button type="button" (click)="regenerarCodigos()" [disabled]="ocupado2fa()"
+                      class="bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-4 py-2">
+                      {{ ocupado2fa() ? 'Generando…' : 'Generar códigos' }}
+                    </button>
+                    <button type="button" (click)="cerrarPanel()" class="text-sm border border-slate-200 rounded-lg px-4 py-2 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                  </div>
+                }
+              </div>
+            }
+          } @else if (!errorCarga()) {
+            <p class="text-sm text-slate-400">Cargando…</p>
+          }
+        </section>
+
+        <!-- ============================================================ Contraseña -->
+        <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+          <div class="flex items-center gap-2">
+            <img width="24" height="24" src="https://img.icons8.com/ios-filled/50/password.png" alt="" />
+            <h2 class="text-[15px] font-bold text-slate-800">Cambiar contraseña</h2>
+          </div>
+          <p class="text-[12px] text-slate-500">
+            Último cambio: {{ estado()?.passwordCambiadoEn ?? 'sin registro' }} · Al cambiarla se cerrarán sus sesiones en otros equipos.
+          </p>
+
+          <form class="space-y-3" (ngSubmit)="cambiarContrasena()">
+            <label class="block">
+              <span class="text-[14px] text-slate-900 font-bold">Contraseña actual</span>
+              <input [type]="verPassword() ? 'text' : 'password'" name="actual" autocomplete="current-password"
+                [ngModel]="actual()" (ngModelChange)="actual.set($event)"
+                class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </label>
+            <label class="block">
+              <span class="text-[14px] text-slate-900 font-bold">Nueva contraseña</span>
+              <input [type]="verPassword() ? 'text' : 'password'" name="nueva" autocomplete="new-password"
+                [ngModel]="nueva()" (ngModelChange)="nueva.set($event)"
+                class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </label>
+            <label class="block">
+              <span class="text-[14px] text-slate-900 font-bold">Repita la nueva contraseña</span>
+              <input [type]="verPassword() ? 'text' : 'password'" name="repetir" autocomplete="new-password"
+                [ngModel]="repetir()" (ngModelChange)="repetir.set($event)"
+                class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </label>
+            <label class="flex items-center gap-2 text-[12px] text-slate-600">
+              <input type="checkbox" name="ver" [ngModel]="verPassword()" (ngModelChange)="verPassword.set($event)" /> Mostrar contraseñas
+            </label>
+
+            <ul class="text-[12px] space-y-0.5" aria-label="Requisitos de la contraseña">
+              @for (r of reglas(); track r.texto) {
+                <li [ngClass]="r.ok ? 'text-emerald-700' : 'text-slate-500'">{{ r.ok ? '✓' : '•' }} {{ r.texto }}</li>
+              }
+              <li class="text-slate-500">• No use contraseñas comunes ni su usuario</li>
+            </ul>
+
+            @if (estado()?.mfaActivo) {
+              <ng-container *ngTemplateOutlet="campoFactor; context: { f: factorPassword(), cual: 'password' }"></ng-container>
+            }
+
+            @if (errorPassword()) {
+              <div class="text-[13px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{{ errorPassword() }}</div>
+            }
+            @if (okPassword()) {
+              <div class="text-[13px] text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">{{ okPassword() }}</div>
+            }
+
+            <button type="submit" [disabled]="ocupadoPassword() || !estado()?.mfaActivo"
+              class="bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-4 py-2">
+              {{ ocupadoPassword() ? 'Guardando…' : 'Cambiar contraseña' }}
+            </button>
+          </form>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>

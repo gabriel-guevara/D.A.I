@@ -21,10 +21,13 @@ export async function requireAuth(req, res, next) {
   }
 
   const { rows: [u] } = await query(
-    `SELECT u.activo, r.clave AS rol, n.rango
+    `SELECT u.activo, u.sesion_version, r.clave AS rol, n.rango
        FROM usuarios u JOIN roles r ON r.id = u.rol_id JOIN niveles_acceso n ON n.id = u.nivel_id
       WHERE u.id = $1`, [payload.sub]);
   if (!u || !u.activo) return res.status(401).json({ error: 'Cuenta desactivada o inexistente' });
+  // Versión de sesión: al cambiar la contraseña (o restablecer el 2FA) sube en la base y todos los tokens
+  // emitidos antes dejan de valer. Los tokens anteriores a la Fase 3 no traen "ver": cuentan como 0.
+  if (!versionVigente(payload, u)) return res.status(401).json({ error: 'Sesión cerrada por un cambio de seguridad. Vuelva a iniciar sesión.' });
 
   req.user = { id: payload.sub, rol: u.rol, rango: u.rango };
   next();
@@ -33,6 +36,9 @@ export async function requireAuth(req, res, next) {
 /** Limita una ruta a ciertos roles (claves de la tabla roles). */
 export const requireRole = (...roles) => (req, res, next) =>
   roles.includes(req.user?.rol) ? next() : res.status(403).json({ error: 'No tienes permisos para esta acción' });
+
+/** El token pertenece a la versión de sesión actual del usuario. */
+export const versionVigente = (payload, usuario) => (payload.ver ?? 0) === usuario.sesion_version;
 
 export const firmarToken = (payload, typ, expiresIn) =>
   jwt.sign({ ...payload, typ }, config.jwtSecret, { algorithm: 'HS256', expiresIn });

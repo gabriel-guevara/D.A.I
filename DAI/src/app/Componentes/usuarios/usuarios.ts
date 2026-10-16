@@ -21,6 +21,8 @@ interface UsuarioFila {
   rol: string;
   rolLabel: string;
   mfaMethod: string;
+  /** true si ya configuró su app autenticadora (TOTP real). */
+  mfaActivo: boolean;
   nivel: string;
   activo: boolean;
   ultimoAcceso: string;
@@ -158,6 +160,7 @@ export class UsuariosGestion {
   seleccionar(u: UsuarioFila, limpiar = true): void {
     if (limpiar) this.limpiarMensajes();
     this.seleccionado.set(u);
+    this.codigoRestablecer.set('');
     this.formEditar.set({
       nombre: u.name,
       email: u.email,
@@ -201,8 +204,9 @@ export class UsuariosGestion {
     if (nombre.length < 2 || nombre.length > 120) return 'El nombre debe tener entre 2 y 120 caracteres.';
     if (!EMAIL_RE.test(f.email.trim())) return 'Ingrese un correo institucional válido.';
     if (crear || f.password) {
-      if (f.password.length < 8 || f.password.length > 72) return 'La contraseña debe tener entre 8 y 12 caracteres.';
-      if (!/[A-Za-z]/.test(f.password) || !/\d/.test(f.password)) return 'La contraseña debe incluir al menos una letra y un número.';
+      // Mismas reglas básicas que el servidor (lib/contrasena.js), que además rechaza contraseñas comunes
+      if (f.password.length < 10 || new TextEncoder().encode(f.password).length > 72) return 'La contraseña debe tener entre 10 y 72 caracteres.';
+      if (!/\p{L}/u.test(f.password) || !/\d/.test(f.password)) return 'La contraseña debe incluir al menos una letra y un número.';
     }
     if (!f.rol) return 'Seleccione un rol.';
     return null;
@@ -276,6 +280,34 @@ export class UsuariosGestion {
       },
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
+        this.mensajeError.set(this.textoError(err));
+      },
+    });
+  }
+
+  // ------------------------------------------------------------------ restablecer 2FA (solo Super Administrador)
+  codigoRestablecer = signal('');
+  restableciendo = signal(false);
+
+  restablecer2fa(): void {
+    const sel = this.seleccionado();
+    if (!sel) return;
+    this.limpiarMensajes();
+    const code = this.codigoRestablecer().trim();
+    if (!/^\d{6}$/.test(code)) return this.mensajeError.set('Escriba el código de 6 dígitos de SU app autenticadora para confirmar.');
+    if (!confirm(`¿Restablecer la verificación en dos pasos de «${sel.name}»? Se cerrarán sus sesiones abiertas.`)) return;
+
+    this.restableciendo.set(true);
+    this.api.restablecer2faUsuario(sel.id, { code }).subscribe({
+      next: () => {
+        this.restableciendo.set(false);
+        this.codigoRestablecer.set('');
+        this.mensajeOk.set(`2FA de «${sel.name}» restablecido. Lo configurará de nuevo en su próximo ingreso.`);
+        this.cargarUsuarios(sel.id);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.restableciendo.set(false);
+        this.codigoRestablecer.set('');
         this.mensajeError.set(this.textoError(err));
       },
     });

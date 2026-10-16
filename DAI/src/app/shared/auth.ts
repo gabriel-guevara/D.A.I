@@ -1,7 +1,6 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, map, tap } from 'rxjs';
-import { API_URL } from './api';
+import { Observable, tap } from 'rxjs';
+import { ApiService, RespuestaLogin, SegundoFactor, SesionAbierta } from './api';
 
 export interface CurrentUser {
   name: string;
@@ -11,9 +10,6 @@ export interface CurrentUser {
   nivel?: string;
 }
 
-interface LoginStep1 { mfaToken: string; metodo: string; }
-interface LoginStep2 { token: string; user: CurrentUser; }
-
 const TOKEN_KEY = 'dai_token';
 const USER_KEY = 'dai_user';
 
@@ -22,9 +18,13 @@ function leer(key: string): string | null {
   try { return sessionStorage.getItem(key); } catch { return null; }
 }
 
+/**
+ * Estado de la sesión (signals) y los pasos del login que la ABREN. Las peticiones HTTP las hace ApiService
+ * (único punto HTTP); este servicio solo decide qué guardar cuando el servidor entrega un token.
+ */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private http = inject(HttpClient);
+  private api = inject(ApiService);
 
   // Estado de sesión expuesto como signals de solo lectura
   private _token = signal<string | null>(leer(TOKEN_KEY));
@@ -34,19 +34,25 @@ export class AuthService {
   isAuthenticated = computed(() => this._token() !== null);
   currentUser = this._currentUser.asReadonly();
 
-  /** Paso 1: valida usuario/contraseña. Devuelve un token temporal para el paso 2FA. */
-  login(username: string, password: string): Observable<LoginStep1> {
-    return this.http.post<LoginStep1>(`${API_URL}/auth/login`, { username, password });
+  /** Paso 1: usuario y contraseña. Responde si toca pedir el código o configurar el 2FA. */
+  login(username: string, password: string): Observable<RespuestaLogin> {
+    return this.api.login(username, password);
   }
 
-  /** Paso 2: valida el código 2FA y abre la sesión. */
-  verify2fa(mfaToken: string, code: string): Observable<void> {
-    return this.http
-      .post<LoginStep2>(`${API_URL}/auth/verify-2fa`, { mfaToken, code })
-      .pipe(
-        tap(({ token, user }) => this.abrirSesion(token, user)),
-        map(() => undefined),
-      );
+  /** Paso 2: código de la app (o de recuperación) → abre la sesión. */
+  verify2fa(mfaToken: string, factor: SegundoFactor): Observable<SesionAbierta> {
+    return this.api.verificar2fa(mfaToken, factor).pipe(tap(({ token, user }) => this.abrirSesion(token, user)));
+  }
+
+  /** Alta obligatoria: confirma la app autenticadora → abre la sesión y trae los códigos de recuperación. */
+  confirmarAlta(enrolToken: string, code: string): Observable<SesionAbierta> {
+    return this.api.confirmarAlta2fa(enrolToken, code).pipe(tap(({ token, user }) => this.abrirSesion(token, user)));
+  }
+
+  /** Tras cambiar la contraseña el servidor entrega un token nuevo (el anterior ya no vale). */
+  renovarToken(token: string): void {
+    this._token.set(token);
+    try { sessionStorage.setItem(TOKEN_KEY, token); } catch { /* sin storage disponible */ }
   }
 
   logout(): void {

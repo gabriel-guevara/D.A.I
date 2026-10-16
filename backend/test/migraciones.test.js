@@ -2,6 +2,8 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { aplicarMigraciones, MIGRACIONES } from '../src/migrate.js';
 import { crearBaseDePrueba } from './helpers/base-prueba.js';
+import { descifrarSecreto, estaCifrado } from '../src/lib/cifrado-mfa.js';
+import { codigoPara, pasoDelCodigo } from '../src/lib/totp.js';
 
 const silencio = () => {};
 let base;
@@ -119,4 +121,73 @@ test('003: base de producción sin la tabla de indexación ni el origen del text
   await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '003_texto_indexacion'`);
   assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['003_texto_indexacion']);
   assert.equal((await base.pool.query(`SELECT count(*)::int AS n FROM documento_indexacion`)).rows[0].n, 1);
+});
+
+/** Deja la base como estaba en producción antes de la Fase 3 (sin columnas ni tablas nuevas, 004 sin aplicar). */
+async function baseAntesDeFase3() {
+  await base.pool.query(`DROP TABLE IF EXISTS mfa_codigos_recuperacion, intentos_acceso`);
+  await base.pool.query(`ALTER TABLE usuarios DROP COLUMN IF EXISTS mfa_secreto_pendiente, DROP COLUMN IF EXISTS mfa_pendiente_en,
+                           DROP COLUMN IF EXISTS mfa_activado_en, DROP COLUMN IF EXISTS mfa_ultimo_paso,
+                           DROP COLUMN IF EXISTS sesion_version, DROP COLUMN IF EXISTS password_cambiado_en`);
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '004_mfa_totp_real'`);
+}
+const insertarUsuario = async (email, secreto) => (await base.pool.query(
+  `INSERT INTO usuarios (nombre, email, rol_id, nivel_id, mfa_secreto) VALUES ('Admin', $1, 1, 1, $2) RETURNING id`, [email, secreto])).rows[0].id;
+
+test('004: cifra el secreto en claro del administrador SIN cambiarlo (su app sigue sirviendo) y es idempotente', async () => {
+  await baseAntesDeFase3();
+  // El puente manual: secreto base32 escrito a mano (minúsculas y espacios, como lo muestran algunas apps).
+  const enClaro = 'jbsw y3dp ehpk 3pxp jbsw y3dp ehpk 3pxp';
+  const normal = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+  const admin = await insertarUsuario('admin-004@ejemplo.test', enClaro);
+  const sinMfa = await insertarUsuario('sin-mfa-004@ejemplo.test', null);
+
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['004_mfa_totp_real']);
+  const fila = async (id) => (await base.pool.query(`SELECT * FROM usuarios WHERE id = $1`, [id])).rows[0];
+  const a = await fila(admin);
+  assert.ok(estaCifrado(a.mfa_secreto));
+  assert.ok(!a.mfa_secreto.toUpperCase().replace(/\s/g, '').includes(normal));
+  assert.equal(descifrarSecreto(a.mfa_secreto, admin), normal);
+  assert.ok(a.mfa_activado_en);
+  assert.equal(a.sesion_version, 0, 'las sesiones abiertas antes del despliegue siguen valiendo');
+  // Un código generado por la app del administrador (con el secreto ORIGINAL) se valida con el descifrado.
+  const ahora = Date.now();
+  assert.notEqual(pasoDelCodigo(codigoPara(normal, ahora), descifrarSecreto(a.mfa_secreto, admin), ahora), null);
+  assert.equal((await fila(sinMfa)).mfa_secreto, null);
+
+  // Idempotente: aplicarla de nuevo (sin registro de control) no vuelve a cifrar lo cifrado.
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '004_mfa_totp_real'`);
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['004_mfa_totp_real']);
+  assert.equal((await fila(admin)).mfa_secreto, a.mfa_secreto);
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), []);
+  await base.pool.query(`DELETE FROM usuarios WHERE id IN ($1, $2)`, [admin, sinMfa]);
+});
+
+test('004: un secreto en claro que no es base32 detiene la migración sin cambios y sin mostrar el valor', async () => {
+  await baseAntesDeFase3();
+  const raro = 'esto-no-es-base32!!';
+  const id = await insertarUsuario('raro-004@ejemplo.test', raro);
+  await assert.rejects(aplicarMigraciones(base.pool, { log: silencio }), (e) => {
+    assert.match(e.message, new RegExp(`004_mfa_totp_real.*usuario ${id} no es base32`));
+    assert.ok(!e.message.includes(raro));
+    return true;
+  });
+  const { rows: [c] } = await base.pool.query(`SELECT to_regclass('intentos_acceso') AS t`);
+  assert.equal(c.t, null, 'la transacción revirtió también las tablas nuevas');
+  assert.equal((await base.pool.query(`SELECT mfa_secreto FROM usuarios WHERE id = $1`, [id])).rows[0].mfa_secreto, raro);
+  await base.pool.query(`DELETE FROM usuarios WHERE id = $1`, [id]);
+});
+
+test('004: sin MFA_ENCRYPTION_KEY no se puede cifrar lo que hay en claro: la migración falla y no deja nada a medias', async () => {
+  await baseAntesDeFase3();
+  const id = await insertarUsuario('sin-clave-004@ejemplo.test', 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP');
+  const clave = process.env.MFA_ENCRYPTION_KEY;
+  delete process.env.MFA_ENCRYPTION_KEY;
+  try {
+    await assert.rejects(aplicarMigraciones(base.pool, { log: silencio }), /004_mfa_totp_real.*Falta MFA_ENCRYPTION_KEY/);
+  } finally {
+    process.env.MFA_ENCRYPTION_KEY = clave;
+  }
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['004_mfa_totp_real']);
+  assert.ok(estaCifrado((await base.pool.query(`SELECT mfa_secreto FROM usuarios WHERE id = $1`, [id])).rows[0].mfa_secreto));
 });
