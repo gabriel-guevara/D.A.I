@@ -207,6 +207,129 @@ export interface ResultadoVaciado {
   restantes: number;
 }
 
+// ---------------------------------------------------------------------------- Biblioteca y carpetas (Fase 5)
+
+export type FormatoDoc = 'pdf' | 'xlsx' | 'docx' | 'tiff';
+export type OrdenBiblioteca = 'reciente' | 'antiguo' | 'tamano' | 'nombre';
+export type DiasBiblioteca = '30' | '90' | '180' | 'todo';
+
+/** Filtros de la biblioteca: los aplica el SERVIDOR (y viajan en la URL como query params). */
+export interface FiltrosBiblioteca {
+  q: string;
+  departamento: string;
+  formato: FormatoDoc | '';
+  dias: DiasBiblioteca;
+  /** '' = todas; 'sin' = sin carpeta; o el id de una carpeta. */
+  carpeta: string;
+  orden: OrdenBiblioteca;
+  pagina: number;
+  porPagina: 25 | 50 | 100;
+}
+
+export interface CarpetaRef {
+  id: string;
+  nombre: string;
+}
+
+export interface DocumentoBiblioteca {
+  id: string;
+  name: string;
+  version: string;
+  format: FormatoDoc;
+  hashLabel: string;
+  folio: string;
+  departamento: string;
+  departamentoColor: string;
+  autor: string;
+  autorEmail: string;
+  tamano: string;
+  carpeta: CarpetaRef | null;
+  /** false = solo metadatos (no hay PDF que descargar). */
+  tieneArchivo: boolean;
+  nombreOriginal: string | null;
+  /** Fecha y hora de Colombia, 12 h. */
+  actualizado: string;
+}
+
+export interface RespuestaBiblioteca {
+  documentos: DocumentoBiblioteca[];
+  /** Total con los filtros aplicados (para "1–25 de N"). */
+  total: number;
+  pagina: number;
+  porPagina: number;
+  /** Cifras generales del usuario (sin filtros), siempre según su nivel. */
+  resumen: { total: number; actualizados30: number };
+}
+
+export interface Carpeta extends CarpetaRef {
+  /** Documentos de la carpeta que ESTE usuario puede ver. */
+  documentos: number;
+}
+
+export interface ListaCarpetas {
+  carpetas: Carpeta[];
+  sinCarpeta: number;
+  /** Lo que el usuario puede hacer (el servidor lo vuelve a comprobar en cada acción). */
+  permisos: { gestionar: boolean; eliminar: boolean; solicitar: boolean; resolver: boolean };
+}
+
+export interface ResultadoMover {
+  movidos: number;
+  sinCambios: number;
+  /** Ids que no se movieron: no visibles para el usuario o no activos. */
+  omitidos: string[];
+}
+
+export type EstadoSolicitud = 'pendiente' | 'aprobada' | 'rechazada';
+export interface SolicitudMovimiento {
+  id: string;
+  documento: { id: string; nombre: string; folio: string };
+  carpetaActual: CarpetaRef | null;
+  /** null = sacarlo de su carpeta. */
+  carpetaDestino: CarpetaRef | null;
+  solicitante: string;
+  motivo: string;
+  estado: EstadoSolicitud;
+  fecha: string;
+  resueltoPor: string | null;
+  resueltoEn: string | null;
+  respuesta: string | null;
+  /** true si este usuario puede aprobarla o rechazarla (nunca quien la pidió). */
+  puedeResolver: boolean;
+}
+
+// ---------------------------------------------------------------------------- Dashboard (Fase 5)
+
+export interface DashboardDatos {
+  documentos: { visibles: number; altasMes: number; conArchivo: number; sinArchivo: number; fueraDePlazo: number };
+  porDepartamento: { nombre: string; color: string; total: number }[];
+  porFormato: { formato: FormatoDoc; total: number }[];
+  recientes: { id: string; name: string; formato: FormatoDoc; category: string; categoryColor: string; user: string; time: string; size: string }[];
+  /** Solo Super Administrador y Oficial de Cumplimiento; null para el resto. */
+  almacenamiento: {
+    bytes: number;
+    usado: string;
+    objetos: number;
+    cuotaBytes: number | null;
+    cuota: string | null;
+    porcentaje: number | null;
+    papelera: { documentos: number; bytes: number; usado: string };
+    driver: 'local' | 'r2';
+    cifrado: string;
+    cifradoEnReposo: boolean;
+  } | null;
+}
+
+/** Catálogos de formularios y filtros (GET /catalogos). */
+export interface CatalogosApi {
+  departamentos: { id: number; nombre: string; colorClase: string }[];
+  tiposDocumentales: { id: number; nombre: string }[];
+  clasificaciones: { id: number; nombre: string; puntoClase: string; permitida: boolean }[];
+  niveles: { id: number; nombre: string; rango: number; colorClase: string }[];
+  roles: { id: number; clave: string; nombre: string }[];
+  subida: { maxMb: number };
+}
+
 /** Único punto de acceso HTTP al backend. Cada método devuelve un Observable tipado por quien lo llama. */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -221,11 +344,40 @@ export class ApiService {
   }
 
   // Dashboard
-  dashboard<T = unknown>() { return this.get<T>('/dashboard'); }
+  dashboard(): Observable<DashboardDatos> { return this.get<DashboardDatos>('/dashboard'); }
 
-  // Biblioteca / documentos
-  biblioteca<T = unknown>(filtros: { q?: string; departamento?: string; formato?: string; dias?: number } = {}) {
-    return this.get<T>('/documentos', filtros);
+  // Biblioteca / documentos: filtros, orden y paginación en el servidor
+  biblioteca(filtros: FiltrosBiblioteca): Observable<RespuestaBiblioteca> {
+    return this.get<RespuestaBiblioteca>('/documentos', { ...filtros });
+  }
+
+  // Carpetas (Fase 5)
+  carpetas(): Observable<ListaCarpetas> { return this.get<ListaCarpetas>('/carpetas'); }
+  crearCarpeta(nombre: string): Observable<Carpeta> {
+    return this.http.post<Carpeta>(`${API_URL}/carpetas`, { nombre });
+  }
+  renombrarCarpeta(id: string, nombre: string): Observable<CarpetaRef> {
+    return this.http.patch<CarpetaRef>(`${API_URL}/carpetas/${encodeURIComponent(id)}`, { nombre });
+  }
+  /** Solo si está vacía (si no, 409 con el motivo). */
+  eliminarCarpeta(id: string): Observable<void> {
+    return this.http.delete<void>(`${API_URL}/carpetas/${encodeURIComponent(id)}`);
+  }
+  /** Mueve hasta 100 documentos; carpetaId null = sacarlos de su carpeta. */
+  moverDocumentos(ids: string[], carpetaId: string | null): Observable<ResultadoMover> {
+    return this.http.post<ResultadoMover>(`${API_URL}/carpetas/mover`, { ids, carpetaId });
+  }
+  solicitarMovimiento(documentoId: string, carpetaId: string | null, motivo: string): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${API_URL}/carpetas/solicitudes`, { documentoId, carpetaId, motivo: motivo.trim() });
+  }
+  solicitudesMovimiento(estado: EstadoSolicitud | 'todas' = 'pendiente'): Observable<SolicitudMovimiento[]> {
+    return this.get<SolicitudMovimiento[]>('/carpetas/solicitudes', { estado });
+  }
+  aprobarSolicitud(id: string, respuesta = ''): Observable<{ ok: boolean; estado: EstadoSolicitud }> {
+    return this.http.post<{ ok: boolean; estado: EstadoSolicitud }>(`${API_URL}/carpetas/solicitudes/${encodeURIComponent(id)}/aprobar`, { respuesta: respuesta.trim() });
+  }
+  rechazarSolicitud(id: string, respuesta: string): Observable<{ ok: boolean; estado: EstadoSolicitud }> {
+    return this.http.post<{ ok: boolean; estado: EstadoSolicitud }>(`${API_URL}/carpetas/solicitudes/${encodeURIComponent(id)}/rechazar`, { respuesta: respuesta.trim() });
   }
   documento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}`); }
   auditoriaDocumento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}/auditoria`); }
@@ -318,8 +470,8 @@ export class ApiService {
     return this.http.post<{ id: string }>(`${API_URL}/seguridad/usuarios/invitar`, body);
   }
 
-  // Alta y modificación de usuarios (solo Super Administrador; Cumplimiento puede crear con límites)
-  catalogos<T = unknown>() { return this.get<T>('/catalogos'); }
+  // Alta y modificación de usuarios (solo Super Administrador: el servidor responde 403 a cualquier otro rol)
+  catalogos<T = CatalogosApi>() { return this.get<T>('/catalogos'); }
   crearUsuario(body: Record<string, unknown>) {
     return this.http.post<{ id: string }>(`${API_URL}/seguridad/usuarios`, body);
   }
@@ -365,7 +517,6 @@ export class ApiService {
   }
 
   // Digitalización (OCR)
-  colaOcr<T = unknown>() { return this.get<T>('/digitalizacion/cola'); }
   /**
    * "Aprobar e Indexar": sube el PDF con sus metadatos (multipart/form-data).
    * observe: 'events' + reportProgress emite el avance de la subida para la barra de progreso.
