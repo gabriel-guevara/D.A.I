@@ -63,6 +63,8 @@ export function recibirPdf(req, { maxBytes, camposPermitidos, maxLongitudCampo =
     try {
       bb = Busboy({
         headers: req.headers,
+        // Los navegadores envían el nombre del archivo en UTF-8; busboy por defecto lo leería como latin1 ("Ã±" en vez de "ñ").
+        defParamCharset: 'utf8',
         limits: { fileSize: maxBytes, files: 1, fields: 10, parts: 12, fieldSize: maxLongitudCampo },
       });
     } catch {
