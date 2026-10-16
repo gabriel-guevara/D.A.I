@@ -7,7 +7,6 @@ import { Busqueda } from './Componentes/busqueda/busqueda';
 import { Notificaciones } from './Componentes/notificaciones/notificaciones';
 import { roles } from './Componentes/roles/roles';
 import { detalles } from './Componentes/detalles/detalles';
-import { UsuariosGestion } from './Componentes/usuarios/usuarios';
 import { authGuard } from './shared/auth-guard';
 
 export const routes: Routes = [
@@ -18,8 +17,19 @@ export const routes: Routes = [
   { path: 'digitalizacion', component: Digitalizacion, canActivate: [authGuard] },
   { path: 'busqueda', component: Busqueda, canActivate: [authGuard] },
   { path: 'notificaciones', component: Notificaciones, canActivate: [authGuard] },
-  { path: 'roles/usuarios', component: UsuariosGestion, canActivate: [authGuard] },
+  // Solo administradores: carga diferida.
+  {
+    path: 'roles/usuarios',
+    loadComponent: () => import('./Componentes/usuarios/usuarios').then((m) => m.UsuariosGestion),
+    canActivate: [authGuard],
+  },
   { path: 'roles', component: roles, canActivate: [authGuard] },
   { path: 'documento/:id', component: detalles, canActivate: [authGuard] },
+  // Carga diferida: se descarga solo al abrir la pantalla (no pesa en el arranque de la app).
+  {
+    path: 'cuenta/seguridad',
+    loadComponent: () => import('./Componentes/seguridad-cuenta/seguridad-cuenta').then((m) => m.SeguridadCuenta),
+    canActivate: [authGuard],
+  },
   { path: '**', redirectTo: 'login' },
 ];

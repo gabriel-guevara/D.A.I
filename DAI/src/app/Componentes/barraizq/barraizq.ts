@@ -40,5 +40,6 @@ export class Barraizq {
     { id: 'ocr', label: 'Digitalización (OCR)', route: '/digitalizacion' },
     { id: 'notificaciones', label: 'Notificaciones', route: '/notificaciones' },
     { id: 'roles', label: 'Roles y Permisos', route: '/roles' },
+    { id: 'cuenta', label: 'Seguridad de mi cuenta', route: '/cuenta/seguridad' },
   ];
 }
