@@ -1,9 +1,12 @@
 import { Router } from 'express';
+import { pipeline } from 'node:stream/promises';
 import { query } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
 import { notificarConsulta } from '../lib/notify.js';
 import { escapeLike, fechaCorta, fechaHoraCO, formatBytes, hashCorto, haceCuanto, idValido } from '../lib/format.js';
+import { almacenamiento, ErrorObjetoNoEncontrado, ErrorRangoInvalido } from '../lib/storage.js';
+import { contentDisposition, interpretarRango, sha256DeStream } from '../lib/archivo-http.js';
 
 const router = Router();
 
@@ -14,6 +17,18 @@ const FROM = `
   LEFT JOIN tipos_documentales t ON t.id = d.tipo_id`;
 // $1 siempre es el rango del usuario: solo ve documentos de su nivel o inferior
 const ACCESO = `(c.id IS NULL OR c.nivel_minimo <= $1)`;
+const ROLES_INTEGRIDAD = ['super-admin', 'compliance'];
+const NO_DISPONIBLE = 'Archivo no disponible en este entorno';
+const SIN_ARCHIVO = 'Este documento no tiene archivo original cargado (solo metadatos y capa de texto).';
+
+/** Documento visible para el usuario (mismas reglas de estado y nivel que el detalle), con los datos de su archivo. */
+async function documentoConArchivo(req) {
+  if (!idValido(req.params.id)) return null;
+  const { rows: [r] } = await query(
+    `SELECT d.id, d.tiene_archivo, d.storage_path, d.storage_driver, d.nombre_original, d.tamano_bytes, d.hash_sha256
+     ${FROM} WHERE d.id = $2 AND d.estado = 'activo' AND ${ACCESO}`, [req.user.rango, req.params.id]);
+  return r ?? null;
+}
 
 /** Biblioteca: lista de documentos (misma forma que LibraryDoc del front, sin "selected"). */
 router.get('/', async (req, res) => {
@@ -41,7 +56,7 @@ router.get('/', async (req, res) => {
   const offset = Math.max(Number(req.query.offset) || 0, 0);
 
   const { rows } = await query(
-    `SELECT d.id, d.nombre, d.version_actual, d.formato, d.hash_sha256, d.origen, d.folio,
+    `SELECT d.id, d.nombre, d.version_actual, d.formato, d.hash_sha256, d.origen, d.folio, d.tiene_archivo,
             dep.nombre AS departamento, dep.color_clase AS dep_color,
             d.autor_nombre, d.autor_email, d.tamano_bytes
      ${FROM} WHERE ${where.join(' AND ')}
@@ -49,7 +64,8 @@ router.get('/', async (req, res) => {
 
   res.json(rows.map((r) => ({
     id: String(r.id), name: r.nombre, version: r.version_actual, format: r.formato,
-    hashLabel: r.hash_sha256 ? `SHA-256: ${hashCorto(r.hash_sha256)}` : (r.origen ?? 'Sin hash'),
+    // Solo se muestra la huella de documentos con archivo real; la del seed no corresponde a ningún archivo.
+    hashLabel: r.tiene_archivo && r.hash_sha256 ? `SHA-256: ${hashCorto(r.hash_sha256)}` : (r.origen ?? 'Sin archivo original'),
     folio: r.folio, departamento: r.departamento ?? 'Sin departamento',
     departamentoColor: r.dep_color ?? 'bg-slate-100 text-slate-600',
     autor: r.autor_nombre, autorEmail: r.autor_email ?? '', tamano: formatBytes(r.tamano_bytes),
@@ -67,6 +83,9 @@ router.get('/:id', async (req, res) => {
   const tags = await query(
     `SELECT e.nombre FROM documento_etiquetas de JOIN etiquetas e ON e.id = de.etiqueta_id
       WHERE de.documento_id = $1 ORDER BY e.nombre`, [r.id]);
+  const verif = await query(
+    `SELECT detalle, creado_en FROM auditoria WHERE documento_id = $1 AND accion = 'verificar_integridad'
+      ORDER BY creado_en DESC, id DESC LIMIT 1`, [r.id]);
   await registrarAuditoria(req, 'ver_documento', r.id);
   await notificarConsulta(req, { id: r.id, nombre: r.nombre, folio: r.folio });
 
@@ -77,8 +96,102 @@ router.get('/:id', async (req, res) => {
     autor: r.autor_nombre, autorLinea: `${r.autor_nombre}${r.departamento ? ` — ${r.departamento}` : ''}`,
     fechaCreacion: fechaHoraCO(r.creado_en), tamano: formatBytes(r.tamano_bytes), paginas: r.paginas,
     etiquetas: tags.rows.map((x) => x.nombre),
+    tieneArchivo: r.tiene_archivo,
+    archivo: r.tiene_archivo ? {
+      nombreOriginal: r.nombre_original, tamanoBytes: Number(r.tamano_bytes), almacenamiento: r.storage_driver,
+      // R2 cifra todo objeto en reposo con AES-256 (claves gestionadas por Cloudflare); el disco local de desarrollo no.
+      cifradoEnReposo: r.storage_driver === 'r2',
+    } : null,
+    puedeVerificar: r.tiene_archivo && ROLES_INTEGRIDAD.includes(req.user.rol),
+    ultimaVerificacion: verif.rows[0] ? { resultado: verif.rows[0].detalle.resultado, fecha: fechaHoraCO(verif.rows[0].creado_en) } : null,
     retencion: r.retencion_anios ? `${r.retencion_anios} Años${r.vence_retencion ? ` (Vence ${new Date(r.vence_retencion).getUTCFullYear()})` : ''}` : null,
-    cifrado: r.cifrado_aes, ocr: r.ocr_procesado, firmadoPor: r.firmado_por, firmaValida: r.firma_valida,
+    cifrado: r.tiene_archivo && r.storage_driver === 'r2', ocr: r.ocr_procesado, firmadoPor: r.firmado_por, firmaValida: r.firma_valida,
+  });
+});
+
+/**
+ * Envía el PDF real. modo "inline" (visor) o "attachment" (descarga). Soporta Range (206/416).
+ * Cada acceso se audita: ver_archivo o descargar.
+ */
+const servirArchivo = (modo) => async (req, res) => {
+  const d = await documentoConArchivo(req);
+  if (!d) return res.status(404).json({ error: 'Documento no encontrado' });
+  if (!d.tiene_archivo) return res.status(404).json({ error: SIN_ARCHIVO, codigo: 'sin_archivo' });
+
+  const st = almacenamiento();
+  // Subido con otro driver (p. ej. en local y ahora se usa R2): el objeto no está aquí.
+  if (d.storage_driver !== st.driver) return res.status(404).json({ error: NO_DISPONIBLE, codigo: 'no_disponible' });
+
+  const tamanoEsperado = Number(d.tamano_bytes);
+  const rango = interpretarRango(req.headers.range, tamanoEsperado);
+  const no416 = () => res.status(416).set('Content-Range', `bytes */${tamanoEsperado}`).json({ error: 'Rango solicitado no válido' });
+  if (rango === 'no-satisfacible') return no416();
+
+  let r;
+  try {
+    r = await st.leer(d.storage_path, rango);
+  } catch (e) {
+    if (e instanceof ErrorObjetoNoEncontrado) return res.status(404).json({ error: NO_DISPONIBLE, codigo: 'no_disponible' });
+    if (e instanceof ErrorRangoInvalido) return no416();
+    throw e;
+  }
+
+  await registrarAuditoria(req, modo === 'attachment' ? 'descargar' : 'ver_archivo', d.id,
+    r.parcial ? { rango: `${r.inicio}-${r.fin}`, tamano: r.tamano } : { tamano: r.tamano });
+
+  res.status(r.parcial ? 206 : 200).set({
+    'Content-Type': 'application/pdf',
+    'Content-Length': String(r.longitud),
+    'Content-Disposition': contentDisposition(modo, d.nombre_original),
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': 'private, no-store', // nunca en cachés compartidas ni en el disco del navegador
+    'X-Content-Type-Options': 'nosniff', // el navegador no "adivina" otro tipo
+  });
+  if (r.parcial) res.set('Content-Range', `bytes ${r.inicio}-${r.fin}/${r.tamano}`);
+  if (req.method === 'HEAD') {
+    r.stream.destroy?.();
+    return res.end();
+  }
+  try {
+    await pipeline(r.stream, res);
+  } catch (e) {
+    // Cliente que cierra a mitad (cambia de página, cancela): no es un error del servidor.
+    if (e.code !== 'ERR_STREAM_PREMATURE_CLOSE') console.error('Error enviando archivo:', e.message);
+    res.destroy();
+  }
+};
+
+router.get('/:id/archivo', servirArchivo('inline'));
+router.get('/:id/descarga', servirArchivo('attachment'));
+
+/**
+ * Verificación de integridad (solo Super Administrador y Oficial de Cumplimiento): relee el objeto completo,
+ * recalcula su SHA-256 y lo compara con el registrado al subirlo. El resultado queda en la auditoría.
+ */
+router.post('/:id/verificar-integridad', requireRole(...ROLES_INTEGRIDAD), async (req, res) => {
+  const d = await documentoConArchivo(req);
+  if (!d) return res.status(404).json({ error: 'Documento no encontrado' });
+  if (!d.tiene_archivo) return res.status(409).json({ error: `${SIN_ARCHIVO} No hay nada que verificar.`, codigo: 'sin_archivo' });
+
+  const st = almacenamiento();
+  let calculado;
+  try {
+    if (d.storage_driver !== st.driver) throw new ErrorObjetoNoEncontrado(d.storage_path);
+    calculado = await sha256DeStream((await st.leer(d.storage_path)).stream);
+  } catch (e) {
+    if (!(e instanceof ErrorObjetoNoEncontrado)) throw e;
+    await registrarAuditoria(req, 'verificar_integridad', d.id, { resultado: 'no_disponible' });
+    return res.status(404).json({ error: NO_DISPONIBLE, codigo: 'no_disponible' });
+  }
+
+  const esperado = d.hash_sha256.trim();
+  const integro = calculado.sha256 === esperado && calculado.bytes === Number(d.tamano_bytes);
+  await registrarAuditoria(req, 'verificar_integridad', d.id, {
+    resultado: integro ? 'integro' : 'alterado', sha256Calculado: calculado.sha256, bytesCalculados: calculado.bytes,
+  });
+  res.json({
+    integro, hashEsperado: esperado, hashCalculado: calculado.sha256,
+    tamanoEsperado: Number(d.tamano_bytes), tamanoCalculado: calculado.bytes, verificadoEn: fechaHoraCO(new Date()),
   });
 });
 
