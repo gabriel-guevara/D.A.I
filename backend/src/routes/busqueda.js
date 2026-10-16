@@ -6,7 +6,7 @@ const router = Router();
 
 const COLUMNAS = `
   d.id, d.nombre, d.folio, d.formato, d.ruta, d.responsable, d.autor_nombre, d.nota_extra, d.version_actual,
-  d.ocr_procesado, d.cifrado_aes, d.hash_sha256, d.actualizado_en,
+  d.ocr_procesado, d.tiene_archivo, d.storage_driver, d.hash_sha256, d.actualizado_en,
   c.nombre AS clasif, c.badge_clase, t.nombre AS tipo`;
 const FROM = `
   FROM documentos d
@@ -17,8 +17,10 @@ const ACCESO = `d.estado = 'activo' AND (c.id IS NULL OR c.nivel_minimo <= $1)`;
 const base = (r) => ({
   docId: String(r.id), title: r.nombre,
   badge: (r.clasif ?? 'Sin clasificar').toUpperCase(), badgeColor: r.badge_clase ?? 'bg-slate-400 text-white',
-  formatLabel: r.ocr_procesado ? `${r.formato.toUpperCase()} con OCR Verificado` : r.cifrado_aes ? 'Cifrado AES-256' : r.formato.toUpperCase(),
-  hashLabel: r.hash_sha256 ? 'SHA-256 Validado' : r.folio,
+  // "Cifrado" solo cuando hay archivo real en R2 (R2 cifra en reposo con AES-256); los del seed no tienen archivo.
+  formatLabel: r.ocr_procesado ? `${r.formato.toUpperCase()} con OCR Verificado`
+    : r.tiene_archivo && r.storage_driver === 'r2' ? 'Cifrado en reposo AES-256 (R2)' : r.formato.toUpperCase(),
+  hashLabel: r.tiene_archivo && r.hash_sha256 ? 'SHA-256 del archivo' : r.folio,
   expediente: r.folio, ruta: r.ruta ?? '', actualizado: fechaCorta(r.actualizado_en),
   responsable: r.responsable ?? r.autor_nombre, extra: r.nota_extra ?? `Versión: ${r.version_actual}`,
   tipo: r.tipo, clasificacion: r.clasif,

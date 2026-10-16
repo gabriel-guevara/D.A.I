@@ -115,13 +115,13 @@ export async function seed(db) {
        await idOf('clasificaciones', 'nombre', d.clasif), uid[d.autorEmail] ?? null, d.autor, d.autorEmail ?? null,
        d.responsable ?? null, d.extra ?? null, d.origen ?? null, d.ruta, bytes, d.paginas, d.hashNull ? null : sha(d.nombre + d.version),
        d.ocr, d.firmadoPor ?? null, d.firmaValida ?? false, d.retencion ?? null, d.vence ?? null, d.limite ?? null,
-       `demo/${d.folio}/${d.version}`, d.creado, d.actualizado]);
+       null, d.creado, d.actualizado]); // sin archivo real: storage_path NULL y tiene_archivo false (por defecto)
     const id = r.rows[0].id;
     docId[d.nombre] = id;
 
     await db.query(`INSERT INTO documento_versiones (documento_id,version,hash_sha256,tamano_bytes,storage_path,autor_id,comentario,creado_en)
                     VALUES ($1,$2,$3,$4,$5,$6,'Versión vigente',$7)`,
-      [id, d.version, d.hashNull ? null : sha(d.nombre + d.version), bytes, `demo/${d.folio}/${d.version}`, uid[d.autorEmail] ?? null, d.actualizado]);
+      [id, d.version, d.hashNull ? null : sha(d.nombre + d.version), bytes, null, uid[d.autorEmail] ?? null, d.actualizado]);
     for (const [pagina, seccion, texto] of d.textos)
       await db.query(`INSERT INTO documento_paginas (documento_id,pagina,seccion,texto,confianza) VALUES ($1,$2,$3,$4,98.9)`, [id, pagina, seccion, texto]);
     for (const tag of d.tags) {

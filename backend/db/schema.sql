@@ -90,7 +90,7 @@ CREATE TABLE documentos (
   paginas          integer NOT NULL DEFAULT 1,
   hash_sha256      char(64),
   ocr_procesado    boolean NOT NULL DEFAULT false,
-  cifrado_aes      boolean NOT NULL DEFAULT true,
+  cifrado_aes      boolean NOT NULL DEFAULT false, -- true solo si el archivo real está en R2 (cifrado en reposo AES-256)
   firmado_por      text,
   firma_valida     boolean NOT NULL DEFAULT false,
   retencion_anios  smallint,
@@ -99,9 +99,15 @@ CREATE TABLE documentos (
   estado           text NOT NULL DEFAULT 'activo' CHECK (estado IN ('activo','papelera','purgado')),
   eliminado_en     timestamptz,
   eliminado_por    bigint REFERENCES usuarios(id) ON DELETE SET NULL,
-  storage_path     text,                       -- clave del archivo físico (disco, S3, ...)
+  storage_path     text,                       -- clave del objeto (docs/{doc}/{ver}/{uuid}.pdf), la genera el servidor
+  tiene_archivo    boolean NOT NULL DEFAULT false, -- false: solo metadatos (seed, heredados); true: PDF real subido
+  nombre_original  text,                       -- nombre del archivo que subió el usuario, saneado (solo para mostrar/descargar)
+  storage_driver   text,                       -- 'local' | 'r2': dónde se guardó
   creado_en        timestamptz NOT NULL DEFAULT now(),
-  actualizado_en   timestamptz NOT NULL DEFAULT now()
+  actualizado_en   timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT documentos_storage_driver_check CHECK (storage_driver IS NULL OR storage_driver IN ('local','r2')),
+  CONSTRAINT documentos_archivo_completo_check CHECK (NOT tiene_archivo OR
+    (storage_path IS NOT NULL AND storage_driver IS NOT NULL AND hash_sha256 IS NOT NULL AND nombre_original IS NOT NULL))
 );
 CREATE INDEX documentos_estado_idx   ON documentos (estado, actualizado_en DESC);
 CREATE INDEX documentos_nombre_trgm  ON documentos USING gin (nombre gin_trgm_ops);
@@ -114,10 +120,12 @@ CREATE TABLE documento_versiones (
   hash_sha256  char(64),
   tamano_bytes bigint,
   storage_path text,
+  storage_driver text,
   autor_id     bigint REFERENCES usuarios(id) ON DELETE SET NULL,
   comentario   text,
   creado_en    timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (documento_id, version)
+  UNIQUE (documento_id, version),
+  CONSTRAINT documento_versiones_storage_driver_check CHECK (storage_driver IS NULL OR storage_driver IN ('local','r2'))
 );
 
 -- Texto OCR por página: alimenta la Búsqueda Avanzada (full-text en español)

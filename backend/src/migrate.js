@@ -25,6 +25,31 @@ export const MIGRACIONES = [
                      CHECK (categoria IN ('edicion','version','eliminado','seguridad','consulta'))`);
     },
   },
+  {
+    // Fase 1: archivos PDF reales. storage_path (ya existía) pasa a ser la clave del objeto que genera el
+    // servidor (docs/{doc}/{ver}/{uuid}.pdf). Los documentos existentes (seed o heredados) quedan con
+    // tiene_archivo = false: su storage_path era ficticio y NO se usa para servir nada.
+    nombre: '002_documentos_archivo_real',
+    async up(c) {
+      await c.query(`ALTER TABLE documentos ADD COLUMN IF NOT EXISTS tiene_archivo boolean NOT NULL DEFAULT false`);
+      await c.query(`ALTER TABLE documentos ADD COLUMN IF NOT EXISTS nombre_original text`);
+      await c.query(`ALTER TABLE documentos ADD COLUMN IF NOT EXISTS storage_driver text`);
+      await c.query(`ALTER TABLE documento_versiones ADD COLUMN IF NOT EXISTS storage_driver text`);
+      // Sin archivo no hay cifrado en reposo que anunciar: el valor por defecto deja de ser true.
+      // (Solo cambia el DEFAULT para filas nuevas; no modifica ningún dato existente.)
+      await c.query(`ALTER TABLE documentos ALTER COLUMN cifrado_aes SET DEFAULT false`);
+      for (const [tabla, nombre, check] of [
+        ['documentos', 'documentos_storage_driver_check', `storage_driver IS NULL OR storage_driver IN ('local','r2')`],
+        ['documento_versiones', 'documento_versiones_storage_driver_check', `storage_driver IS NULL OR storage_driver IN ('local','r2')`],
+        // Un documento "con archivo" siempre sabe dónde está, con qué driver, su huella y su nombre original.
+        ['documentos', 'documentos_archivo_completo_check',
+          `NOT tiene_archivo OR (storage_path IS NOT NULL AND storage_driver IS NOT NULL AND hash_sha256 IS NOT NULL AND nombre_original IS NOT NULL)`],
+      ]) {
+        await c.query(`ALTER TABLE ${tabla} DROP CONSTRAINT IF EXISTS ${nombre}`);
+        await c.query(`ALTER TABLE ${tabla} ADD CONSTRAINT ${nombre} CHECK (${check})`);
+      }
+    },
+  },
 ];
 
 // Número arbitrario y fijo para el candado consultivo: si arrancan dos instancias a la vez,
