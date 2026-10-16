@@ -48,8 +48,6 @@ interface FormUsuario {
 const FORM_VACIO: FormUsuario = {
   nombre: '', email: '', password: '', rol: '', departamento: '', nivel: '', mfaMetodo: 'TOTP', activo: true,
 };
-// Mismas reglas que el servidor: el Oficial de Cumplimiento solo puede crear estos roles
-const ROLES_CUMPLIMIENTO = ['ocr-operator', 'read-only'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 @Component({
@@ -83,20 +81,12 @@ export class UsuariosGestion {
   /** Solo el Super Administrador modifica usuarios (el servidor lo exige igualmente). */
   esSuperAdmin = computed(() => this.auth.currentUser()?.rolClave === 'super-admin');
 
-  private miRango = computed(() => {
-    const nivel = this.auth.currentUser()?.nivel;
-    return this.catalogos()?.niveles.find((n) => n.nombre === nivel)?.rango ?? 0;
-  });
-
-  /** Roles y niveles que el usuario actual puede asignar. */
-  rolesDisponibles = computed(() => {
-    const roles = this.catalogos()?.roles ?? [];
-    return this.esSuperAdmin() ? roles : roles.filter((r) => ROLES_CUMPLIMIENTO.includes(r.clave));
-  });
-  nivelesDisponibles = computed(() => {
-    const niveles = this.catalogos()?.niveles ?? [];
-    return this.esSuperAdmin() ? niveles : niveles.filter((n) => n.rango <= this.miRango());
-  });
+  /**
+   * Roles y niveles que se pueden asignar: los del catálogo real (GET /catalogos). Solo el Super Administrador
+   * crea o modifica usuarios (el servidor responde 403 a cualquier otro rol).
+   */
+  rolesDisponibles = computed(() => (this.esSuperAdmin() ? this.catalogos()?.roles ?? [] : []));
+  nivelesDisponibles = computed(() => (this.esSuperAdmin() ? this.catalogos()?.niveles ?? [] : []));
 
   usuariosFiltrados = computed(() => {
     const t = this.busqueda().trim().toLowerCase();
@@ -209,6 +199,8 @@ export class UsuariosGestion {
       if (!/\p{L}/u.test(f.password) || !/\d/.test(f.password)) return 'La contraseña debe incluir al menos una letra y un número.';
     }
     if (!f.rol) return 'Seleccione un rol.';
+    // Sin nivel el servidor responde 400: es el fallo que tenía el formulario antes de la Fase 5.
+    if (!f.nivel) return 'Seleccione un nivel de confidencialidad.';
     return null;
   }
 
@@ -219,6 +211,7 @@ export class UsuariosGestion {
 
   // ------------------------------------------------------------------ acciones
   crearUsuario(): void {
+    if (!this.esSuperAdmin()) return this.mensajeError.set('Solo el Super Administrador puede crear usuarios.');
     const f = this.formCrear();
     const error = this.validar(f, true);
     this.limpiarMensajes();
