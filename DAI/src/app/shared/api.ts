@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpEvent, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -8,6 +8,58 @@ import { API_URL } from './config';
 export { API_URL };
 
 type Params = Record<string, string | number | boolean | null | undefined>;
+
+/** Metadatos del formulario "Aprobar e Indexar". La clasificación es obligatoria (el servidor también lo exige). */
+export interface MetadatosSubida {
+  clasificacion: string;
+  folio?: string;
+  titulo?: string;
+  departamento?: string;
+  tipoDocumental?: string;
+}
+
+/** Respuesta de POST /digitalizacion/documentos. */
+export interface DocumentoSubido {
+  id: string;
+  folio: string;
+  nombre: string;
+  nombreOriginal: string;
+  hash: string;
+  hashCorto: string;
+  tamanoBytes: number;
+  tamano: string;
+  paginas: number;
+}
+
+export interface ResultadoIntegridad {
+  integro: boolean;
+  hashEsperado: string;
+  hashCalculado: string;
+  tamanoEsperado: number;
+  tamanoCalculado: number;
+  verificadoEn: string;
+}
+
+/** Cuerpo de error de la API: { error, codigo? }. */
+export interface ErrorApi {
+  error?: string;
+  codigo?: string;
+}
+
+/**
+ * Lee el cuerpo de error de una respuesta. Con responseType 'blob' (archivos) el JSON de error llega como Blob,
+ * así que hay que leerlo como texto antes de interpretarlo.
+ */
+export async function leerErrorApi(err: unknown): Promise<ErrorApi> {
+  const cuerpo = err instanceof HttpErrorResponse ? err.error : null;
+  try {
+    if (cuerpo instanceof Blob) return JSON.parse(await cuerpo.text()) as ErrorApi;
+    if (cuerpo && typeof cuerpo === 'object') return cuerpo as ErrorApi;
+  } catch {
+    /* cuerpo no JSON */
+  }
+  return {};
+}
 
 /** Único punto de acceso HTTP al backend. Cada método devuelve un Observable tipado por quien lo llama. */
 @Injectable({ providedIn: 'root' })
@@ -31,6 +83,22 @@ export class ApiService {
   }
   documento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}`); }
   auditoriaDocumento<T = unknown>(id: string) { return this.get<T>(`/documentos/${encodeURIComponent(id)}/auditoria`); }
+  paginaDocumento<T = unknown>(id: string, pagina: number) {
+    return this.get<T>(`/documentos/${encodeURIComponent(id)}/paginas/${pagina}`);
+  }
+  /**
+   * PDF real como Blob. Se pide con HttpClient (y no con un <iframe src="...">) para que el interceptor
+   * adjunte el JWT: el navegador no envía cabeceras Authorization en las peticiones de un iframe.
+   */
+  archivoDocumento(id: string): Observable<Blob> {
+    return this.http.get(`${API_URL}/documentos/${encodeURIComponent(id)}/archivo`, { responseType: 'blob' });
+  }
+  descargarDocumento(id: string): Observable<Blob> {
+    return this.http.get(`${API_URL}/documentos/${encodeURIComponent(id)}/descarga`, { responseType: 'blob' });
+  }
+  verificarIntegridad(id: string): Observable<ResultadoIntegridad> {
+    return this.http.post<ResultadoIntegridad>(`${API_URL}/documentos/${encodeURIComponent(id)}/verificar-integridad`, {});
+  }
   eliminarDocumento(id: string): Observable<void> {
     return this.http.delete<void>(`${API_URL}/documentos/${encodeURIComponent(id)}`);
   }
@@ -67,7 +135,15 @@ export class ApiService {
 
   // Digitalización (OCR)
   colaOcr<T = unknown>() { return this.get<T>('/digitalizacion/cola'); }
-  aprobarOcr<T = unknown>(trabajoId: string, body: Record<string, unknown> = {}) {
-    return this.http.post<T>(`${API_URL}/digitalizacion/trabajos/${encodeURIComponent(trabajoId)}/aprobar`, body);
+  /**
+   * "Aprobar e Indexar": sube el PDF con sus metadatos (multipart/form-data).
+   * observe: 'events' + reportProgress emite el avance de la subida para la barra de progreso.
+   * Los campos van ANTES del archivo: así el servidor los tiene aunque el archivo sea grande.
+   */
+  subirDocumento(archivo: File, meta: MetadatosSubida): Observable<HttpEvent<DocumentoSubido>> {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(meta)) if (typeof v === 'string' && v.trim()) form.append(k, v.trim());
+    form.append('archivo', archivo, archivo.name);
+    return this.http.post<DocumentoSubido>(`${API_URL}/digitalizacion/documentos`, form, { reportProgress: true, observe: 'events' });
   }
 }
