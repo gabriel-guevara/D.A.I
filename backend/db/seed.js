@@ -1,6 +1,7 @@
 // Datos de DEMOSTRACIÓN: reproducen lo que el front tenía "quemado" en cada pantalla.
 // Contraseña de todos los usuarios demo: Dai2024!   |   2FA: ninguno lo tiene; en el primer ingreso cada uno
-// configura su app autenticadora (QR) como en producción.
+// configura su app autenticadora (QR) como en producción. El único método de 2FA que existe es TOTP.
+// Fase 5: nada de cifras, garantías ni acciones inventadas (sin "1,420 documentos verificados", sin botones que no hacen nada).
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 
@@ -16,11 +17,11 @@ export async function seed(db) {
   // ---------------- Usuarios ----------------
   const hash = await bcrypt.hash(DEMO_PASSWORD, 12);
   const usuarios = [
-    ['Dra. Elena Ramos',   'e.ramos@dai.corp',   'bg-blue-100 text-blue-700',     'Operaciones TI & Ciberseguridad', 'super-admin',  'Nivel 5 Secreto',      'FIDO2 Yubikey',        ago(4)],
-    ['Lic. Mateo Valdés',  'm.valdes@dai.corp',  'bg-indigo-100 text-indigo-700', 'Dirección Jurídica & Compliance', 'compliance',   'Nivel 3 Alto',         'TOTP 2 Dispositivos',  ago(200)],
-    ['Ing. Carlos Méndez', 'c.mendez@dai.corp',  'bg-purple-100 text-purple-700', 'Digitalización & Archivo Central','ocr-operator', 'Nivel 2 Auditoría',    'Push OTP Dispositivo', ago(280)],
-    ['Lic. Sofía Restrepo','s.restrepo@dai.corp','bg-rose-100 text-rose-700',     'Tesorería & Finanzas Públicas',   'read-only',    'Nivel 3 Restringido',  'SMS Backup',           new Date('2024-10-12T10:00:00Z')],
-    ['Mtro. Fernando Vega','f.vega@dai.corp',    'bg-amber-100 text-amber-700',   'Gestión del Talento Humano',      'read-only',    'Nivel 2 Confidencial', 'eOTP CorpID',          new Date('2024-10-14T10:00:00Z')],
+    ['Dra. Elena Ramos',   'e.ramos@dai.corp',   'bg-blue-100 text-blue-700',     'Operaciones TI & Ciberseguridad', 'super-admin',  'Nivel 5 Secreto',      'TOTP',  ago(4)],
+    ['Lic. Mateo Valdés',  'm.valdes@dai.corp',  'bg-indigo-100 text-indigo-700', 'Dirección Jurídica & Compliance', 'compliance',   'Nivel 3 Alto',         'TOTP', ago(200)],
+    ['Ing. Carlos Méndez', 'c.mendez@dai.corp',  'bg-purple-100 text-purple-700', 'Digitalización & Archivo Central','ocr-operator', 'Nivel 2 Auditoría',    'TOTP', ago(280)],
+    ['Lic. Sofía Restrepo','s.restrepo@dai.corp','bg-rose-100 text-rose-700',     'Tesorería & Finanzas Públicas',   'read-only',    'Nivel 3 Restringido',  'TOTP', new Date('2024-10-12T10:00:00Z')],
+    ['Mtro. Fernando Vega','f.vega@dai.corp',    'bg-amber-100 text-amber-700',   'Gestión del Talento Humano',      'read-only',    'Nivel 2 Confidencial', 'TOTP', new Date('2024-10-14T10:00:00Z')],
   ];
   const uid = {};
   for (const [nombre, email, avatar, dep, rol, nivel, mfa, acceso] of usuarios) {
@@ -32,6 +33,15 @@ export async function seed(db) {
     uid[email] = r.rows[0].id;
   }
   const elena = uid['e.ramos@dai.corp'];
+
+  // ---------------- Carpetas (Fase 5): un nivel, solo organizan ----------------
+  const carpeta = {};
+  for (const nombre of ['Contratos vigentes', 'Auditorías 2024', 'Expedientes de personal'])
+    carpeta[nombre] = (await db.query(`INSERT INTO carpetas (nombre, creado_por) VALUES ($1, $2) RETURNING id`, [nombre, elena])).rows[0].id;
+  const carpetaDe = {
+    'Contrato_Marco_Servicios_2025.pdf': 'Contratos vigentes', 'Contrato_Prestacion_Servicios_Tecnologicos_2024.pdf': 'Contratos vigentes',
+    'Auditoria_Financiera_Consolidada_Q3.xlsx': 'Auditorías 2024', 'Expediente_Laboral_Personal_Clave.pdf': 'Expedientes de personal',
+  };
 
   // ---------------- Documentos ----------------
   const docs = [
@@ -116,13 +126,13 @@ export async function seed(db) {
     const r = await db.query(
       `INSERT INTO documentos (nombre,folio,formato,version_actual,departamento_id,tipo_id,clasificacion_id,autor_id,autor_nombre,autor_email,
          responsable,nota_extra,origen,ruta,tamano_bytes,paginas,hash_sha256,ocr_procesado,firmado_por,firma_valida,
-         retencion_anios,vence_retencion,fecha_limite,storage_path,creado_en,actualizado_en)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id`,
+         retencion_anios,vence_retencion,fecha_limite,storage_path,creado_en,actualizado_en,carpeta_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING id`,
       [d.nombre, d.folio, d.formato, d.version, await idOf('departamentos', 'nombre', d.dep), await idOf('tipos_documentales', 'nombre', d.tipo),
        await idOf('clasificaciones', 'nombre', d.clasif), uid[d.autorEmail] ?? null, d.autor, d.autorEmail ?? null,
        d.responsable ?? null, d.extra ?? null, d.origen ?? null, d.ruta, bytes, d.paginas, d.hashNull ? null : sha(d.nombre + d.version),
        d.ocr, d.firmadoPor ?? null, d.firmaValida ?? false, d.retencion ?? null, d.vence ?? null, d.limite ?? null,
-       null, d.creado, d.actualizado]); // sin archivo real: storage_path NULL y tiene_archivo false (por defecto)
+       null, d.creado, d.actualizado, carpeta[carpetaDe[d.nombre]] ?? null]); // sin archivo real: storage_path NULL y tiene_archivo false (por defecto)
     const id = r.rows[0].id;
     docId[d.nombre] = id;
     if (d.papelera)
@@ -147,54 +157,49 @@ export async function seed(db) {
     await db.query(`INSERT INTO documento_versiones (documento_id,version,hash_sha256,tamano_bytes,autor_id,comentario,creado_en) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
       [cm, v, sha('cm' + v), 4 * MB, elena, 'Ajuste de cláusulas', ago(60 * 24 * dias)]);
 
-  // ---------------- Notificaciones (para cada usuario) ----------------
+  // Una solicitud de movimiento pendiente del Oficial de Cumplimiento (la resuelve el administrador o el operador).
+  await db.query(`INSERT INTO solicitudes_movimiento (documento_id, carpeta_destino_id, solicitante_id, motivo, creado_en)
+                  VALUES ($1, $2, $3, $4, $5)`,
+    [docId['Dictamen_Auditoria_Q3_Tributaria.docx'], carpeta['Auditorías 2024'], uid['m.valdes@dai.corp'],
+     'Pertenece al cierre de auditoría del tercer trimestre; conviene tenerlo junto al informe financiero.', ago(25)]);
+
+  // ---------------- Notificaciones ----------------
+  // Solo hechos que reflejan los datos de demostración, sin acciones (botones) y solo para quien alcanza el nivel
+  // del documento: una notificación no debe revelar el nombre de un documento que esa persona no puede ver.
   const notifs = [
-    ['version', 'border-l-blue-500', 'Cripto-firmado', 'bg-emerald-50 text-emerald-700', '📄',
+    ['version', 'border-l-blue-500', 'Versiones', 'bg-blue-50 text-blue-700', '📄',
       'Nueva versión v3.2 publicada en Contrato_Marco_Servicios_2025.pdf',
-      'Dra. Elena Ramos ha cargado una versión actualizada con modificaciones en la cláusula de indemnización y reajuste de jurisdicción.',
-      ['Asesoría Jurídica', 'SHA-256: 7f8a...9c2d (Verificado)', 'Tamaño: 4.2 MB'],
-      [{ label: 'Ver Comparación de Cambios', style: 'border' }, { label: 'Descargar v3.2', style: 'solid' }], cm, 12],
-    ['edicion', 'border-l-amber-500', 'Confidencialidad', 'bg-amber-50 text-amber-700', '🏷️',
-      'Metadatos modificados en Expediente_Laboral_Personal_Clave.pdf',
-      'Se actualizaron las directivas de seguridad; etiquetas de confidencialidad elevadas a "Nivel 3 - Acceso Restringido".',
-      ['Modificado por: Lic. Marcos Cano', 'Registro de auditoría: #AUD-9921'],
-      [{ label: 'Revisar Metadatos', style: 'border' }, { label: 'Aprobar Política', style: 'solid' }], docId['Expediente_Laboral_Personal_Clave.pdf'], 40],
-    ['eliminado', 'border-l-red-500', 'ISO 27001 Sec. 8.3', 'bg-red-50 text-red-700', '🗑️',
-      'Documento enviado a Papelera de Seguridad: Borrador_Presupuestario_2024_rev.docx',
-      'Eliminado por usuario de rol temporal. El expediente permanecerá bloqueado en retención inmutable bajo custodia antes de cualquier purga.',
-      ['IP de Origen: 192.168.10.45 (VLAN Finanzas)', 'Purga automática: a los 30 días (ver Papelera)'],
-      [], docId['Borrador_Presupuestario_2024_rev.docx'], 120],
-    ['seguridad', 'border-l-emerald-500', 'Cero Anomalías', 'bg-emerald-50 text-emerald-700', '✅',
-      'Auditoría de Integridad Exitosa: 1,420 documentos verificados',
-      'Ninguna firma criptográfica alterada. Cadena de custodia 100% íntegra con registros de sello de tiempo RFC 3161 revalidados en el repositorio institucional.',
-      ['Proceso automatizado del sistema cron::daily_audit', 'Tiempo de barrido: 42 segundos'],
-      [{ label: 'Descargar Certificado de Integridad', style: 'border' }, { label: 'Métricas de Validación', style: 'border' }], null, 360],
+      'Dra. Elena Ramos registró la versión v3.2 (datos de demostración: este documento no tiene archivo original).',
+      ['Legal', 'Tamaño declarado: 4.2 MB'], 'Contrato_Marco_Servicios_2025.pdf', 12],
+    ['edicion', 'border-l-amber-500', 'Carpetas', 'bg-amber-50 text-amber-700', '📁',
+      'Documento movido a «Expedientes de personal»',
+      'Organización de la biblioteca. Mover un documento no cambia quién puede verlo.',
+      ['Folios: EXP-2024-RH-014'], 'Expediente_Laboral_Personal_Clave.pdf', 40],
+    ['eliminado', 'border-l-red-500', 'Papelera', 'bg-red-50 text-red-700', '🗑️',
+      'Documento enviado a la Papelera: Borrador_Presupuestario_2024_rev.docx',
+      'El expediente queda en la Papelera con sus versiones intactas; se puede restaurar hasta su purga.',
+      ['Folio: EXP-2024-FN-388', 'Purga automática: a los 30 días (ver Papelera)'], 'Borrador_Presupuestario_2024_rev.docx', 120],
   ];
-  for (const u of Object.values(uid))
-    for (const [cat, borde, badge, badgeCl, icono, titulo, desc, meta, acciones, doc, min] of notifs)
-      await db.query(
-        `INSERT INTO notificaciones (usuario_id,categoria,borde_clase,badge,badge_clase,icono,titulo,descripcion,meta,acciones,documento_id,creado_en)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-        [u, cat, borde, badge, badgeCl, icono, titulo, desc, JSON.stringify(meta), JSON.stringify(acciones), doc, ago(min)]);
+  let totalNotifs = 0;
+  for (const [cat, borde, badge, badgeCl, icono, titulo, desc, meta, doc, min] of notifs) {
+    const r = await db.query(
+      `INSERT INTO notificaciones (usuario_id,categoria,borde_clase,badge,badge_clase,icono,titulo,descripcion,meta,acciones,documento_id,creado_en)
+       SELECT u.id, $1, $2, $3, $4, $5, $6, $7, $8::jsonb, '[]'::jsonb, d.id, $10
+         FROM usuarios u JOIN niveles_acceso n ON n.id = u.nivel_id, documentos d JOIN clasificaciones c ON c.id = d.clasificacion_id
+        WHERE d.id = $9 AND n.rango >= c.nivel_minimo`,
+      [cat, borde, badge, badgeCl, icono, titulo, desc, JSON.stringify(meta), docId[doc], ago(min)]);
+    totalNotifs += r.rowCount;
+  }
 
   // ---------------- Auditoría ----------------
   for (const [accion, min] of [['ver_documento', 5], ['descargar', 90], ['editar_version', 60 * 24 * 9]])
     await db.query(`INSERT INTO auditoria (usuario_id,documento_id,accion,ip,creado_en) VALUES ($1,$2,$3,'192.168.10.20',$4)`, [elena, cm, accion, ago(min)]);
-
-  // ---------------- Cola OCR ----------------
-  const cola = [
-    ['FAC-2024-00892.tiff', 300, 2.4, 'en_foco'], ['ANEXO_TECNICO_02.pdf', 400, 4.1, 'en_espera'],
-    ['PAGARE_0041.tiff', 300, 1.9, 'en_espera'], ['ACTA_JUNTA_2024_03.pdf', 300, 3.2, 'procesado'],
-  ];
-  for (const [n, dpi, mb, estado] of cola)
-    await db.query(`INSERT INTO ocr_trabajos (usuario_id,nombre_archivo,canal,dpi,tamano_bytes,estado) VALUES ($1,$2,'scanner',$3,$4,$5)`,
-      [uid['c.mendez@dai.corp'], n, dpi, Math.round(mb * MB), estado]);
 
   // ---------------- Búsquedas frecuentes ----------------
   const terminos = [['auditoría forense ISO 27001', 9], ['acuerdo accionistas cláusula 12', 7], ['declaración de conformidad RGPD', 5], ['pagarés no endosables 2023-2024', 3]];
   for (const [t, n] of terminos)
     for (let i = 0; i < n; i++) await db.query(`INSERT INTO busquedas (usuario_id,termino,resultados) VALUES ($1,$2,1)`, [elena, t]);
 
-  console.log(`   ${usuarios.length} usuarios · ${docs.length} documentos · ${notifs.length * usuarios.length} notificaciones`);
+  console.log(`   ${usuarios.length} usuarios · ${docs.length} documentos · ${Object.keys(carpeta).length} carpetas · ${totalNotifs} notificaciones`);
   console.log(`   Login demo: e.ramos@dai.corp / ${DEMO_PASSWORD}  (1.er ingreso: configurar 2FA con el QR)`);
 }
