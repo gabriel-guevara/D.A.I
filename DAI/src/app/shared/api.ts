@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_URL } from './config';
+import type { CurrentUser } from './auth';
 
 // Se reexporta para que el resto de archivos puedan seguir importándola desde './api'
 export { API_URL };
@@ -84,6 +85,45 @@ export async function leerErrorApi(err: unknown): Promise<ErrorApi> {
   return {};
 }
 
+// ---------------------------------------------------------------------------- Seguridad (Fase 3)
+
+/** Paso 1 del login: con 2FA activo se pide el código; sin 2FA hay que configurarlo en ese momento. */
+export type RespuestaLogin =
+  | { paso: '2fa'; mfaToken: string; metodo: string }
+  | { paso: 'enrolar'; enrolToken: string };
+
+/** Segundo factor: código de 6 dígitos de la app o un código de recuperación (XXXXX-XXXXX). */
+export type SegundoFactor = { code: string } | { codigoRecuperacion: string };
+
+/** Datos para configurar la app autenticadora. El secreto solo vive en memoria mientras se muestra. */
+export interface AltaDosPasos {
+  secreto: string;
+  otpauthUri: string;
+  cuenta: string;
+  emisor: string;
+  caducaEnMinutos: number;
+}
+
+export interface SesionAbierta {
+  token: string;
+  user: CurrentUser;
+  /** Solo al activar el 2FA: se muestran UNA vez. */
+  codigosRecuperacion?: string[];
+  /** Solo si se entró con un código de recuperación. */
+  codigosRestantes?: number;
+}
+
+export interface EstadoSeguridadCuenta {
+  nombre: string;
+  email: string;
+  mfaActivo: boolean;
+  /** Fecha y hora de Colombia, 12 h (la formatea el servidor). */
+  mfaActivadoEn: string | null;
+  codigosRestantes: number;
+  passwordCambiadoEn: string | null;
+  politicaContrasena: { minimo: number; maximoBytes: number };
+}
+
 /** Único punto de acceso HTTP al backend. Cada método devuelve un Observable tipado por quien lo llama. */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -162,6 +202,43 @@ export class ApiService {
   }
   modificarUsuario(id: string, body: Record<string, unknown>) {
     return this.http.patch<{ ok: boolean }>(`${API_URL}/seguridad/usuarios/${encodeURIComponent(id)}`, body);
+  }
+
+  /** Restablece el 2FA de otro usuario (solo Super Administrador, confirmando con su propio código). */
+  restablecer2faUsuario(id: string, factor: SegundoFactor) {
+    return this.http.post<{ ok: boolean }>(`${API_URL}/seguridad/usuarios/${encodeURIComponent(id)}/restablecer-2fa`, factor);
+  }
+
+  // Autenticación (login en dos pasos y alta obligatoria de 2FA)
+  login(username: string, password: string): Observable<RespuestaLogin> {
+    return this.http.post<RespuestaLogin>(`${API_URL}/auth/login`, { username, password });
+  }
+  verificar2fa(mfaToken: string, factor: SegundoFactor): Observable<SesionAbierta> {
+    return this.http.post<SesionAbierta>(`${API_URL}/auth/verify-2fa`, { mfaToken, ...factor });
+  }
+  iniciarAlta2fa(enrolToken: string): Observable<AltaDosPasos> {
+    return this.http.post<AltaDosPasos>(`${API_URL}/auth/2fa/enrolar/iniciar`, { enrolToken });
+  }
+  confirmarAlta2fa(enrolToken: string, code: string): Observable<SesionAbierta> {
+    return this.http.post<SesionAbierta>(`${API_URL}/auth/2fa/enrolar/confirmar`, { enrolToken, code });
+  }
+
+  // Seguridad de mi cuenta
+  seguridadCuenta(): Observable<EstadoSeguridadCuenta> {
+    return this.get<EstadoSeguridadCuenta>('/cuenta/seguridad');
+  }
+  /** Devuelve un token nuevo: las demás sesiones (otros equipos) quedan cerradas. */
+  cambiarContrasena(actual: string, nueva: string, factor: SegundoFactor): Observable<{ ok: boolean; token: string }> {
+    return this.http.post<{ ok: boolean; token: string }>(`${API_URL}/cuenta/password`, { actual, nueva, ...factor });
+  }
+  iniciarReconfiguracion2fa(password: string, factor: SegundoFactor): Observable<AltaDosPasos> {
+    return this.http.post<AltaDosPasos>(`${API_URL}/cuenta/2fa/reconfigurar/iniciar`, { password, ...factor });
+  }
+  confirmarReconfiguracion2fa(code: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`${API_URL}/cuenta/2fa/reconfigurar/confirmar`, { code });
+  }
+  regenerarCodigosRecuperacion(factor: SegundoFactor): Observable<{ codigosRecuperacion: string[] }> {
+    return this.http.post<{ codigosRecuperacion: string[] }>(`${API_URL}/cuenta/2fa/codigos-recuperacion`, factor);
   }
 
   // Digitalización (OCR)
