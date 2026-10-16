@@ -34,6 +34,12 @@ const maxUploadMb = process.env.MAX_UPLOAD_MB === undefined || process.env.MAX_U
 if (!Number.isInteger(maxUploadMb) || maxUploadMb < 1 || maxUploadMb > 100)
   errores.push('MAX_UPLOAD_MB debe ser un entero entre 1 y 100 (por defecto 20).');
 
+// Fase 4: días que un documento pasa en la papelera antes de purgarse solo. 0 = sin purga automática.
+const diasPapelera = process.env.PAPELERA_DIAS_RETENCION === undefined || process.env.PAPELERA_DIAS_RETENCION === ''
+  ? 30 : Number(process.env.PAPELERA_DIAS_RETENCION);
+if (!Number.isInteger(diasPapelera) || diasPapelera < 0 || diasPapelera > 3650)
+  errores.push('PAPELERA_DIAS_RETENCION debe ser un entero entre 0 y 3650 (por defecto 30; 0 desactiva la purga automática).');
+
 if (errores.length) {
   console.error(`✖ La API no puede arrancar:\n  - ${errores.join('\n  - ')}`);
   process.exit(1);
@@ -49,4 +55,5 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:4200',
   storage,
   maxUploadBytes: maxUploadMb * 1024 * 1024,
+  papeleraDiasRetencion: diasPapelera,
 };

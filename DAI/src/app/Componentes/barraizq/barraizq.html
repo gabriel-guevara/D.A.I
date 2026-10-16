@@ -8,7 +8,7 @@
   </div>
 
   <nav class="flex-1 py-4 px-3 space-y-1">
-    @for (item of navItems; track item.id) {
+    @for (item of itemsVisibles(); track item.id) {
     <a [routerLink]="item.route"
       class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
       [ngClass]="item.id === active

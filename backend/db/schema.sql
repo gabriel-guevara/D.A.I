@@ -127,13 +127,18 @@ CREATE TABLE documentos (
   tiene_archivo    boolean NOT NULL DEFAULT false, -- false: solo metadatos (seed, heredados); true: PDF real subido
   nombre_original  text,                       -- nombre del archivo que subió el usuario, saneado (solo para mostrar/descargar)
   storage_driver   text,                       -- 'local' | 'r2': dónde se guardó
+  purgar_despues_de timestamptz,               -- papelera: desde cuándo se puede purgar automáticamente (NULL = nunca)
+  purgado_en       timestamptz,                -- purga definitiva: la fila queda como "lápida" sin archivo ni texto
+  purgado_por      bigint REFERENCES usuarios(id) ON DELETE SET NULL,  -- NULL = purga automática por retención
   creado_en        timestamptz NOT NULL DEFAULT now(),
   actualizado_en   timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT documentos_storage_driver_check CHECK (storage_driver IS NULL OR storage_driver IN ('local','r2')),
   CONSTRAINT documentos_archivo_completo_check CHECK (NOT tiene_archivo OR
-    (storage_path IS NOT NULL AND storage_driver IS NOT NULL AND hash_sha256 IS NOT NULL AND nombre_original IS NOT NULL))
+    (storage_path IS NOT NULL AND storage_driver IS NOT NULL AND hash_sha256 IS NOT NULL AND nombre_original IS NOT NULL)),
+  CONSTRAINT documentos_purgado_sin_archivo_check CHECK (estado <> 'purgado' OR (NOT tiene_archivo AND storage_path IS NULL))
 );
 CREATE INDEX documentos_estado_idx   ON documentos (estado, actualizado_en DESC);
+CREATE INDEX documentos_papelera_idx ON documentos (purgar_despues_de) WHERE estado = 'papelera';
 CREATE INDEX documentos_nombre_trgm  ON documentos USING gin (nombre gin_trgm_ops);
 CREATE INDEX documentos_folio_trgm   ON documentos USING gin (folio gin_trgm_ops);
 
@@ -143,8 +148,10 @@ CREATE TABLE documento_versiones (
   version      text NOT NULL,
   hash_sha256  char(64),
   tamano_bytes bigint,
-  storage_path text,
+  storage_path text,                          -- NULL: registro histórico sin original, o versión purgada
   storage_driver text,
+  nombre_original text,                       -- nombre del archivo de ESTA versión (para restaurarla como actual)
+  paginas      integer,
   autor_id     bigint REFERENCES usuarios(id) ON DELETE SET NULL,
   comentario   text,
   creado_en    timestamptz NOT NULL DEFAULT now(),
@@ -171,7 +178,7 @@ CREATE INDEX documento_paginas_trgm ON documento_paginas USING gin (texto gin_tr
 CREATE TABLE documento_indexacion (
   documento_id      bigint PRIMARY KEY REFERENCES documentos(id) ON DELETE CASCADE,
   estado            text NOT NULL DEFAULT 'pendiente',  -- pendiente | procesando | procesado | sin_texto | error
-  motivo            text NOT NULL DEFAULT 'backfill',   -- subida | reproceso | backfill | script
+  motivo            text NOT NULL DEFAULT 'backfill',   -- subida | reproceso | backfill | script | version | restaurar_version
   solicitado_por    bigint REFERENCES usuarios(id) ON DELETE SET NULL,
   solicitado_en     timestamptz NOT NULL DEFAULT now(),
   intentos          smallint NOT NULL DEFAULT 0,
@@ -186,10 +193,29 @@ CREATE TABLE documento_indexacion (
   error             text,
   duracion_ms       integer,
   CONSTRAINT documento_indexacion_estado_check CHECK (estado IN ('pendiente','procesando','procesado','sin_texto','error')),
-  CONSTRAINT documento_indexacion_motivo_check CHECK (motivo IN ('subida','reproceso','backfill','script')),
+  CONSTRAINT documento_indexacion_motivo_check CHECK (motivo IN ('subida','reproceso','backfill','script','version','restaurar_version')),
   CONSTRAINT documento_indexacion_limite_check CHECK (limite IS NULL OR limite IN ('paginas','caracteres','tiempo'))
 );
 CREATE INDEX documento_indexacion_cola ON documento_indexacion (solicitado_en, documento_id) WHERE estado IN ('pendiente','procesando');
+
+-- Cola persistente de objetos por borrar del almacenamiento (src/lib/papelera.js). Primero cambia la base y
+-- después se borra el objeto: si el almacenamiento falla, la fila queda aquí y se reintenta (nunca un huérfano
+-- "olvidado"). "subida_en_curso" registra la intención ANTES de subir: si el proceso muere a mitad, el objeto
+-- que quedó sin documento se borra pasado el plazo (no_antes_de).
+CREATE TABLE objetos_por_borrar (
+  id             bigserial PRIMARY KEY,
+  clave          text NOT NULL,
+  storage_driver text NOT NULL,
+  documento_id   bigint REFERENCES documentos(id) ON DELETE SET NULL,
+  motivo         text NOT NULL,                       -- purga | subida_fallida | subida_en_curso
+  no_antes_de    timestamptz NOT NULL DEFAULT now(),
+  intentos       integer NOT NULL DEFAULT 0,
+  ultimo_error   text,
+  creado_en      timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT objetos_por_borrar_driver_check CHECK (storage_driver IN ('local','r2')),
+  CONSTRAINT objetos_por_borrar_motivo_check CHECK (motivo IN ('purga','subida_fallida','subida_en_curso'))
+);
+CREATE INDEX objetos_por_borrar_cola ON objetos_por_borrar (no_antes_de, id);
 
 CREATE TABLE etiquetas (
   id     serial PRIMARY KEY,

@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { detalles } from './detalles';
 
@@ -53,7 +53,10 @@ describe('detalles (visor de documento)', () => {
   });
 
   afterEach(() => {
+    // El panel hijo de versiones pide su historial al renderizarse (tiene su propio spec): aquí no interesa.
+    http.match((r) => r.url === '/api/documentos/7/versiones');
     http.verify();
+    sessionStorage.clear(); // se comparte entre archivos de specs
     vi.useRealTimers();
   });
 
@@ -165,5 +168,70 @@ describe('detalles (visor de documento)', () => {
     component.reindexar();
     http.expectOne('/api/documentos/7/reindexar').flush({ error: 'x' }, { status: 403, statusText: 'Forbidden' });
     expect(component.reindexarError()).toContain('Operador OCR');
+  });
+
+  // ------------------------------------------------------------------ Fase 4: papelera y versiones
+  it('enviar a la papelera: pide confirmación, llama a DELETE y vuelve a la biblioteca', () => {
+    crear();
+    http.expectOne('/api/documentos/7').flush({ ...conArchivo, puedeEliminar: true });
+    http.expectOne('/api/documentos/7/archivo').flush(new Blob(['%PDF-1.4']));
+    fixture.detectChanges();
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Enviar a papelera');
+    component.confirmandoEliminar.set(true);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('¿Enviar a la papelera?');
+    component.eliminar();
+    const req = http.expectOne('/api/documentos/7');
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    expect(navegar).toHaveBeenCalledWith(['/biblioteca']);
+  });
+
+  it('sin permisos de la Fase 4 no muestra "Enviar a papelera" ni "Nueva versión"', () => {
+    crear();
+    http.expectOne('/api/documentos/7').flush({ ...conArchivo, puedeEliminar: false, puedeGestionarVersiones: false });
+    http.expectOne('/api/documentos/7/archivo').flush(new Blob(['%PDF-1.4']));
+    fixture.detectChanges();
+    const t = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(t).not.toContain('Enviar a papelera');
+    expect(t).not.toContain('Nueva versión');
+  });
+
+  it('ver una versión anterior en el visor y volver a la actual', () => {
+    crear();
+    http.expectOne('/api/documentos/7').flush(conArchivo);
+    http.expectOne('/api/documentos/7/archivo').flush(new Blob(['%PDF-1.4']));
+    component.verVersion({ version: 'v1.0', actual: false, blob: new Blob(['%PDF-1.4 vieja']) });
+    fixture.detectChanges();
+    expect(component.versionViendo()).toBe('v1.0');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Viendo v1.0 (no es la actual)');
+    component.volverAVersionActual();
+    expect(component.versionViendo()).toBeNull();
+    http.expectOne('/api/documentos/7/archivo').flush(new Blob(['%PDF-1.4']));
+    expect(component.visor()).toBe('listo');
+  });
+
+  it('tras subir o restaurar una versión recarga el documento (nueva versión y texto pendiente)', () => {
+    crear();
+    http.expectOne('/api/documentos/7').flush(conArchivo);
+    http.expectOne('/api/documentos/7/archivo').flush(new Blob(['%PDF-1.4']));
+    component.versionCambiada();
+    http.expectOne('/api/documentos/7').flush({ ...conArchivo, version: 'v2.0', indexacion: ix('procesado') });
+    http.expectOne('/api/documentos/7/archivo').flush(new Blob(['%PDF-1.4 v2']));
+    expect(component.doc()?.version).toBe('v2.0');
+  });
+
+  it('muestra el historial de versiones (el panel pide su historial al renderizarse)', () => {
+    crear();
+    http.expectOne('/api/documentos/7').flush({ ...conArchivo, puedeGestionarVersiones: true });
+    http.expectOne('/api/documentos/7/archivo').flush(new Blob(['%PDF-1.4']));
+    fixture.detectChanges();
+    http.expectOne('/api/documentos/7/versiones').flush({ versionActual: 'v1.0', puedeGestionar: true, versiones: [] });
+    fixture.detectChanges();
+    const t = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(t).toContain('Historial de versiones');
+    expect(t).toContain('Subir nueva versión');
+    expect(t).toContain('Nueva versión');
   });
 });

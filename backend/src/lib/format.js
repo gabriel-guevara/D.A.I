@@ -73,3 +73,16 @@ export const escapeLike = (s) => s.replace(/[\\%_]/g, '\\$&');
 
 /** Valida que un parámetro de ruta sea un id numérico. */
 export const idValido = (v) => /^\d{1,18}$/.test(String(v));
+
+/** Texto de un formulario en una línea: NFC, sin caracteres de control, espacios colapsados y recortado a max. */
+export const textoLimpio = (v, max) =>
+  typeof v === 'string' ? v.normalize('NFC').replace(/[\u0000-\u001f\u007f-\u009f]/g, '').replace(/\s+/g, ' ').trim().slice(0, max) : '';
+
+/**
+ * "2034-03-01" (columna date, sin hora) → "01 Mar 2034". Se formatea el texto tal cual: convertirlo a Date y
+ * luego a hora de Colombia lo correría al día anterior (medianoche UTC = 7 p. m. del día previo en Bogotá).
+ */
+export function fechaDeDia(ymd) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd ?? ''));
+  return m ? `${m[3]} ${MESES[Number(m[2]) - 1]} ${m[1]}` : '';
+}

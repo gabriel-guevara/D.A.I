@@ -16,6 +16,8 @@ import { CodigosRecuperacion } from '../../shared/codigos-recuperacion';
 type LoginStep = 'credentials' | 'twofactor' | 'enrolar' | 'codigos';
 
 const PASO_TOTP_S = 30;
+/** Desfase a partir del cual se avisa que la hora del computador está mal (la del teléfono suele ser automática). */
+const AVISO_DESFASE_S = 10;
 const DIGITOS_VACIOS = ['', '', '', '', '', ''];
 
 @Component({
@@ -36,9 +38,15 @@ export class Login implements OnDestroy {
   showPassword = signal(false);
   errorMessage = signal('');
 
+  // Debe declararse antes de "countdown", que la usa al inicializarse.
+  /** ms que hay que sumar a Date.now() para obtener la hora del servidor. */
+  private desfaseMs = 0;
   otpDigits = signal<string[]>([...DIGITOS_VACIOS]);
   /** Segundos que le quedan al código actual de la app (los códigos TOTP cambian cada 30 s, a la vez en todo el mundo). */
   countdown = signal(this.segundosRestantes());
+  /** Segundos que el reloj de este computador va adelantado (+) o atrasado (−) respecto al servidor. */
+  desfaseSegundos = signal(0);
+  relojDesfasado = computed(() => Math.abs(this.desfaseSegundos()) >= AVISO_DESFASE_S);
   isVerifying = signal(false);
   isSubmitting = signal(false);
 
@@ -75,9 +83,11 @@ export class Login implements OnDestroy {
     }
 
     this.isSubmitting.set(true);
+    const enviado = Date.now();
     this.auth.login(this.username().trim(), this.password()).subscribe({
       next: (r) => {
         this.isSubmitting.set(false);
+        this.sincronizarReloj(r.ahora, enviado, Date.now());
         this.password.set(''); // ya no hace falta en memoria
         this.otpDigits.set([...DIGITOS_VACIOS]);
         if (r.paso === '2fa') {
@@ -99,14 +109,27 @@ export class Login implements OnDestroy {
   }
 
   // ------------------------------------------------------------------ contador real del código TOTP
+  /**
+   * Los códigos TOTP cambian cada 30 s según la hora REAL. El teléfono la toma de la red; el computador puede
+   * estar desfasado. Se usa la hora del servidor: su respuesta llegó, en promedio, a mitad del viaje de ida y vuelta.
+   */
+  sincronizarReloj(ahoraServidor: number | undefined, enviado: number, recibido: number): void {
+    if (typeof ahoraServidor !== 'number' || !Number.isFinite(ahoraServidor)) return;
+    this.desfaseMs = ahoraServidor + (recibido - enviado) / 2 - recibido;
+    this.desfaseSegundos.set(Math.round(-this.desfaseMs / 1000));
+    this.countdown.set(this.segundosRestantes());
+  }
+
   private segundosRestantes(): number {
-    return PASO_TOTP_S - (Math.floor(Date.now() / 1000) % PASO_TOTP_S);
+    const ahora = Date.now() + this.desfaseMs;
+    return PASO_TOTP_S - (Math.floor(ahora / 1000) % PASO_TOTP_S);
   }
 
   startCountdown(): void {
     this.clearCountdown();
     this.countdown.set(this.segundosRestantes());
-    this.countdownTimer = setInterval(() => this.countdown.set(this.segundosRestantes()), 1000);
+    // Cada 250 ms: con 1 s el número podía ir hasta un segundo por detrás del de la app.
+    this.countdownTimer = setInterval(() => this.countdown.set(this.segundosRestantes()), 250);
   }
 
   private clearCountdown(): void {

@@ -4,6 +4,7 @@ import { aplicarMigraciones } from './migrate.js';
 import { inicializarAlmacenamiento } from './lib/storage.js';
 import { crearApp } from './app.js';
 import { despertarIndexador } from './lib/indexador.js';
+import { despertarMantenimiento } from './lib/papelera.js';
 
 // Antes de aceptar peticiones: almacenamiento configurado y esquema al día. Si algo falla, la API NO
 // arranca: es preferible a servir con columnas que faltan o escribir archivos en el sitio equivocado.
@@ -20,4 +21,7 @@ crearApp().listen(config.port, () => {
   console.log(`API DAI escuchando en http://localhost:${config.port}`);
   // Documentos pendientes de extraer texto (subidas interrumpidas o backfill de la migración 003).
   despertarIndexador();
+  // Papelera (Fase 4): purga por retención y objetos pendientes de borrar. Render gratuito no tiene cron y se
+  // duerme sin tráfico: cada arranque (= cada vez que despierta) es una oportunidad de ponerse al día.
+  despertarMantenimiento();
 });

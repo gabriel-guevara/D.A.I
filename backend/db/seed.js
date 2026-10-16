@@ -102,6 +102,12 @@ export async function seed(db) {
       ruta: '/Riesgos/Polizas/', mb: 1.1, paginas: 8, ocr: false, retencion: 10, vence: '2034-03-01', limite: '2024-08-30', tags: ['Seguros'],
       creado: new Date('2024-03-01T09:00:00Z'), actualizado: ago(180),
       textos: [[1, 'Condiciones', 'Póliza de seguro de responsabilidad civil. Cobertura por daños a terceros, límites asegurados y exclusiones generales.']] },
+    // Fase 4: un documento de demostración en la PAPELERA (lo menciona la notificación "eliminado").
+    { nombre: 'Borrador_Presupuestario_2024_rev.docx', folio: 'EXP-2024-FN-388', formato: 'docx', version: 'v1.0', dep: 'Finanzas',
+      tipo: null, clasif: 'Confidencial Nivel 2', autor: 'Lic. Mateo Valdés', autorEmail: 'm.valdes@dai.corp',
+      ruta: '/Finanzas/Presupuesto/2024/', mb: 0.6, paginas: 6, ocr: false, limite: null, tags: ['Presupuesto'],
+      creado: new Date('2024-06-03T14:00:00Z'), actualizado: ago(120), papelera: true,
+      textos: [[1, 'Resumen', 'Borrador del presupuesto 2024 con partidas preliminares de funcionamiento e inversión, pendiente de revisión.']] },
   ];
 
   const docId = {};
@@ -119,6 +125,10 @@ export async function seed(db) {
        null, d.creado, d.actualizado]); // sin archivo real: storage_path NULL y tiene_archivo false (por defecto)
     const id = r.rows[0].id;
     docId[d.nombre] = id;
+    if (d.papelera)
+      await db.query(`UPDATE documentos SET estado = 'papelera', eliminado_en = $2, eliminado_por = $3,
+                             purgar_despues_de = $2::timestamptz + interval '30 days' WHERE id = $1`,
+        [id, ago(120), uid['m.valdes@dai.corp']]);
 
     await db.query(`INSERT INTO documento_versiones (documento_id,version,hash_sha256,tamano_bytes,storage_path,autor_id,comentario,creado_en)
                     VALUES ($1,$2,$3,$4,$5,$6,'Versión vigente',$7)`,
@@ -152,8 +162,8 @@ export async function seed(db) {
     ['eliminado', 'border-l-red-500', 'ISO 27001 Sec. 8.3', 'bg-red-50 text-red-700', '🗑️',
       'Documento enviado a Papelera de Seguridad: Borrador_Presupuestario_2024_rev.docx',
       'Eliminado por usuario de rol temporal. El expediente permanecerá bloqueado en retención inmutable bajo custodia antes de cualquier purga.',
-      ['IP de Origen: 192.168.10.45 (VLAN Finanzas)', 'Auto-purga programada: 14 Mayo 2025'],
-      [{ label: 'Restaurar Documento', style: 'border' }, { label: 'Confirmar Purga Permanente (Requiere Admin)', style: 'danger' }], null, 120],
+      ['IP de Origen: 192.168.10.45 (VLAN Finanzas)', 'Purga automática: a los 30 días (ver Papelera)'],
+      [], docId['Borrador_Presupuestario_2024_rev.docx'], 120],
     ['seguridad', 'border-l-emerald-500', 'Cero Anomalías', 'bg-emerald-50 text-emerald-700', '✅',
       'Auditoría de Integridad Exitosa: 1,420 documentos verificados',
       'Ninguna firma criptográfica alterada. Cadena de custodia 100% íntegra con registros de sello de tiempo RFC 3161 revalidados en el repositorio institucional.',

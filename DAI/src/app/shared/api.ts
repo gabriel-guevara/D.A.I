@@ -88,9 +88,13 @@ export async function leerErrorApi(err: unknown): Promise<ErrorApi> {
 // ---------------------------------------------------------------------------- Seguridad (Fase 3)
 
 /** Paso 1 del login: con 2FA activo se pide el código; sin 2FA hay que configurarlo en ese momento. */
-export type RespuestaLogin =
+export type RespuestaLogin = (
   | { paso: '2fa'; mfaToken: string; metodo: string }
-  | { paso: 'enrolar'; enrolToken: string };
+  | { paso: 'enrolar'; enrolToken: string }
+) & {
+  /** Hora del servidor (ms desde 1970). Sirve para sincronizar el contador de 30 s con el de la app del teléfono. */
+  ahora?: number;
+};
 
 /** Segundo factor: código de 6 dígitos de la app o un código de recuperación (XXXXX-XXXXX). */
 export type SegundoFactor = { code: string } | { codigoRecuperacion: string };
@@ -122,6 +126,85 @@ export interface EstadoSeguridadCuenta {
   codigosRestantes: number;
   passwordCambiadoEn: string | null;
   politicaContrasena: { minimo: number; maximoBytes: number };
+}
+
+// ---------------------------------------------------------------------------- Versiones y papelera (Fase 4)
+
+/** Una versión del historial (GET /documentos/:id/versiones). Fechas en hora de Colombia, 12 h. */
+export interface VersionDocumento {
+  id: string;
+  version: string;
+  /** true = es la versión que hoy se ve, se descarga y se indexa. */
+  actual: boolean;
+  /** Solo para versiones con archivo real; null en registros históricos sin PDF. */
+  hash: string | null;
+  hashCorto: string | null;
+  tamanoBytes: number;
+  tamano: string;
+  paginas: number | null;
+  nombreOriginal: string | null;
+  comentario: string | null;
+  autor: string;
+  fecha: string;
+  tieneArchivo: boolean;
+}
+
+export interface HistorialVersiones {
+  versionActual: string;
+  /** Subir y restaurar versiones (Super Administrador y Operador OCR); el servidor lo vuelve a comprobar. */
+  puedeGestionar: boolean;
+  versiones: VersionDocumento[];
+}
+
+/** Respuesta de POST /documentos/:id/versiones. */
+export interface VersionSubida {
+  id: string;
+  version: string;
+  anterior: string;
+  hash: string;
+  hashCorto: string;
+  tamanoBytes: number;
+  tamano: string;
+  paginas: number;
+  nombreOriginal: string;
+  comentario: string;
+  indexacion: 'pendiente';
+}
+
+export interface DocumentoEnPapelera {
+  id: string;
+  nombre: string;
+  folio: string;
+  formato: string;
+  version: string;
+  departamento: string;
+  clasificacion: string;
+  eliminadoPor: string;
+  eliminadoEn: string;
+  haceCuanto: string;
+  /** Cuándo se purgará solo; null si la purga automática está desactivada o hay retención legal. */
+  purgaAutomatica: string | null;
+  /** Fecha hasta la que la ley obliga a conservarlo; mientras tanto no se puede purgar. */
+  retencionHasta: string | null;
+  versiones: number;
+  tamanoArchivos: string;
+  tieneArchivo: boolean;
+}
+
+export interface EstadoPapelera {
+  diasRetencion: number;
+  /** Solo el Super Administrador purga (con su código 2FA). */
+  puedePurgar: boolean;
+  /** Objetos aún por borrar del almacenamiento (solo para quien puede purgar). */
+  borrado: { pendientes: number; con_error: number } | null;
+  documentos: DocumentoEnPapelera[];
+}
+
+export interface ResultadoVaciado {
+  ok: boolean;
+  purgados: number;
+  enRetencion: number;
+  restantes: number;
 }
 
 /** Único punto de acceso HTTP al backend. Cada método devuelve un Observable tipado por quien lo llama. */
@@ -170,8 +253,48 @@ export class ApiService {
   reindexarDocumento(id: string): Observable<EstadoIndexacion> {
     return this.http.post<EstadoIndexacion>(`${API_URL}/documentos/${encodeURIComponent(id)}/reindexar`, {});
   }
+  /** Envía el documento a la papelera (Super Administrador y Oficial de Cumplimiento). No borra nada. */
   eliminarDocumento(id: string): Observable<void> {
     return this.http.delete<void>(`${API_URL}/documentos/${encodeURIComponent(id)}`);
+  }
+
+  // Versiones
+  versionesDocumento(id: string): Observable<HistorialVersiones> {
+    return this.http.get<HistorialVersiones>(`${API_URL}/documentos/${encodeURIComponent(id)}/versiones`);
+  }
+  /** Sube una versión nueva (multipart). Igual que subirDocumento: emite el progreso para la barra. */
+  subirVersion(id: string, archivo: File, comentario: string): Observable<HttpEvent<VersionSubida>> {
+    const form = new FormData();
+    form.append('comentario', comentario.trim()); // antes del archivo: el servidor lo tiene aunque el PDF sea grande
+    form.append('archivo', archivo, archivo.name);
+    return this.http.post<VersionSubida>(`${API_URL}/documentos/${encodeURIComponent(id)}/versiones`, form, {
+      reportProgress: true, observe: 'events',
+    });
+  }
+  archivoVersion(id: string, versionId: string): Observable<Blob> {
+    return this.http.get(`${API_URL}/documentos/${encodeURIComponent(id)}/versiones/${encodeURIComponent(versionId)}/archivo`, { responseType: 'blob' });
+  }
+  descargarVersion(id: string, versionId: string): Observable<Blob> {
+    return this.http.get(`${API_URL}/documentos/${encodeURIComponent(id)}/versiones/${encodeURIComponent(versionId)}/descarga`, { responseType: 'blob' });
+  }
+  restaurarVersion(id: string, versionId: string): Observable<{ ok: boolean; version: string; anterior: string }> {
+    return this.http.post<{ ok: boolean; version: string; anterior: string }>(
+      `${API_URL}/documentos/${encodeURIComponent(id)}/versiones/${encodeURIComponent(versionId)}/restaurar`, {});
+  }
+
+  // Papelera
+  papelera(): Observable<EstadoPapelera> {
+    return this.http.get<EstadoPapelera>(`${API_URL}/papelera`);
+  }
+  restaurarDesdePapelera(id: string): Observable<{ ok: boolean; id: string }> {
+    return this.http.post<{ ok: boolean; id: string }>(`${API_URL}/papelera/${encodeURIComponent(id)}/restaurar`, {});
+  }
+  /** Purga DEFINITIVA (irreversible): pide el código 2FA del Super Administrador. */
+  purgarDocumento(id: string, factor: SegundoFactor): Observable<{ ok: boolean; versiones: number; objetos: number }> {
+    return this.http.post<{ ok: boolean; versiones: number; objetos: number }>(`${API_URL}/papelera/${encodeURIComponent(id)}/purgar`, factor);
+  }
+  vaciarPapelera(factor: SegundoFactor): Observable<ResultadoVaciado> {
+    return this.http.post<ResultadoVaciado>(`${API_URL}/papelera/vaciar`, factor);
   }
 
   // Búsqueda avanzada

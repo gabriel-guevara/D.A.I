@@ -3,12 +3,13 @@ import { config } from '../config.js';
 import { query, withTransaction } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
-import { formatBytes, hashCorto, idValido } from '../lib/format.js';
+import { formatBytes, hashCorto, idValido, textoLimpio } from '../lib/format.js';
 import { almacenamiento, generarClaveObjeto } from '../lib/storage.js';
 import { ErrorPdf, inspeccionarPdf } from '../lib/pdf.js';
 import { ErrorSubida, recibirPdf, tomarCupoDeSubida } from '../lib/subida.js';
 import { sanearNombreArchivo } from '../lib/archivo-http.js';
 import { despertarIndexador, solicitarIndexacion } from '../lib/indexador.js';
+import { confirmarSubida, descartarSubida, registrarIntencionSubida } from '../lib/papelera.js';
 import { normalizarTexto, recortar } from '../lib/texto-normalizar.js';
 import { LIMITES_TEXTO } from '../lib/texto.js';
 
@@ -51,8 +52,6 @@ router.post('/trabajos', async (req, res) => {
 
 const CAMPOS_SUBIDA = ['titulo', 'folio', 'departamento', 'tipoDocumental', 'clasificacion'];
 const FOLIO_VALIDO = /^[A-Za-z0-9][A-Za-z0-9._\/-]{2,59}$/;
-const textoLimpio = (v, max) =>
-  typeof v === 'string' ? v.normalize('NFC').replace(/[\u0000-\u001f\u007f-\u009f]/g, '').replace(/\s+/g, ' ').trim().slice(0, max) : '';
 
 /** Valida los metadatos contra los catálogos. Devuelve { error, status } o los ids resueltos. */
 async function validarMetadatos(campos, usuario) {
@@ -94,8 +93,9 @@ async function validarMetadatos(campos, usuario) {
  * Orden pensado para no dejar huérfanos:
  *  1. Todo se valida ANTES de tocar el almacenamiento o la base (tamaño, firma, apertura, contraseña, metadatos).
  *  2. Se reservan los ids (nextval) para construir la clave docs/{doc}/{ver}/{uuid}.pdf.
- *  3. Se sube el objeto. Si falla, no se ha creado ninguna fila.
- *  4. Se insertan documento + versión + "pendiente de indexar" en UNA transacción. Si falla, se borra el objeto.
+ *  3. Se apunta la clave en la cola de borrado ("subida_en_curso") y se sube el objeto. Si falla, no hay filas.
+ *  4. Se insertan documento + versión + "pendiente de indexar" en UNA transacción, que también tacha la clave de
+ *     la cola. Si falla, se borra el objeto (o queda en la cola para reintentarlo: nunca un huérfano olvidado).
  *  5. Ya respondida la subida, el indexador extrae el texto en segundo plano (src/lib/indexador.js): si la
  *     extracción falla, el documento sigue subido y su estado queda en "error" con opción de reprocesar.
  * Reservar ids en lugar de abrir la transacción antes evita tener una conexión de la base ocupada
@@ -132,11 +132,15 @@ router.post('/documentos', async (req, res) => {
               nextval(pg_get_serial_sequence('documento_versiones', 'id'))::text AS ver`);
     const clave = generarClaveObjeto(ids.doc, ids.ver);
     const st = almacenamiento();
+    // Fase 4: la clave se apunta ANTES de subir; si el proceso muriera entre la subida y la transacción,
+    // el mantenimiento borraría el objeto huérfano pasado el plazo (src/lib/papelera.js).
+    const intento = await registrarIntencionSubida(clave, st.driver);
 
     try {
       await st.guardar(clave, archivo.buffer, { tamano: archivo.tamano, tipo: 'application/pdf' });
     } catch (e) {
       console.error('No se pudo guardar el archivo en el almacenamiento:', e.message);
+      await descartarSubida(st, clave, intento);
       return res.status(502).json({ error: 'No se pudo guardar el archivo en el almacenamiento. No se creó el documento; intenta de nuevo.' });
     }
 
@@ -153,14 +157,16 @@ router.post('/documentos', async (req, res) => {
            req.user.id, u.nombre, u.email, archivo.tamano, paginas, archivo.sha256,
            st.driver === 'r2', clave, st.driver, nombreOriginal]);
         await c.query(
-          `INSERT INTO documento_versiones (id, documento_id, version, hash_sha256, tamano_bytes, storage_path, storage_driver, autor_id, comentario)
-           VALUES ($1,$2,'v1.0',$3,$4,$5,$6,$7,'Carga inicial')`,
-          [ids.ver, ids.doc, archivo.sha256, archivo.tamano, clave, st.driver, req.user.id]);
+          `INSERT INTO documento_versiones (id, documento_id, version, hash_sha256, tamano_bytes, storage_path, storage_driver,
+                                            nombre_original, paginas, autor_id, comentario)
+           VALUES ($1,$2,'v1.0',$3,$4,$5,$6,$7,$8,$9,'Carga inicial')`,
+          [ids.ver, ids.doc, archivo.sha256, archivo.tamano, clave, st.driver, nombreOriginal, paginas, req.user.id]);
         await solicitarIndexacion(c, ids.doc, { motivo: 'subida', usuarioId: req.user.id });
+        await confirmarSubida(c, intento); // en la MISMA transacción: el objeto ya tiene dueño
       });
     } catch (e) {
-      // La base falló DESPUÉS de subir: se borra el objeto para no dejar un archivo sin documento.
-      await st.borrar(clave).catch((err) => console.error(`Objeto huérfano sin borrar (${clave}):`, err.message));
+      // La base falló DESPUÉS de subir: se borra el objeto (o queda en la cola de borrado si tampoco se puede).
+      await descartarSubida(st, clave, intento);
       if (e.code === '23505') return res.status(409).json({ error: 'Ya existe un documento con ese folio.' });
       throw e;
     }

@@ -1,0 +1,217 @@
+<div class="min-h-screen bg-slate-50 flex">
+  <app-barraizq active="papelera"></app-barraizq>
+
+  <div class="flex-1 flex flex-col min-w-0">
+    <app-navbar></app-navbar>
+
+    <main class="flex-1 overflow-y-auto p-6 space-y-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <img width="24" height="24" src="https://img.icons8.com/ios-filled/50/trash.png" alt="" />
+            Papelera
+          </h1>
+          <p class="text-sm text-slate-500 mt-1 max-w-3xl">
+            Los documentos eliminados conservan su archivo, sus versiones y su texto hasta que se purgan.
+            @if (estado(); as e) {
+              @if (e.diasRetencion > 0) {
+                Se purgan automáticamente a los <span class="font-medium text-slate-700">{{ e.diasRetencion }} días</span>.
+              } @else {
+                La purga automática está desactivada: solo se purgan a mano.
+              }
+            }
+          </p>
+        </div>
+        @if (estado()?.puedePurgar) {
+          <button
+            (click)="abrirPurga({ tipo: 'todo' })"
+            [disabled]="purgables() === 0"
+            class="text-[13px] font-semibold rounded-lg px-3 py-2 bg-red-600 hover:bg-red-700 text-white disabled:opacity-40"
+          >
+            Vaciar papelera
+          </button>
+        }
+      </div>
+
+      @if (aviso()) {
+        <p class="text-[13px] rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 px-3 py-2" role="status">{{ aviso() }}</p>
+      }
+
+      @if (cargando()) {
+        <p class="text-[13px] text-slate-400">Cargando la papelera…</p>
+      } @else if (sinPermiso()) {
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900" role="alert">
+          <p class="font-bold">Sin acceso a la papelera</p>
+          <p>Solo el Super Administrador y el Oficial de Cumplimiento pueden ver y restaurar documentos eliminados.</p>
+        </div>
+      } @else if (errorCarga()) {
+        <div class="text-[13px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2" role="alert">
+          {{ errorCarga() }}
+          <button (click)="cargar()" class="ml-2 underline">Reintentar</button>
+        </div>
+      } @else if (estado(); as e) {
+        @if (e.borrado && e.borrado.pendientes > 0) {
+          <p class="text-[12px] rounded-lg border border-slate-200 bg-white text-slate-600 px-3 py-2">
+            {{ e.borrado.pendientes }} {{ e.borrado.pendientes === 1 ? 'archivo purgado se está' : 'archivos purgados se están' }} borrando del almacenamiento
+            @if (e.borrado.con_error > 0) {
+              <span class="text-amber-700">({{ e.borrado.con_error }} con error: se reintentan solos)</span>
+            }.
+          </p>
+        }
+
+        <div class="bg-white rounded-xl border border-slate-200">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-100">
+            <p class="text-[14px] text-slate-900 font-bold">
+              {{ e.documentos.length }} {{ e.documentos.length === 1 ? 'documento' : 'documentos' }} en la papelera
+            </p>
+            <input
+              type="search"
+              [ngModel]="filtro()"
+              (ngModelChange)="filtro.set($event)"
+              placeholder="Filtrar por nombre, folio o departamento"
+              aria-label="Filtrar la papelera"
+              class="w-full sm:w-72 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          @if (documentos().length === 0) {
+            <p class="px-4 py-8 text-center text-[13px] text-slate-400">
+              {{ e.documentos.length === 0 ? 'La papelera está vacía.' : 'Ningún documento coincide con el filtro.' }}
+            </p>
+          } @else {
+            <ul class="divide-y divide-slate-100">
+              @for (d of documentos(); track d.id) {
+                <li class="px-4 py-3 flex flex-col lg:flex-row lg:items-center gap-3">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[14px] font-semibold text-slate-800 break-words">{{ d.nombre }}</p>
+                    <p class="text-[12px] text-slate-500 mt-0.5">
+                      {{ d.folio }} · {{ d.departamento }} · {{ d.clasificacion }} · {{ d.version }}
+                      · {{ d.versiones }} {{ d.versiones === 1 ? 'versión' : 'versiones' }}
+                      @if (d.tieneArchivo) {
+                        · {{ d.tamanoArchivos }}
+                      } @else {
+                        · sin archivo original
+                      }
+                    </p>
+                    <p class="text-[12px] text-slate-500">
+                      Eliminado por <span class="text-slate-700 font-medium">{{ d.eliminadoPor }}</span> el {{ d.eliminadoEn }}
+                      <span class="text-slate-400">({{ d.haceCuanto }})</span>
+                    </p>
+                    <div class="flex flex-wrap gap-1.5 mt-1.5">
+                      @if (d.retencionHasta) {
+                        <span class="text-[12px] font-medium rounded-full px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200">
+                          Retención legal hasta {{ d.retencionHasta }}: no se puede purgar
+                        </span>
+                      } @else if (d.purgaAutomatica) {
+                        <span class="text-[12px] font-medium rounded-full px-2 py-0.5 bg-red-50 text-red-700">
+                          Purga automática: {{ d.purgaAutomatica }}
+                        </span>
+                      } @else {
+                        <span class="text-[12px] font-medium rounded-full px-2 py-0.5 bg-slate-100 text-slate-600">Sin purga automática</span>
+                      }
+                    </div>
+                    @if (errorFila()?.id === d.id) {
+                      <p class="text-[12px] text-red-600 mt-1" role="alert">{{ errorFila()?.mensaje }}</p>
+                    }
+                  </div>
+                  <div class="flex flex-wrap gap-2 shrink-0">
+                    <button
+                      (click)="restaurar(d)"
+                      [disabled]="restaurando() !== null"
+                      class="text-[13px] font-medium rounded-lg px-3 py-1.5 border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                    >
+                      {{ restaurando() === d.id ? 'Restaurando…' : 'Restaurar' }}
+                    </button>
+                    @if (e.puedePurgar) {
+                      <button
+                        (click)="abrirPurga({ tipo: 'uno', doc: d })"
+                        [disabled]="!!d.retencionHasta"
+                        [title]="d.retencionHasta ? 'Retención legal vigente' : 'Borra definitivamente el archivo, sus versiones y su texto'"
+                        class="text-[13px] font-medium rounded-lg px-3 py-1.5 border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-40"
+                      >
+                        Purgar
+                      </button>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <p class="text-[12px] text-slate-400">
+          Restaurar devuelve el documento a la <a routerLink="/biblioteca" class="text-blue-600 hover:underline">biblioteca</a> tal como estaba.
+          @if (e.puedePurgar) {
+            Purgar es irreversible, pide su código de verificación y queda registrado en la auditoría.
+          } @else {
+            Solo el Super Administrador puede purgar definitivamente.
+          }
+        </p>
+      }
+    </main>
+  </div>
+
+  <!-- Confirmación de purga: irreversible, pide el segundo factor -->
+  @if (purga(); as p) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40" (click)="cerrarPurga()"></div>
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-xl p-5 space-y-4" role="dialog" aria-modal="true" aria-labelledby="titulo-purga">
+        <h2 id="titulo-purga" class="text-[16px] font-bold text-red-700">
+          {{ p.tipo === 'uno' ? 'Purgar definitivamente' : 'Vaciar la papelera' }}
+        </h2>
+        <div class="text-[13px] text-slate-600 space-y-2">
+          @if (p.tipo === 'uno') {
+            <p>
+              Se borrarán para siempre <span class="font-semibold text-slate-800">«{{ p.doc.nombre }}»</span> ({{ p.doc.folio }}),
+              su archivo, {{ p.doc.versiones === 1 ? 'su única versión' : 'sus ' + p.doc.versiones + ' versiones' }} y su texto.
+            </p>
+          } @else {
+            <p>
+              Se purgarán <span class="font-semibold text-slate-800">{{ purgables() }}</span>
+              {{ purgables() === 1 ? 'documento' : 'documentos' }} con todos sus archivos y versiones. Los que tienen retención
+              legal vigente se conservan.
+            </p>
+          }
+          <p class="font-semibold text-red-700">Esta acción no se puede deshacer.</p>
+        </div>
+
+        <label class="block">
+          <span class="block text-[14px] text-slate-900 font-bold">
+            {{ usarRecuperacion() ? 'Código de recuperación' : 'Código de su app autenticadora' }}
+          </span>
+          <input
+            type="text"
+            [attr.inputmode]="usarRecuperacion() ? 'text' : 'numeric'"
+            autocomplete="one-time-code"
+            [attr.maxlength]="usarRecuperacion() ? 11 : 6"
+            [placeholder]="usarRecuperacion() ? 'XXXXX-XXXXX' : '123456'"
+            [ngModel]="codigo()"
+            (ngModelChange)="codigo.set($event)"
+            (keydown.enter)="confirmarPurga()"
+            class="mt-1 w-full max-w-56 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </label>
+        <button type="button" (click)="alternarRecuperacion()" class="text-[12px] text-blue-600 hover:underline">
+          {{ usarRecuperacion() ? 'Usar el código de mi app' : 'No tengo mi teléfono: usar un código de recuperación' }}
+        </button>
+
+        @if (errorPurga()) {
+          <p class="text-[13px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2" role="alert">{{ errorPurga() }}</p>
+        }
+
+        <div class="flex justify-end gap-2 pt-1">
+          <button (click)="cerrarPurga()" [disabled]="purgando()" class="text-[13px] rounded-lg px-3 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50">
+            Cancelar
+          </button>
+          <button
+            (click)="confirmarPurga()"
+            [disabled]="!codigoValido() || purgando()"
+            class="text-[13px] font-semibold rounded-lg px-3 py-2 bg-red-600 hover:bg-red-700 text-white disabled:opacity-40"
+          >
+            {{ purgando() ? 'Purgando…' : p.tipo === 'uno' ? 'Purgar definitivamente' : 'Vaciar papelera' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

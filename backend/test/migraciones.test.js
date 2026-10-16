@@ -89,7 +89,11 @@ test('seed: los documentos de demostración no tienen archivo ni clave ficticia'
   const { rows: [r] } = await base.pool.query(
     `SELECT count(*)::int AS total, count(*) FILTER (WHERE tiene_archivo)::int AS con_archivo,
             count(storage_path)::int AS con_clave, count(*) FILTER (WHERE cifrado_aes)::int AS cifrados FROM documentos`);
-  assert.deepEqual(r, { total: 12, con_archivo: 0, con_clave: 0, cifrados: 0 });
+  assert.deepEqual(r, { total: 13, con_archivo: 0, con_clave: 0, cifrados: 0 });
+  // Fase 4: uno de demostración está en la papelera, con su plazo de purga.
+  const { rows: [p] } = await base.pool.query(
+    `SELECT count(*)::int AS n, count(purgar_despues_de)::int AS con_plazo FROM documentos WHERE estado = 'papelera'`);
+  assert.deepEqual(p, { n: 1, con_plazo: 1 });
   const { rows: [v] } = await base.pool.query(`SELECT count(storage_path)::int AS n FROM documento_versiones`);
   assert.equal(v.n, 0);
 });
@@ -190,4 +194,56 @@ test('004: sin MFA_ENCRYPTION_KEY no se puede cifrar lo que hay en claro: la mig
   }
   assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['004_mfa_totp_real']);
   assert.ok(estaCifrado((await base.pool.query(`SELECT mfa_secreto FROM usuarios WHERE id = $1`, [id])).rows[0].mfa_secreto));
+});
+
+/** Deja la base como producción antes de la Fase 4 (sin columnas, tabla ni CHECK nuevos; 005 sin aplicar). */
+async function baseAntesDeFase4() {
+  await base.pool.query(`DROP TABLE IF EXISTS objetos_por_borrar`);
+  await base.pool.query(`DROP INDEX IF EXISTS documentos_papelera_idx`);
+  await base.pool.query(`ALTER TABLE documentos DROP CONSTRAINT IF EXISTS documentos_purgado_sin_archivo_check,
+                           DROP COLUMN IF EXISTS purgar_despues_de, DROP COLUMN IF EXISTS purgado_en, DROP COLUMN IF EXISTS purgado_por`);
+  await base.pool.query(`ALTER TABLE documento_versiones DROP COLUMN IF EXISTS nombre_original, DROP COLUMN IF EXISTS paginas`);
+  await base.pool.query(`ALTER TABLE documento_indexacion DROP CONSTRAINT documento_indexacion_motivo_check`);
+  await base.pool.query(`ALTER TABLE documento_indexacion ADD CONSTRAINT documento_indexacion_motivo_check
+                           CHECK (motivo IN ('subida','reproceso','backfill','script'))`);
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '005_papelera_versiones'`);
+}
+
+test('005: base como producción (papelera con datos, versión con archivo, lápida heredada); aditiva e idempotente', async () => {
+  await baseAntesDeFase4();
+  const insertar = async (folio, extra = {}) => {
+    const c = { estado: 'activo', tiene: false, path: null, driver: null, hash: null, nombre: null, paginas: 1, eliminado: null, ...extra };
+    return (await base.pool.query(
+      `INSERT INTO documentos (nombre, folio, formato, clasificacion_id, autor_nombre, estado, tiene_archivo, storage_path, storage_driver,
+                               hash_sha256, nombre_original, paginas, eliminado_en)
+       VALUES ($1, $1, 'pdf', 1, 'X', $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [folio, c.estado, c.tiene, c.path, c.driver, c.hash, c.nombre, c.paginas, c.eliminado])).rows[0].id;
+  };
+  // En la papelera desde hace 90 días: NO debe purgarse al desplegar (recibe un plazo completo).
+  const viejo = await insertar('EXP-005-PAPELERA', { estado: 'papelera', eliminado: new Date(Date.now() - 90 * 86_400_000) });
+  const conArchivo = await insertar('EXP-005-REAL', { tiene: true, path: 'docs/5/5/a.pdf', driver: 'r2', hash: 'b'.repeat(64), nombre: 'Real.pdf', paginas: 7 });
+  await base.pool.query(`INSERT INTO documento_versiones (documento_id, version, storage_path, storage_driver, hash_sha256)
+                         VALUES ($1, 'v1.0', 'docs/5/5/a.pdf', 'r2', $2)`, [conArchivo, 'b'.repeat(64)]);
+  // Lápida heredada que NO cumpliría la regla nueva (purgado con clave ficticia): la migración no debe fallar.
+  const lapida = await insertar('EXP-005-LAPIDA', { estado: 'purgado', path: 'demo/heredado/v1' });
+
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['005_papelera_versiones']);
+  const { rows: [p] } = await base.pool.query(
+    `SELECT purgar_despues_de > now() + interval '29 days' AS plazo_completo FROM documentos WHERE id = $1`, [viejo]);
+  assert.equal(p.plazo_completo, true);
+  const { rows: [v] } = await base.pool.query(`SELECT nombre_original, paginas FROM documento_versiones WHERE documento_id = $1`, [conArchivo]);
+  assert.deepEqual(v, { nombre_original: 'Real.pdf', paginas: 7 });
+  assert.equal((await base.pool.query(`SELECT storage_path FROM documentos WHERE id = $1`, [lapida])).rows[0].storage_path, 'demo/heredado/v1');
+  // Las reglas nuevas rigen para lo que se escriba desde ahora.
+  await assert.rejects(base.pool.query(`UPDATE documentos SET estado = 'purgado' WHERE id = $1`, [conArchivo]), /documentos_purgado_sin_archivo_check/);
+  await base.pool.query(`INSERT INTO documento_indexacion (documento_id, motivo) VALUES ($1, 'version')`, [conArchivo]);
+  await assert.rejects(base.pool.query(`INSERT INTO objetos_por_borrar (clave, storage_driver, motivo) VALUES ('x', 's3', 'purga')`), /objetos_por_borrar_driver_check/);
+
+  // Idempotente: aplicarla otra vez (sin registro de control) no cambia los plazos ni falla.
+  const antes = (await base.pool.query(`SELECT purgar_despues_de FROM documentos WHERE id = $1`, [viejo])).rows[0].purgar_despues_de;
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '005_papelera_versiones'`);
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['005_papelera_versiones']);
+  assert.deepEqual((await base.pool.query(`SELECT purgar_despues_de FROM documentos WHERE id = $1`, [viejo])).rows[0].purgar_despues_de, antes);
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), []);
+  await base.pool.query(`DELETE FROM documentos WHERE id IN ($1, $2, $3)`, [viejo, conArchivo, lapida]);
 });

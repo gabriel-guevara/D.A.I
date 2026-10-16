@@ -49,6 +49,25 @@ describe('Login', () => {
     expect(component.countdown()).toBeLessThanOrEqual(30);
   });
 
+  it('sincroniza el contador con la hora del servidor y avisa si el equipo está desfasado', () => {
+    vi.useFakeTimers();
+    try {
+      // Equipo 20 s atrasado: el servidor marca el segundo 05 de su paso; el equipo, el 45 del anterior.
+      vi.setSystemTime(new Date('2026-10-16T12:00:45.000Z'));
+      const recibido = Date.now();
+      component.sincronizarReloj(Date.parse('2026-10-16T12:01:05.000Z'), recibido, recibido);
+      expect(component.countdown()).toBe(25); // 30 − 5, como en la app del teléfono
+      expect(component.desfaseSegundos()).toBe(-20);
+      expect(component.relojDesfasado()).toBe(true);
+
+      component.sincronizarReloj(Date.now() + 2_000, recibido, recibido);
+      expect(component.relojDesfasado()).toBe(false); // 2 s no merecen aviso
+      component.sincronizarReloj(undefined, recibido, recibido); // API antigua sin "ahora": no rompe
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('con 2FA activo pasa al código y abre sesión', () => {
     credenciales({ paso: '2fa', mfaToken: 'mfa', metodo: 'TOTP' });
     expect(component.step()).toBe('twofactor');

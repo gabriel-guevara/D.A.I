@@ -132,6 +132,7 @@ test('usuario sin 2FA: tras la contraseña debe configurarlo; el token de alta n
   assert.equal(l.status, 200);
   assert.equal(l.cuerpo.paso, 'enrolar');
   assert.equal(l.cuerpo.mfaToken, undefined);
+  assert.ok(Math.abs(l.cuerpo.ahora - Date.now()) < 5_000, 'incluye la hora del servidor (ms) para sincronizar el contador');
   assert.equal((await get('/auth/me', l.cuerpo.enrolToken)).status, 401);
   assert.equal((await get('/cuenta/seguridad', l.cuerpo.enrolToken)).status, 401);
   const v = await post('/auth/verify-2fa', { mfaToken: l.cuerpo.enrolToken, code: '123456' });

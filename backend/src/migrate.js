@@ -133,6 +133,61 @@ export const MIGRACIONES = [
       await cifrarSecretosEnClaro(c);
     },
   },
+  {
+    // Fase 4: papelera real y versiones. Todo ADITIVO: columnas nuevas (sin tocar las existentes), una tabla
+    // nueva (cola de borrado de objetos) y CHECK ampliados (aceptan lo que ya aceptaban y algo más).
+    nombre: '005_papelera_versiones',
+    async up(c) {
+      // Plazo de la purga automática y rastro de la purga (la fila queda como "lápida": estado 'purgado').
+      for (const columna of [
+        'purgar_despues_de timestamptz',
+        'purgado_en timestamptz',
+        'purgado_por bigint REFERENCES usuarios(id) ON DELETE SET NULL',
+      ]) await c.query(`ALTER TABLE documentos ADD COLUMN IF NOT EXISTS ${columna}`);
+      // Lo que YA estaba en la papelera recibe un plazo completo desde el despliegue: nada se purga por sorpresa.
+      await c.query(`UPDATE documentos SET purgar_despues_de = now() + interval '30 days'
+                      WHERE estado = 'papelera' AND purgar_despues_de IS NULL`);
+      await c.query(`CREATE INDEX IF NOT EXISTS documentos_papelera_idx ON documentos (purgar_despues_de) WHERE estado = 'papelera'`);
+      // Un documento purgado nunca apunta a un objeto. NOT VALID: se exige a partir de ahora sin revisar filas
+      // antiguas (si una heredada no cumpliera, la migración fallaría y la API no arrancaría).
+      await c.query(`ALTER TABLE documentos DROP CONSTRAINT IF EXISTS documentos_purgado_sin_archivo_check`);
+      await c.query(`ALTER TABLE documentos ADD CONSTRAINT documentos_purgado_sin_archivo_check
+                     CHECK (estado <> 'purgado' OR (NOT tiene_archivo AND storage_path IS NULL)) NOT VALID`);
+
+      // Cada versión guarda lo necesario para volver a ser la actual (nombre del archivo y páginas).
+      await c.query(`ALTER TABLE documento_versiones ADD COLUMN IF NOT EXISTS nombre_original text`);
+      await c.query(`ALTER TABLE documento_versiones ADD COLUMN IF NOT EXISTS paginas integer`);
+      await c.query(`UPDATE documento_versiones v SET nombre_original = d.nombre_original, paginas = d.paginas
+                       FROM documentos d
+                      WHERE v.documento_id = d.id AND v.storage_path IS NOT NULL AND v.storage_path = d.storage_path
+                        AND v.nombre_original IS NULL`);
+
+      // Nuevos motivos de la cola de texto: una versión nueva o restaurada se vuelve a indexar.
+      await c.query(`ALTER TABLE documento_indexacion DROP CONSTRAINT IF EXISTS documento_indexacion_motivo_check`);
+      await c.query(`ALTER TABLE documento_indexacion ADD CONSTRAINT documento_indexacion_motivo_check
+                     CHECK (motivo IN ('subida','reproceso','backfill','script','version','restaurar_version'))`);
+
+      // Cola PERSISTENTE de objetos por borrar del almacenamiento (patrón "outbox", src/lib/papelera.js).
+      await c.query(`CREATE TABLE IF NOT EXISTS objetos_por_borrar (
+        id             bigserial PRIMARY KEY,
+        clave          text NOT NULL,
+        storage_driver text NOT NULL,
+        documento_id   bigint REFERENCES documentos(id) ON DELETE SET NULL,
+        motivo         text NOT NULL,
+        no_antes_de    timestamptz NOT NULL DEFAULT now(),
+        intentos       integer NOT NULL DEFAULT 0,
+        ultimo_error   text,
+        creado_en      timestamptz NOT NULL DEFAULT now())`);
+      for (const [nombre, check] of [
+        ['objetos_por_borrar_driver_check', `storage_driver IN ('local','r2')`],
+        ['objetos_por_borrar_motivo_check', `motivo IN ('purga','subida_fallida','subida_en_curso')`],
+      ]) {
+        await c.query(`ALTER TABLE objetos_por_borrar DROP CONSTRAINT IF EXISTS ${nombre}`);
+        await c.query(`ALTER TABLE objetos_por_borrar ADD CONSTRAINT ${nombre} CHECK (${check})`);
+      }
+      await c.query(`CREATE INDEX IF NOT EXISTS objetos_por_borrar_cola ON objetos_por_borrar (no_antes_de, id)`);
+    },
+  },
 ];
 
 /**

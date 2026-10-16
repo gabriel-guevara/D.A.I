@@ -95,6 +95,13 @@
             <span class="text-[14px] text-slate-900 font-bold">Código de su app autenticadora</span>
             <span class="text-xs text-blue-600 font-medium whitespace-nowrap" aria-live="polite">Cambia en {{ countdown() }} s</span>
           </div>
+          @if (relojDesfasado()) {
+            <p class="text-[12px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 mb-2">
+              La hora de este equipo está {{ desfaseSegundos() > 0 ? 'adelantada' : 'atrasada' }} unos
+              {{ desfaseSegundos() > 0 ? desfaseSegundos() : -desfaseSegundos() }} s. El contador ya está corregido;
+              conviene activar la hora automática en Windows.
+            </p>
+          }
           <div class="grid grid-cols-6 gap-2 mb-6">
             @for (digit of otpDigits(); track $index) {
             <input [id]="'otp-' + $index" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1"
