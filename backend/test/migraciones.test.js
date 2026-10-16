@@ -96,6 +96,18 @@ test('seed: los documentos de demostración no tienen archivo ni clave ficticia'
   assert.deepEqual(p, { n: 1, con_plazo: 1 });
   const { rows: [v] } = await base.pool.query(`SELECT count(storage_path)::int AS n FROM documento_versiones`);
   assert.equal(v.n, 0);
+  // Fase 5: carpetas demo, una solicitud pendiente, sin cola de escáner inventada ni notificaciones con botones,
+  // y ninguna notificación revela un documento por encima del nivel de quien la recibe.
+  const { rows: [f5] } = await base.pool.query(
+    `SELECT (SELECT count(*)::int FROM carpetas) AS carpetas, (SELECT count(*)::int FROM documentos WHERE carpeta_id IS NOT NULL) AS en_carpeta,
+            (SELECT count(*)::int FROM solicitudes_movimiento WHERE estado = 'pendiente') AS pendientes,
+            (SELECT count(*)::int FROM ocr_trabajos) AS cola,
+            (SELECT count(*)::int FROM notificaciones WHERE acciones <> '[]'::jsonb) AS con_acciones,
+            (SELECT count(*)::int FROM usuarios WHERE mfa_metodo <> 'TOTP') AS mfa_inventado,
+            (SELECT count(*)::int FROM notificaciones n JOIN usuarios u ON u.id = n.usuario_id JOIN niveles_acceso na ON na.id = u.nivel_id
+               JOIN documentos d ON d.id = n.documento_id JOIN clasificaciones c ON c.id = d.clasificacion_id
+              WHERE c.nivel_minimo > na.rango) AS filtradas`);
+  assert.deepEqual(f5, { carpetas: 3, en_carpeta: 4, pendientes: 1, cola: 0, con_acciones: 0, mfa_inventado: 0, filtradas: 0 });
 });
 
 test('003: base de producción sin la tabla de indexación ni el origen del texto; aditiva e idempotente', async () => {
@@ -246,4 +258,69 @@ test('005: base como producción (papelera con datos, versión con archivo, láp
   assert.deepEqual((await base.pool.query(`SELECT purgar_despues_de FROM documentos WHERE id = $1`, [viejo])).rows[0].purgar_despues_de, antes);
   assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), []);
   await base.pool.query(`DELETE FROM documentos WHERE id IN ($1, $2, $3)`, [viejo, conArchivo, lapida]);
+});
+
+/** Deja la base como producción antes de la Fase 5 (sin carpetas ni solicitudes, trigger antiguo; 006 sin aplicar). */
+async function baseAntesDeFase5() {
+  await base.pool.query(`DROP TABLE IF EXISTS solicitudes_movimiento`);
+  await base.pool.query(`ALTER TABLE documentos DROP COLUMN IF EXISTS carpeta_id`);
+  await base.pool.query(`DROP TABLE IF EXISTS carpetas`);
+  await base.pool.query(`CREATE OR REPLACE FUNCTION set_actualizado_en() RETURNS trigger AS $$
+                         BEGIN NEW.actualizado_en = now(); RETURN NEW; END $$ LANGUAGE plpgsql`);
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '006_carpetas'`);
+}
+
+test('006: base como producción (documentos existentes); aditiva, idempotente y el trigger sigue igual salvo al mover', async () => {
+  await baseAntesDeFase5();
+  const hace = new Date(Date.now() - 7 * 86_400_000);
+  const { rows: [doc] } = await base.pool.query(
+    `INSERT INTO documentos (nombre, folio, formato, clasificacion_id, autor_nombre, creado_en, actualizado_en)
+     VALUES ('Prod.pdf', 'EXP-006-PROD', 'pdf', 1, 'X', $1, $1) RETURNING id, actualizado_en`, [hace]);
+  const antes = (await base.pool.query(`SELECT count(*)::int AS n FROM documentos`)).rows[0].n;
+
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['006_carpetas']);
+  const fila = async () => (await base.pool.query(`SELECT carpeta_id, actualizado_en FROM documentos WHERE id = $1`, [doc.id])).rows[0];
+  const f = await fila();
+  assert.equal(f.carpeta_id, null, 'lo existente queda "Sin carpeta"');
+  assert.equal(f.actualizado_en.getTime(), doc.actualizado_en.getTime(), 'la migración no toca las fechas');
+  assert.equal((await base.pool.query(`SELECT count(*)::int AS n FROM documentos`)).rows[0].n, antes, 'no borra nada');
+
+  // Reglas nuevas: nombre único sin distinguir mayúsculas, longitud, estado válido y una sola pendiente por documento.
+  const { rows: [ca] } = await base.pool.query(`INSERT INTO carpetas (nombre) VALUES ('Contratos') RETURNING id`);
+  await assert.rejects(base.pool.query(`INSERT INTO carpetas (nombre) VALUES ('CONTRATOS')`), /carpetas_nombre_uq/);
+  await assert.rejects(base.pool.query(`INSERT INTO carpetas (nombre) VALUES ('x')`), /carpetas_nombre_check/);
+  const { rows: [u] } = await base.pool.query(`INSERT INTO usuarios (nombre, email, rol_id, nivel_id) VALUES ('S', 's-006@ejemplo.test', 2, 2) RETURNING id`);
+  const pedir = () => base.pool.query(`INSERT INTO solicitudes_movimiento (documento_id, carpeta_destino_id, solicitante_id, motivo)
+                                       VALUES ($1, $2, $3, 'motivo de prueba')`, [doc.id, ca.id, u.id]);
+  await pedir();
+  await assert.rejects(pedir(), /solicitudes_movimiento_pendiente_uq/);
+  await assert.rejects(base.pool.query(`UPDATE solicitudes_movimiento SET estado = 'otra'`), /solicitudes_movimiento_estado_check/);
+  await base.pool.query(`UPDATE solicitudes_movimiento SET estado = 'rechazada'`);
+  await pedir(); // resuelta la anterior, se puede pedir otra
+
+  // Trigger: un cambio real sigue actualizando la fecha; mover con SET LOCAL no.
+  const c = await base.pool.connect();
+  try {
+    await c.query('BEGIN');
+    await c.query(`SET LOCAL dai.conservar_actualizado = 'on'`);
+    await c.query(`UPDATE documentos SET carpeta_id = $2 WHERE id = $1`, [doc.id, ca.id]);
+    await c.query('COMMIT');
+  } finally {
+    c.release();
+  }
+  assert.equal((await fila()).actualizado_en.getTime(), doc.actualizado_en.getTime());
+  await base.pool.query(`UPDATE documentos SET nombre = 'Prod v2.pdf' WHERE id = $1`, [doc.id]);
+  assert.ok((await fila()).actualizado_en > doc.actualizado_en, 'el ajuste era LOCAL: no se quedó pegado a la conexión');
+
+  // Idempotente: aplicarla otra vez (sin registro de control) no falla ni pierde lo asignado.
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '006_carpetas'`);
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['006_carpetas']);
+  assert.equal(String((await fila()).carpeta_id), String(ca.id));
+  assert.equal((await base.pool.query(`SELECT count(*)::int AS n FROM solicitudes_movimiento`)).rows[0].n, 2);
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), []);
+  await base.pool.query(`DELETE FROM solicitudes_movimiento`);
+  await base.pool.query(`DELETE FROM carpetas WHERE id = $1`, [ca.id]);
+  assert.equal((await fila()).carpeta_id, null, 'borrar una carpeta deja el documento "Sin carpeta" (ON DELETE SET NULL)');
+  await base.pool.query(`DELETE FROM documentos WHERE id = $1`, [doc.id]);
+  await base.pool.query(`DELETE FROM usuarios WHERE id = $1`, [u.id]);
 });
