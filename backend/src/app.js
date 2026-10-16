@@ -17,6 +17,7 @@ import busqueda from './routes/busqueda.js';
 import notificaciones from './routes/notificaciones.js';
 import seguridad from './routes/seguridad.js';
 import digitalizacion from './routes/digitalizacion.js';
+import cuenta from './routes/cuenta.js';
 
 export function crearApp() {
   const app = express();
@@ -32,6 +33,7 @@ export function crearApp() {
 
   app.use('/api/auth', auth);                       // público (login + 2FA); /me protegido dentro
   app.use('/api', requireAuth);                     // todo lo que sigue exige sesión
+  app.use('/api/cuenta', cuenta);                   // seguridad de mi cuenta (contraseña, 2FA)
   app.use('/api/catalogos', catalogos);
   app.use('/api/dashboard', dashboard);
   app.use('/api/documentos', documentos);
