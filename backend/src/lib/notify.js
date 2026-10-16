@@ -34,3 +34,28 @@ export async function notificarConsulta(req, doc) {
     console.error('No se pudo registrar la notificación de consulta:', e.message);
   }
 }
+
+/** Estilos por categoría (mismas clases que usa la pantalla de Notificaciones). */
+const ESTILOS = {
+  eliminado: { borde: 'border-l-red-500', badge: 'Papelera', badgeClase: 'bg-red-50 text-red-700', icono: '🗑️' },
+  version: { borde: 'border-l-blue-500', badge: 'Versiones', badgeClase: 'bg-blue-50 text-blue-700', icono: '📄' },
+};
+
+/**
+ * Avisa a los Super Administradores y Oficiales de Cumplimiento activos (papelera y versiones).
+ * Nunca rompe la petición principal: la acción ya ocurrió y quedó auditada.
+ * @param {{ categoria: 'eliminado'|'version', titulo: string, descripcion: string, meta?: string[], documentoId: number|string }} n
+ */
+export async function notificarGestores({ categoria, titulo, descripcion, meta = [], documentoId }) {
+  const e = ESTILOS[categoria];
+  try {
+    await query(
+      `INSERT INTO notificaciones (usuario_id, categoria, borde_clase, badge, badge_clase, icono, titulo, descripcion, meta, acciones, documento_id)
+       SELECT u.id, $1, $2, $3, $4, $5, $6, $7, $8::jsonb, '[]'::jsonb, $9
+         FROM usuarios u JOIN roles r ON r.id = u.rol_id
+        WHERE r.clave IN ('super-admin','compliance') AND u.activo`,
+      [categoria, e.borde, e.badge, e.badgeClase, e.icono, titulo, descripcion, JSON.stringify(meta), documentoId]);
+  } catch (err) {
+    console.error('No se pudo registrar la notificación:', err.message);
+  }
+}
