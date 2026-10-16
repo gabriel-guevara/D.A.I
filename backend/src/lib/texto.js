@@ -18,7 +18,7 @@ import { Worker } from 'node:worker_threads';
 export const LIMITES_TEXTO = Object.freeze({
   maxPaginas: 500, // páginas que se leen como mucho (el resto queda sin indexar y se avisa)
   maxCaracteresPagina: 10_000, // una página densa ronda 3.000-5.000; más suele ser basura de extracción
-  maxCaracteresDocumento: 500_000, // ≈ 150-250 páginas densas; acota el tamaño de los índices en la base
+  maxCaracteresDocumento: 1_000_000, // ≈ 220 páginas muy densas; con sus índices ocupa ~4 MB en la base (medido)
   minCaracteresPagina: 3, // menos letras/números que esto = página sin capa de texto (escaneada)
   tiempoMaximoMs: 180_000, // 3 min por documento con 0,1 CPU; al pasarlo se guarda lo extraído hasta ahí
   memoriaMb: 192, // heap del worker; el PDF en sí va fuera del heap (ArrayBuffer transferido)

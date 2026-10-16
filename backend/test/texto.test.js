@@ -94,7 +94,7 @@ test('tiempo agotado sin texto es un error; los fallos vuelven como error y nunc
 
 test('los límites por defecto son los documentados', () => {
   assert.deepEqual({ ...LIMITES_TEXTO }, {
-    maxPaginas: 500, maxCaracteresPagina: 10_000, maxCaracteresDocumento: 500_000,
+    maxPaginas: 500, maxCaracteresPagina: 10_000, maxCaracteresDocumento: 1_000_000,
     minCaracteresPagina: 3, tiempoMaximoMs: 180_000, memoriaMb: 192,
   });
 });

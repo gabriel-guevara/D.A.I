@@ -235,16 +235,18 @@ export function presentarIndexacion(fila) {
     sin_texto: 'El PDF no tiene capa de texto (probablemente es un escaneo). No aparecerá en búsquedas por contenido.',
     error: fila.error ?? 'No se pudo extraer el texto.',
   }[fila.estado];
+  // Los contadores solo valen para un resultado terminado; en cola o en curso serían los de la vez anterior.
+  const terminado = fila.estado === 'procesado' || fila.estado === 'sin_texto';
   return {
     estado: fila.estado,
     etiqueta: ETIQUETAS[fila.estado],
     descripcion,
     aviso: fila.estado === 'procesado' && fila.limite ? AVISOS_LIMITE[fila.limite] : null,
-    paginasConTexto: fila.paginas_con_texto ?? null,
-    paginasTotales: fila.paginas_totales ?? null,
-    caracteres: fila.caracteres ?? null,
+    paginasConTexto: terminado ? fila.paginas_con_texto : null,
+    paginasTotales: terminado ? fila.paginas_totales : null,
+    caracteres: terminado ? fila.caracteres : null,
     errorCodigo: fila.error_codigo ?? null,
-    fecha: fechaHoraCO(fila.procesado_en ?? fila.solicitado_en),
+    fecha: fechaHoraCO(fila.estado === 'pendiente' || fila.estado === 'procesando' ? fila.solicitado_en : fila.procesado_en),
   };
 }
 
