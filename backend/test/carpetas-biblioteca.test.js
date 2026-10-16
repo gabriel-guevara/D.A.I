@@ -412,7 +412,7 @@ test('solicitudes: dos aprobaciones simultáneas → solo una gana (FOR UPDATE)'
 });
 
 // ---------------------------------------------------------------------------------------------- otros
-test('notificaciones: devuelven documentoId; la de papelera usa la etiqueta "Papelera"', async () => {
+test('notificaciones: documentoId solo si el documento sigue activo; la de papelera usa la etiqueta "Papelera"', async () => {
   const lista = (await get('/notificaciones', 'cumplimiento')).cuerpo;
   const n = lista.find((x) => x.title === 'Solicitud aprobada: Expediente RH.tiff');
   assert.equal(n.documentoId, docs.E);
@@ -421,7 +421,8 @@ test('notificaciones: devuelven documentoId; la de papelera usa la etiqueta "Pap
   await base.pool.query(`UPDATE documentos SET estado = 'activo' WHERE id = $1`, [docs.F]);
   assert.equal((await del(`/documentos/${docs.F}`, 'admin')).status, 204);
   const p = (await get('/notificaciones', 'admin')).cuerpo.find((x) => x.title === 'Documento enviado a la Papelera: Fuera.pdf');
-  assert.deepEqual([p.badge, p.documentoId], ['Papelera', docs.F]);
+  assert.deepEqual([p.badge, p.documentoId], ['Papelera', null], 'en la papelera: abrirlo daría 404, no se ofrece');
+  assert.equal(String((await fila(`SELECT documento_id FROM notificaciones WHERE id = $1`, [p.id])).documento_id), docs.F, 'el vínculo se conserva en la base');
 });
 
 test('crear usuario: con nivel → 201 (el fallo del formulario era no enviarlo); sin nivel → 400; solo TOTP', async () => {
