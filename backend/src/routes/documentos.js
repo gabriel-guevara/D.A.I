@@ -1,12 +1,14 @@
 import { Router } from 'express';
-import { pipeline } from 'node:stream/promises';
-import { query } from '../db.js';
+import { query, withTransaction } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
 import { notificarConsulta } from '../lib/notify.js';
-import { escapeLike, fechaCorta, fechaHoraCO, formatBytes, hashCorto, haceCuanto, idValido } from '../lib/format.js';
-import { almacenamiento, ErrorObjetoNoEncontrado, ErrorRangoInvalido } from '../lib/storage.js';
-import { contentDisposition, interpretarRango, sha256DeStream } from '../lib/archivo-http.js';
+import { escapeLike, fechaHoraCO, formatBytes, hashCorto, haceCuanto, idValido } from '../lib/format.js';
+import { almacenamiento, ErrorObjetoNoEncontrado } from '../lib/storage.js';
+import { sha256DeStream } from '../lib/archivo-http.js';
+import { enviarPdf, NO_DISPONIBLE } from '../lib/enviar-archivo.js';
+import { diasRetencionPapelera, despertarMantenimiento } from '../lib/papelera.js';
+import versiones, { ROLES_VERSIONES } from './versiones.js';
 import { COLUMNAS_INDEXACION, despertarIndexador, presentarIndexacion, solicitarIndexacion } from '../lib/indexador.js';
 
 const router = Router();
@@ -22,7 +24,8 @@ const ROLES_INTEGRIDAD = ['super-admin', 'compliance'];
 // Reprocesar el texto: quienes ingresan documentos (operador OCR) y el administrador. Cumplimiento y lectores
 // solo consultan: reprocesar cambia el índice de búsqueda (no el original), y es tarea de la ingesta.
 const ROLES_REINDEXAR = ['super-admin', 'ocr-operator'];
-const NO_DISPONIBLE = 'Archivo no disponible en este entorno';
+// Enviar a la papelera (y restaurar desde ella): decisión de gestión documental y cumplimiento, no de la ingesta.
+export const ROLES_PAPELERA = ['super-admin', 'compliance'];
 const SIN_ARCHIVO = 'Este documento no tiene archivo original cargado (solo metadatos y capa de texto).';
 
 /** Documento visible para el usuario (mismas reglas de estado y nivel que el detalle), con los datos de su archivo. */
@@ -113,61 +116,22 @@ router.get('/:id', async (req, res) => {
     indexacion,
     textoOrigen: r.tiene_archivo ? 'pdf' : 'demo',
     puedeReindexar: r.tiene_archivo && ROLES_REINDEXAR.includes(req.user.rol),
+    // Fase 4: versiones (solo PDF) y papelera. El servidor vuelve a comprobarlo en cada acción.
+    puedeGestionarVersiones: r.formato === 'pdf' && ROLES_VERSIONES.includes(req.user.rol),
+    puedeEliminar: ROLES_PAPELERA.includes(req.user.rol),
     retencion: r.retencion_anios ? `${r.retencion_anios} Años${r.vence_retencion ? ` (Vence ${new Date(r.vence_retencion).getUTCFullYear()})` : ''}` : null,
     cifrado: r.tiene_archivo && r.storage_driver === 'r2', ocr: r.ocr_procesado, firmadoPor: r.firmado_por, firmaValida: r.firma_valida,
   });
 });
 
-/**
- * Envía el PDF real. modo "inline" (visor) o "attachment" (descarga). Soporta Range (206/416).
- * Cada acceso se audita: ver_archivo o descargar.
- */
+/** Envía el PDF real de la versión ACTUAL: "inline" (visor) o "attachment" (descarga). Auditado. */
 const servirArchivo = (modo) => async (req, res) => {
   const d = await documentoConArchivo(req);
   if (!d) return res.status(404).json({ error: 'Documento no encontrado' });
   if (!d.tiene_archivo) return res.status(404).json({ error: SIN_ARCHIVO, codigo: 'sin_archivo' });
-
-  const st = almacenamiento();
-  // Subido con otro driver (p. ej. en local y ahora se usa R2): el objeto no está aquí.
-  if (d.storage_driver !== st.driver) return res.status(404).json({ error: NO_DISPONIBLE, codigo: 'no_disponible' });
-
-  const tamanoEsperado = Number(d.tamano_bytes);
-  const rango = interpretarRango(req.headers.range, tamanoEsperado);
-  const no416 = () => res.status(416).set('Content-Range', `bytes */${tamanoEsperado}`).json({ error: 'Rango solicitado no válido' });
-  if (rango === 'no-satisfacible') return no416();
-
-  let r;
-  try {
-    r = await st.leer(d.storage_path, rango);
-  } catch (e) {
-    if (e instanceof ErrorObjetoNoEncontrado) return res.status(404).json({ error: NO_DISPONIBLE, codigo: 'no_disponible' });
-    if (e instanceof ErrorRangoInvalido) return no416();
-    throw e;
-  }
-
-  await registrarAuditoria(req, modo === 'attachment' ? 'descargar' : 'ver_archivo', d.id,
-    r.parcial ? { rango: `${r.inicio}-${r.fin}`, tamano: r.tamano } : { tamano: r.tamano });
-
-  res.status(r.parcial ? 206 : 200).set({
-    'Content-Type': 'application/pdf',
-    'Content-Length': String(r.longitud),
-    'Content-Disposition': contentDisposition(modo, d.nombre_original),
-    'Accept-Ranges': 'bytes',
-    'Cache-Control': 'private, no-store', // nunca en cachés compartidas ni en el disco del navegador
-    'X-Content-Type-Options': 'nosniff', // el navegador no "adivina" otro tipo
+  await enviarPdf(req, res, {
+    documentoId: d.id, clave: d.storage_path, driver: d.storage_driver, tamano: Number(d.tamano_bytes), nombre: d.nombre_original, modo,
   });
-  if (r.parcial) res.set('Content-Range', `bytes ${r.inicio}-${r.fin}/${r.tamano}`);
-  if (req.method === 'HEAD') {
-    r.stream.destroy?.();
-    return res.end();
-  }
-  try {
-    await pipeline(r.stream, res);
-  } catch (e) {
-    // Cliente que cierra a mitad (cambia de página, cancela): no es un error del servidor.
-    if (e.code !== 'ERR_STREAM_PREMATURE_CLOSE') console.error('Error enviando archivo:', e.message);
-    res.destroy();
-  }
 };
 
 router.get('/:id/archivo', servirArchivo('inline'));
@@ -256,19 +220,8 @@ router.get('/:id/paginas/:n', async (req, res) => {
   res.json({ pagina: p.pagina, totalPaginas: p.total, seccion: p.seccion, texto: p.texto, origen: p.origen, confianza: p.confianza && Number(p.confianza) });
 });
 
-/** Historial de versiones. */
-router.get('/:id/versiones', async (req, res) => {
-  if (!idValido(req.params.id)) return res.status(404).json({ error: 'No encontrado' });
-  const { rows } = await query(
-    `SELECT v.version, v.tamano_bytes, v.comentario, v.creado_en, u.nombre AS autor
-       FROM documento_versiones v
-       JOIN documentos d ON d.id = v.documento_id
-       LEFT JOIN clasificaciones c ON c.id = d.clasificacion_id
-       LEFT JOIN usuarios u ON u.id = v.autor_id
-      WHERE v.documento_id = $2 AND ${ACCESO}
-      ORDER BY v.creado_en DESC`, [req.user.rango, req.params.id]);
-  res.json(rows.map((v) => ({ version: v.version, tamano: formatBytes(v.tamano_bytes), comentario: v.comentario, autor: v.autor, fecha: fechaCorta(v.creado_en) })));
-});
+// Versiones: listar, subir, ver/descargar una concreta y restaurarla como actual (routes/versiones.js).
+router.use('/:id/versiones', versiones);
 
 /** Historial de auditoría del documento (solo admin / cumplimiento). */
 router.get('/:id/auditoria', requireRole('super-admin', 'compliance'), async (req, res) => {
@@ -283,25 +236,37 @@ router.get('/:id/auditoria', requireRole('super-admin', 'compliance'), async (re
   })));
 });
 
-/** Enviar a la papelera de seguridad (borrado lógico) y avisar a admin/cumplimiento. */
-router.delete('/:id', requireRole('super-admin', 'compliance'), async (req, res) => {
+/**
+ * Enviar a la papelera (borrado LÓGICO): el documento deja de verse en biblioteca, búsqueda y detalle, pero
+ * NADA se borra: ni el archivo, ni sus versiones, ni su texto. Se puede restaurar tal cual (routes/papelera.js).
+ * Queda programada la purga automática (PAPELERA_DIAS_RETENCION días; 0 = solo purga manual).
+ */
+router.delete('/:id', requireRole(...ROLES_PAPELERA), async (req, res) => {
   if (!idValido(req.params.id)) return res.status(404).json({ error: 'Documento no encontrado' });
-  const { rows: [d] } = await query(
-    `UPDATE documentos d SET estado = 'papelera', eliminado_en = now(), eliminado_por = $2
-       FROM (SELECT d2.id FROM documentos d2 LEFT JOIN clasificaciones c ON c.id = d2.clasificacion_id
-              WHERE d2.id = $1 AND d2.estado = 'activo' AND (c.id IS NULL OR c.nivel_minimo <= $3)) ok
-      WHERE d.id = ok.id RETURNING d.id, d.nombre`, [req.params.id, req.user.id, req.user.rango]);
+  const dias = diasRetencionPapelera();
+  const d = await withTransaction(async (c) => {
+    const { rows: [doc] } = await c.query(
+      `UPDATE documentos d SET estado = 'papelera', eliminado_en = now(), eliminado_por = $2,
+              purgar_despues_de = CASE WHEN $4::int > 0 THEN now() + make_interval(days => $4::int) END
+         FROM (SELECT d2.id FROM documentos d2 LEFT JOIN clasificaciones c ON c.id = d2.clasificacion_id
+                WHERE d2.id = $1 AND d2.estado = 'activo' AND (c.id IS NULL OR c.nivel_minimo <= $3) ) ok
+        WHERE d.id = ok.id AND d.estado = 'activo' RETURNING d.id, d.nombre, d.folio, d.purgar_despues_de`, [req.params.id, req.user.id, req.user.rango, dias]);
+    if (!doc) return null;
+    const purga = doc.purgar_despues_de ? `Purga automática: ${fechaHoraCO(doc.purgar_despues_de)}` : 'Sin purga automática (solo manual)';
+    await c.query(
+      `INSERT INTO notificaciones (usuario_id, categoria, borde_clase, badge, badge_clase, icono, titulo, descripcion, meta, acciones, documento_id)
+       SELECT u.id, 'eliminado', 'border-l-red-500', 'ISO 27001 Sec. 8.3', 'bg-red-50 text-red-700', '🗑️',
+              $2, 'El expediente queda en la Papelera con su archivo y versiones intactos; se puede restaurar hasta su purga.', $3::jsonb,
+              '[]'::jsonb, $1
+         FROM usuarios u JOIN roles r ON r.id = u.rol_id
+        WHERE r.clave IN ('super-admin','compliance') AND u.activo`,
+      [doc.id, `Documento enviado a la Papelera: ${doc.nombre}`, JSON.stringify([`Folio: ${doc.folio}`, purga, `IP de Origen: ${req.ip}`])]);
+    return doc;
+  });
   if (!d) return res.status(404).json({ error: 'Documento no encontrado' });
 
-  await registrarAuditoria(req, 'eliminar', d.id, { nombre: d.nombre });
-  await query(
-    `INSERT INTO notificaciones (usuario_id, categoria, borde_clase, badge, badge_clase, icono, titulo, descripcion, meta, acciones, documento_id)
-     SELECT u.id, 'eliminado', 'border-l-red-500', 'ISO 27001 Sec. 8.3', 'bg-red-50 text-red-700', '🗑️',
-            $2, 'El expediente permanecerá bloqueado en retención inmutable antes de cualquier purga.', $3::jsonb,
-            '[{"label":"Restaurar Documento","style":"border"}]'::jsonb, $1
-       FROM usuarios u JOIN roles r ON r.id = u.rol_id
-      WHERE r.clave IN ('super-admin','compliance') AND u.activo`,
-    [d.id, `Documento enviado a Papelera de Seguridad: ${d.nombre}`, JSON.stringify([`IP de Origen: ${req.ip}`])]);
+  await registrarAuditoria(req, 'eliminar', d.id, { nombre: d.nombre, folio: d.folio, purgaAutomatica: d.purgar_despues_de ?? null });
+  despertarMantenimiento();
   res.status(204).end();
 });
 
