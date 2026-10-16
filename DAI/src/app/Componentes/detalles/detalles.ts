@@ -94,6 +94,10 @@ const ETIQUETAS_ACCION: Record<string, string> = {
   indexar_texto: 'Extracción del texto para búsqueda (sistema)',
   reindexar_texto: 'Reproceso del texto solicitado',
   invitar_usuario: 'Invitación de usuario',
+  mover_documento: 'Movido de carpeta',
+  solicitar_movimiento: 'Movimiento de carpeta solicitado',
+  aprobar_movimiento: 'Solicitud de movimiento aprobada',
+  rechazar_movimiento: 'Solicitud de movimiento rechazada',
 };
 
 @Component({
