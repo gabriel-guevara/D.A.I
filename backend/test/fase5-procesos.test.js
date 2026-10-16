@@ -41,9 +41,9 @@ function urlEsquema() {
 
 test('humo: node src/server.js real — migración 006, carpetas, mover, biblioteca y dashboard por HTTP', { timeout: 120_000 }, async () => {
   // Base "como producción antes de la Fase 5": sin las tablas de carpetas y sin 006 registrada.
-  await base.pool.query(`DROP TABLE solicitudes_movimiento`);
-  await base.pool.query(`ALTER TABLE documentos DROP COLUMN carpeta_id`);
-  await base.pool.query(`DROP TABLE carpetas`);
+  await base.pool.query(`DROP TABLE ${base.esquema}.solicitudes_movimiento`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.documentos DROP COLUMN carpeta_id`);
+  await base.pool.query(`DROP TABLE ${base.esquema}.carpetas`);
   await (await import('../src/migrate.js')).aplicarMigraciones(base.pool, {
     migraciones: (await import('../src/migrate.js')).MIGRACIONES.filter((m) => m.nombre !== '006_carpetas'), log: () => {},
   });

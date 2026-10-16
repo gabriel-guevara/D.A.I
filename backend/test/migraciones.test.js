@@ -24,7 +24,7 @@ test('base nueva (schema.sql): aplica todas y una segunda ejecución no hace nad
 });
 
 test('base heredada que ya tenía la categoría "consulta" pero no la tabla de control', async () => {
-  await base.pool.query('DROP TABLE migraciones_aplicadas');
+  await base.pool.query(`DROP TABLE ${base.esquema}.migraciones_aplicadas`);
   // Todas son idempotentes: sin tabla de control se vuelven a aplicar sobre lo que ya existe sin fallar.
   assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), MIGRACIONES.map((m) => m.nombre));
   // La restricción sigue aceptando 'consulta' y rechazando categorías desconocidas.
@@ -46,7 +46,7 @@ test('una migración que falla no deja cambios a medias ni queda registrada', as
     },
   };
   await assert.rejects(aplicarMigraciones(base.pool, { migraciones: [...MIGRACIONES, fallida], log: silencio }), /999_prueba_fallida.*fallo simulado/);
-  const { rows: [t] } = await base.pool.query(`SELECT to_regclass('tabla_a_medias') AS t`);
+  const { rows: [t] } = await base.pool.query(`SELECT to_regclass('${base.esquema}.tabla_a_medias') AS t`);
   assert.equal(t.t, null);
   assert.ok(!(await aplicados()).includes('999_prueba_fallida'));
 });
@@ -57,11 +57,11 @@ test('nombres repetidos se rechazan antes de tocar la base', async () => {
 
 test('002: base heredada sin las columnas de archivo se actualiza y los documentos existentes quedan sin archivo', async () => {
   // Simula producción antes de la Fase 1: sin las columnas nuevas y con un storage_path ficticio.
-  await base.pool.query(`ALTER TABLE documentos DROP CONSTRAINT documentos_archivo_completo_check,
+  await base.pool.query(`ALTER TABLE ${base.esquema}.documentos DROP CONSTRAINT documentos_archivo_completo_check,
                            DROP CONSTRAINT documentos_storage_driver_check,
                            DROP COLUMN tiene_archivo, DROP COLUMN nombre_original, DROP COLUMN storage_driver`);
-  await base.pool.query(`ALTER TABLE documento_versiones DROP CONSTRAINT documento_versiones_storage_driver_check, DROP COLUMN storage_driver`);
-  await base.pool.query(`ALTER TABLE documentos ALTER COLUMN cifrado_aes SET DEFAULT true`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.documento_versiones DROP CONSTRAINT documento_versiones_storage_driver_check, DROP COLUMN storage_driver`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.documentos ALTER COLUMN cifrado_aes SET DEFAULT true`);
   await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '002_documentos_archivo_real'`);
   const { rows: [doc] } = await base.pool.query(
     `INSERT INTO documentos (nombre, folio, formato, clasificacion_id, autor_nombre, storage_path)
@@ -111,8 +111,8 @@ test('seed: los documentos de demostración no tienen archivo ni clave ficticia'
 });
 
 test('003: base de producción sin la tabla de indexación ni el origen del texto; aditiva e idempotente', async () => {
-  await base.pool.query(`DROP TABLE documento_indexacion`);
-  await base.pool.query(`ALTER TABLE documento_paginas DROP CONSTRAINT documento_paginas_origen_check, DROP COLUMN origen`);
+  await base.pool.query(`DROP TABLE ${base.esquema}.documento_indexacion`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.documento_paginas DROP CONSTRAINT documento_paginas_origen_check, DROP COLUMN origen`);
   await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '003_texto_indexacion'`);
   const doc = async (folio, conArchivo) => (await base.pool.query(
     `INSERT INTO documentos (nombre, folio, formato, clasificacion_id, autor_nombre, tiene_archivo, storage_path, storage_driver, hash_sha256, nombre_original)
@@ -139,10 +139,13 @@ test('003: base de producción sin la tabla de indexación ni el origen del text
   assert.equal((await base.pool.query(`SELECT count(*)::int AS n FROM documento_indexacion`)).rows[0].n, 1);
 });
 
+// IMPORTANTE: todo DROP/ALTER de estas pruebas va calificado con el esquema temporal. El search_path es
+// "<temporal>, public": un DROP TABLE IF EXISTS sin esquema, si la tabla ya no está en el temporal, borraría la
+// de public (tus datos de la rama dev). Pasó con las de 2FA hasta la Fase 5.
 /** Deja la base como estaba en producción antes de la Fase 3 (sin columnas ni tablas nuevas, 004 sin aplicar). */
 async function baseAntesDeFase3() {
-  await base.pool.query(`DROP TABLE IF EXISTS mfa_codigos_recuperacion, intentos_acceso`);
-  await base.pool.query(`ALTER TABLE usuarios DROP COLUMN IF EXISTS mfa_secreto_pendiente, DROP COLUMN IF EXISTS mfa_pendiente_en,
+  await base.pool.query(`DROP TABLE IF EXISTS ${base.esquema}.mfa_codigos_recuperacion, ${base.esquema}.intentos_acceso`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.usuarios DROP COLUMN IF EXISTS mfa_secreto_pendiente, DROP COLUMN IF EXISTS mfa_pendiente_en,
                            DROP COLUMN IF EXISTS mfa_activado_en, DROP COLUMN IF EXISTS mfa_ultimo_paso,
                            DROP COLUMN IF EXISTS sesion_version, DROP COLUMN IF EXISTS password_cambiado_en`);
   await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '004_mfa_totp_real'`);
@@ -188,7 +191,7 @@ test('004: un secreto en claro que no es base32 detiene la migración sin cambio
     assert.ok(!e.message.includes(raro));
     return true;
   });
-  const { rows: [c] } = await base.pool.query(`SELECT to_regclass('intentos_acceso') AS t`);
+  const { rows: [c] } = await base.pool.query(`SELECT to_regclass('${base.esquema}.intentos_acceso') AS t`);
   assert.equal(c.t, null, 'la transacción revirtió también las tablas nuevas');
   assert.equal((await base.pool.query(`SELECT mfa_secreto FROM usuarios WHERE id = $1`, [id])).rows[0].mfa_secreto, raro);
   await base.pool.query(`DELETE FROM usuarios WHERE id = $1`, [id]);
@@ -210,11 +213,11 @@ test('004: sin MFA_ENCRYPTION_KEY no se puede cifrar lo que hay en claro: la mig
 
 /** Deja la base como producción antes de la Fase 4 (sin columnas, tabla ni CHECK nuevos; 005 sin aplicar). */
 async function baseAntesDeFase4() {
-  await base.pool.query(`DROP TABLE IF EXISTS objetos_por_borrar`);
-  await base.pool.query(`DROP INDEX IF EXISTS documentos_papelera_idx`);
-  await base.pool.query(`ALTER TABLE documentos DROP CONSTRAINT IF EXISTS documentos_purgado_sin_archivo_check,
+  await base.pool.query(`DROP TABLE IF EXISTS ${base.esquema}.objetos_por_borrar`);
+  await base.pool.query(`DROP INDEX IF EXISTS ${base.esquema}.documentos_papelera_idx`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.documentos DROP CONSTRAINT IF EXISTS documentos_purgado_sin_archivo_check,
                            DROP COLUMN IF EXISTS purgar_despues_de, DROP COLUMN IF EXISTS purgado_en, DROP COLUMN IF EXISTS purgado_por`);
-  await base.pool.query(`ALTER TABLE documento_versiones DROP COLUMN IF EXISTS nombre_original, DROP COLUMN IF EXISTS paginas`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.documento_versiones DROP COLUMN IF EXISTS nombre_original, DROP COLUMN IF EXISTS paginas`);
   await base.pool.query(`ALTER TABLE documento_indexacion DROP CONSTRAINT documento_indexacion_motivo_check`);
   await base.pool.query(`ALTER TABLE documento_indexacion ADD CONSTRAINT documento_indexacion_motivo_check
                            CHECK (motivo IN ('subida','reproceso','backfill','script'))`);
@@ -262,10 +265,10 @@ test('005: base como producción (papelera con datos, versión con archivo, láp
 
 /** Deja la base como producción antes de la Fase 5 (sin carpetas ni solicitudes, trigger antiguo; 006 sin aplicar). */
 async function baseAntesDeFase5() {
-  await base.pool.query(`DROP TABLE IF EXISTS solicitudes_movimiento`);
-  await base.pool.query(`ALTER TABLE documentos DROP COLUMN IF EXISTS carpeta_id`);
-  await base.pool.query(`DROP TABLE IF EXISTS carpetas`);
-  await base.pool.query(`CREATE OR REPLACE FUNCTION set_actualizado_en() RETURNS trigger AS $$
+  await base.pool.query(`DROP TABLE IF EXISTS ${base.esquema}.solicitudes_movimiento`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.documentos DROP COLUMN IF EXISTS carpeta_id`);
+  await base.pool.query(`DROP TABLE IF EXISTS ${base.esquema}.carpetas`);
+  await base.pool.query(`CREATE OR REPLACE FUNCTION ${base.esquema}.set_actualizado_en() RETURNS trigger AS $$
                          BEGIN NEW.actualizado_en = now(); RETURN NEW; END $$ LANGUAGE plpgsql`);
   await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '006_carpetas'`);
 }
