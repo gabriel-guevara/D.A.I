@@ -73,7 +73,8 @@ function formulario(bytes, { nombre = 'Contrato.pdf', tipo = 'application/pdf', 
 const subir = (quien, bytes, opciones) =>
   fetch(`${url}/digitalizacion/documentos`, { method: 'POST', headers: auth(quien), body: formulario(bytes, opciones) });
 
-async function subirOk(opciones = {}, quien = 'operador', bytes = crearPdf({ paginas: 3 })) {
+// Con relleno: el Buffer tiene su propio ArrayBuffer (como un PDF real), no el bloque compartido de Node.
+async function subirOk(opciones = {}, quien = 'operador', bytes = crearPdf({ paginas: 3, relleno: 64 * 1024 })) {
   const r = await subir(quien, bytes, opciones);
   const cuerpo = await r.json();
   assert.equal(r.status, 201, JSON.stringify(cuerpo));

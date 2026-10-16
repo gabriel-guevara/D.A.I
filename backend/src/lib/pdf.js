@@ -34,10 +34,11 @@ const cargarPdfjs = async () => (pdfjs ??= await import('pdfjs-dist/legacy/build
 export async function inspeccionarPdf(buf, { tiempoMaximoMs = 15_000 } = {}) {
   if (!tieneFirmaPdf(buf)) throw new ErrorPdf('firma', MENSAJE_NO_PDF);
   const { getDocument } = await cargarPdfjs();
-  // Vista sobre el mismo ArrayBuffer (sin copiar: no se duplica la memoria). En Node pdf.js usa un worker
-  // "falso" en el mismo hilo y no transfiere el buffer; una prueba lo comprueba por si cambia al actualizar.
+  // COPIA de los bytes: pdf.js TRANSFIERE el ArrayBuffer que recibe y lo deja vacío (byteLength 0). Si le
+  // pasáramos el original, después subiríamos un archivo de 0 bytes. Duplica la memoria solo mientras se
+  // analiza (como mucho 2 × MAX_UPLOAD_MB por subida); la copia se libera al terminar.
   const tarea = getDocument({
-    data: new Uint8Array(buf.buffer, buf.byteOffset, buf.length),
+    data: new Uint8Array(buf),
     isEvalSupported: false, // nunca evaluar código generado a partir del archivo
     disableFontFace: true,
     useSystemFonts: false,

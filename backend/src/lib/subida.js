@@ -6,7 +6,8 @@
  *    Si el archivo lo supera, se deja de acumular al instante y el resto se descarta.
  *  - La firma "%PDF-" se comprueba con los primeros bytes: un archivo que no es PDF se descarta sin acumularlo.
  *  - El SHA-256 se calcula mientras llegan los trozos, sobre los bytes reales.
- *  - Como mucho MAX_SUBIDAS_SIMULTANEAS subidas a la vez (tomarCupoDeSubida): memoria acotada a N × límite.
+ *  - Como mucho MAX_SUBIDAS_SIMULTANEAS subidas a la vez (tomarCupoDeSubida): memoria acotada a unos
+ *    N × 2 × límite (el archivo + la copia que analiza pdf.js), p. ej. 2 × 2 × 20 MB = 80 MB.
  */
 import Busboy from 'busboy';
 import crypto from 'node:crypto';

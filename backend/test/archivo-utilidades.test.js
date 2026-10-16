@@ -49,11 +49,15 @@ test('firma PDF e inspección: páginas, protegido, inválido; el buffer queda i
   assert.equal(tieneFirmaPdf(Buffer.from(' %PDF-1.7')), false);
   assert.equal(tieneFirmaPdf(Buffer.from('%PD')), false);
 
-  const pdf = crearPdf({ paginas: 5 });
-  const huella = sha256(pdf);
-  assert.deepEqual(await inspeccionarPdf(pdf), { paginas: 5 });
-  // Si una versión futura de pdf.js transfiriera (vaciara) el buffer, subiríamos un archivo vacío: esto lo detecta.
-  assert.equal(pdf.length > 0 && sha256(pdf), huella);
+  // Pequeño (Node lo guarda en un bloque compartido) y grande (ArrayBuffer propio, que pdf.js puede TRANSFERIR
+  // y dejar vacío). Si el buffer se vaciara, subiríamos un archivo de 0 bytes: esto lo detecta.
+  for (const pdf of [crearPdf({ paginas: 5 }), crearPdf({ paginas: 5, relleno: 256 * 1024 })]) {
+    const huella = sha256(pdf);
+    const tamano = pdf.length;
+    assert.deepEqual(await inspeccionarPdf(pdf), { paginas: 5 });
+    assert.equal(pdf.length, tamano);
+    assert.equal(sha256(pdf), huella);
+  }
 
   await assert.rejects(inspeccionarPdf(crearPdf({ protegido: true })), (e) => e instanceof ErrorPdf && e.codigo === 'protegido' && e.status === 422);
   await assert.rejects(inspeccionarPdf(Buffer.from('%PDF-1.4 roto')), (e) => e instanceof ErrorPdf && e.codigo === 'invalido');
