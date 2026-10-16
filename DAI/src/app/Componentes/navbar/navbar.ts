@@ -34,4 +34,9 @@ export class Navbar {
       queryParamsHandling: 'merge',
     });
   }
+
+  cerrarSesion(): void {
+    this.auth.logout();
+    this.router.navigate(['/login']);
+  }
 }
