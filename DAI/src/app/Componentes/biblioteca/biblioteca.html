@@ -14,9 +14,10 @@
             </p>
           </div>
           <div class="flex items-center gap-2 text-1xl shrink-0">
-            <button
-              class="flex items-centerborder gap-2 bg-amber-200 hover:bg-amber-300 border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-600 ">
-              <svg class="translate-y-[2px]" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20"
+            @if (permisos().gestionar) {
+              <button (click)="abrir('crear')"
+                class="flex items-center gap-2 bg-amber-200 hover:bg-amber-300 border border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-600">
+                <svg class="translate-y-[2px]" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20"
                 viewBox="0 0 100 100">
                 <path fill="#f09215"
                   d="M17.962,16.953c-3.689,1.357-5.042,5.238-6.155,8.806c2.292,0.31,4.583,0.62,6.875,0.93	c0.465-0.773,0.93-1.545,1.394-2.318c2.394-1.387,2.124-4.6,0-6.044c-6.615-4.497-9.6,5.57-9.189,10.319	c0.353,4.076,5.371,4.577,6.875,0.93c0.427-1.034,0.545-1.824,0.548-2.955c-0.058-0.607-0.112-1.214-0.164-1.821	c-0.255-0.687-0.03-0.843,0.677-0.468c1.805-1.4,9.025-0.277,11.296-0.17c0-2.333,0-4.667,0-7c-4.931,0.625-9.801,1.461-14.64,2.6	c0.62,2.25,1.241,4.5,1.861,6.75c5.298-1.646,10.588-2.426,16.132-2.358c4.538,0.056,4.463-6.72,0-7	c-5.321-0.334-10.63-0.863-15.967-0.844c-4.528,0.016-4.48,6.772,0,7c3.67,0.187,7.359,0.529,11.032,0.262	c1.83-0.133,4.507-0.875,6.207,0.107c1.388,0.803,2.56,3.025,3.63,4.256c1.414-1.832,2.828-3.665,4.241-5.497	c-6.863-4.048-14.004-1.691-21.471-1.987c-4.505-0.179-4.497,6.822,0,7c5.842,0.232,12.596-2.12,17.938,1.031	c3.553,2.096,6.781-2.577,4.241-5.497c-3.085-3.547-5.208-6.518-10.339-6.714c-5.136-0.196-10.296,0.302-15.48,0.039	c0,2.333,0,4.667,0,7c5.336-0.019,10.646,0.51,15.967,0.844c0-2.333,0-4.667,0-7c-6.15-0.075-12.119,0.783-17.993,2.608	c-4.301,1.336-2.535,7.785,1.861,6.75c4.226-0.995,8.47-1.804,12.779-2.35c4.363-0.553,4.626-6.783,0-7	c-4.689-0.22-11.43-1.092-15.746,1.24c-4.392,2.373-1.904,5.78-3.362,9.314c2.292,0.31,4.583,0.62,6.875,0.93	c-0.076-0.88-0.672-4.128,0.582-4.446c-0.899-0.118-1.798-0.235-2.697-0.353c0.257,0.175,0.514,0.35,0.772,0.525	c0-2.015,0-4.03,0-6.044c-3.227,1.87-4.809,4.654-4.861,8.363c-0.057,4.024,5.715,4.649,6.875,0.93	c0.348-1.115,2.458-4.355,1.266-3.917C24.016,22.16,22.204,15.393,17.962,16.953L17.962,16.953z">
@@ -39,23 +40,26 @@
                   d="M13.432,40.179c0,0,0.053,2.901,0.148,8.066c0.055,2.607,0.123,5.785,0.201,9.457c0.055,1.842,0.115,3.811,0.215,5.894	c0.129,2.082,0.157,4.299,0.628,6.481c0.448,2.177,1.333,4.405,3.038,5.962c1.706,1.548,4.137,2.304,6.728,2.42	c5.351,0.165,11.236,0.012,17.35-0.07c6.132-0.107,12.57-0.252,19.239-0.435c3.333-0.097,6.728-0.197,10.158-0.343	c0.854-0.043,1.712-0.086,2.572-0.129l1.281-0.081l1.211-0.127c1.597-0.217,3.148-0.693,4.532-1.442	c0.912-0.477,1.731-1.089,2.421-1.809c0.695-0.714,1.292-1.52,1.709-2.424c0.429-0.894,0.751-1.849,0.901-2.851	c0.181-1.006,0.214-1.985,0.185-3.096c-0.102-4.407-0.334-8.796-0.507-13.048c-0.178-4.262-0.363-8.404-0.436-12.458	c-0.032-2.053,0.054-3.986-0.244-5.741c-0.287-1.742-1.022-3.276-2.242-4.343c-1.184-1.068-2.779-1.539-4.458-1.688	c-1.674-0.149-3.449-0.06-5.158-0.074c-3.411,0.006-6.661,0.012-9.729,0.018c-6.143-0.009-11.555-0.017-16.066-0.023	c-0.114-0.034-0.228-0.067-0.337-0.099c-0.109-0.032-0.232-0.042-0.24-0.157c-0.086-0.201-0.202-0.407-0.309-0.587	c-1.681-4.319-4.706-6.531-6.908-7.375c-0.28-0.103-0.543-0.2-0.79-0.291c-0.252-0.072-0.493-0.119-0.714-0.174	c-0.221-0.052-0.425-0.1-0.611-0.144c-0.189-0.022-0.361-0.041-0.514-0.058c-0.612-0.067-0.927-0.102-0.927-0.102	s0.317,0.016,0.933,0.048c0.155,0.009,0.328,0.019,0.52,0.03c0.19,0.034,0.397,0.071,0.623,0.111	c0.226,0.043,0.473,0.078,0.733,0.137c0.255,0.079,0.528,0.163,0.818,0.252c1.146,0.387,2.527,1.07,3.871,2.258	c0.683,0.579,1.331,1.302,1.952,2.125c0.312,0.412,0.604,0.859,0.887,1.332c0.131,0.243,0.282,0.479,0.403,0.738	c0.124,0.237,0.272,0.56,0.339,0.726c0.05,0.117,0.106,0.256,0.142,0.399c-0.008,0.094,0.083,0.069,0.16,0.065	c0.077-0.004,0.157-0.008,0.237-0.012c4.427-0.178,9.738-0.392,15.766-0.634c3.066-0.112,6.313-0.231,9.721-0.355	c1.708-0.038,3.441-0.19,5.345-0.082c1.867,0.103,4.009,0.613,5.673,2.034c1.663,1.359,2.698,3.452,3.078,5.524	c0.397,2.08,0.334,4.128,0.413,6.088c0.155,3.984,0.414,8.133,0.654,12.385c0.235,4.262,0.516,8.606,0.656,13.125	c0.101,2.291-0.187,4.922-1.325,7.214c-1.098,2.319-3.027,4.283-5.3,5.473c-1.733,0.937-3.609,1.495-5.476,1.744l-1.395,0.143	l-1.324,0.078c-0.875,0.039-1.747,0.079-2.616,0.118c-3.464,0.127-6.866,0.198-10.211,0.257c-6.688,0.106-13.137,0.143-19.282,0.119	c-6.161-0.051-11.951-0.044-17.506-0.382c-2.826-0.208-5.714-1.157-7.726-3.12c-2.008-1.974-2.876-4.564-3.271-6.904	c-0.415-2.386-0.346-4.621-0.392-6.71c-0.015-2.098,0.01-4.073,0.037-5.92c0.062-3.692,0.159-6.87,0.246-9.466	C13.328,43.079,13.432,40.179,13.432,40.179z">
                 </path>
               </svg>
-              <span>Crear Carpeta</span>
-            </button>
-            <button
-              class=" flex items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white rounded-lg px-3 py-1.5 font-medium">
-              <img width="20" height="20" src="https://img.icons8.com/material-rounded/24/up.png" alt="up"/>
-              <span>Subir Archivo</span>
-            </button>
+                <span>Crear Carpeta</span>
+              </button>
+            }
+            @if (puedeSubir()) {
+              <a routerLink="/digitalizacion"
+                class="flex items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white rounded-lg px-3 py-1.5 font-medium">
+                <img width="20" height="20" src="https://img.icons8.com/material-rounded/24/up.png" alt="" />
+                <span>Subir Archivo</span>
+              </a>
+            }
           </div>
         </div>
       </div>
 
-      <!-- Estadísticas -->
+      <!-- Estadísticas reales (según el nivel del usuario, sin filtros) -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
           <div>
-            <p class="text-xs text-slate-400">Expedientes Totales</p>
-            <p class="text-2xl font-bold text-slate-800 mt-1">1,420</p>
+            <p class="text-xs text-slate-400">Expedientes visibles para usted</p>
+            <p class="text-2xl font-bold text-slate-800 mt-1">{{ resumen() ? n(resumen()!.total) : '—' }}</p>
           </div>
           <svg class="translate-y-[2px]" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="45" height="45"
             viewBox="0 0 100 100">
@@ -83,14 +87,68 @@
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
           <div>
-            <p class="text-xs text-slate-400">Cambios realizados ultimamente</p>
-            <p class="text-2xl font-bold text-slate-800 mt-1">892</p>
+            <p class="text-xs text-slate-400">Actualizados en los últimos 30 días</p>
+            <p class="text-2xl font-bold text-slate-800 mt-1">{{ resumen() ? n(resumen()!.actualizados30) : '—' }}</p>
           </div>
-          <img width="45" height="45" src="https://img.icons8.com/color-glass/48/pencil.png" alt="pencil"/>
+          <img width="45" height="45" src="https://img.icons8.com/color-glass/48/pencil.png" alt="" />
         </div>
       </div>
 
-      <!-- Filtros -->
+      @if (aviso(); as a) {
+        <div class="text-sm rounded-lg px-4 py-2.5 border" role="status"
+          [ngClass]="a.tipo === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'">
+          {{ a.texto }}
+        </div>
+      }
+
+      <!-- Solicitudes de movimiento pendientes -->
+      @if (solicitudes().length > 0) {
+        <section class="bg-white rounded-xl border border-amber-200 p-4 space-y-3" aria-label="Solicitudes de movimiento pendientes">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-[14px] text-slate-900 font-bold">
+              {{ permisos().resolver ? 'Solicitudes de movimiento por resolver' : 'Mis solicitudes de movimiento pendientes' }}
+              <span class="ml-1 text-[12px] font-semibold bg-amber-100 text-amber-800 rounded-full px-2 py-0.5">{{ solicitudes().length }}</span>
+            </p>
+            <button (click)="cargarSolicitudes()" class="text-[12px] text-blue-600 hover:underline">Actualizar</button>
+          </div>
+          <ul class="divide-y divide-slate-100">
+            @for (s of solicitudes(); track s.id) {
+              <li class="py-2.5 flex flex-wrap items-start justify-between gap-3 text-[13px]">
+                <div class="min-w-0">
+                  <p class="font-medium text-slate-800">
+                    <a [routerLink]="['/documento', s.documento.id]" class="text-blue-700 hover:underline">{{ s.documento.nombre }}</a>
+                    <span class="text-slate-400 text-[12px]"> · {{ s.documento.folio }}</span>
+                  </p>
+                  <p class="text-[12px] text-slate-600">
+                    De {{ s.carpetaActual ? '«' + s.carpetaActual.nombre + '»' : '«Sin carpeta»' }}
+                    a {{ s.carpetaDestino ? '«' + s.carpetaDestino.nombre + '»' : '«Sin carpeta»' }}
+                    · {{ s.solicitante }} · {{ s.fecha }}
+                  </p>
+                  <p class="text-[12px] text-slate-500">Motivo: {{ s.motivo }}</p>
+                </div>
+                @if (s.puedeResolver) {
+                  <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    @if (rechazandoId() === s.id) {
+                      <input type="text" maxlength="500" placeholder="Motivo del rechazo" aria-label="Motivo del rechazo"
+                        [ngModel]="respuestaRechazo()" (ngModelChange)="respuestaRechazo.set($event)"
+                        class="w-56 px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[12px]" />
+                      <button (click)="rechazar(s)" class="text-[12px] bg-red-600 hover:bg-red-700 text-white rounded-lg px-3 py-1.5 font-medium">Confirmar rechazo</button>
+                      <button (click)="rechazandoId.set(null)" class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                    } @else {
+                      <button (click)="aprobar(s)" class="text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-1.5 font-medium">Aprobar y mover</button>
+                      <button (click)="empezarRechazo(s)" class="text-[12px] border border-red-200 text-red-700 rounded-lg px-3 py-1.5 hover:bg-red-50">Rechazar</button>
+                    }
+                  </div>
+                } @else {
+                  <span class="text-[12px] text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 shrink-0">Pendiente</span>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      <!-- Filtros (se aplican en el servidor y quedan en la URL) -->
       <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
         <div class="flex flex-wrap items-center gap-2">
           <div class="relative flex-1 min-w-[200px]">
@@ -100,145 +158,291 @@
                   d="m21 21-4.34-4.34M18 10.5a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
               </svg>
             </span>
-            <input type="text" placeholder="Filtrar por nombre o folio" [ngModel]="searchText()"
-              (ngModelChange)="searchText.set($event)"
+            <input type="text" placeholder="Filtrar por nombre o folio" aria-label="Filtrar por nombre o folio" maxlength="200"
+              [ngModel]="textoBusqueda()" (ngModelChange)="alEscribir($event)" (keydown.enter)="buscarAhora()"
               class="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
           </div>
-          <select class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
-            <option>Último mes</option>
-            <option>Últimos 3 meses</option>
-            <option>Últimos 6 meses</option>
-            <option>Todo el histórico</option>
+          <select aria-label="Periodo" [ngModel]="filtros().dias" (ngModelChange)="aplicar({ dias: $event })"
+            class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
+            <option value="30">Últimos 30 días</option>
+            <option value="90">Últimos 3 meses</option>
+            <option value="180">Últimos 6 meses</option>
+            <option value="todo">Todo el histórico</option>
           </select>
-          <select class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
-            <option>Tipo: Todos</option>
-            <option>PDF</option>
-            <option>Excel</option>
-            <option>Word</option>
-            <option>TIFF</option>
+          <select aria-label="Formato" [ngModel]="filtros().formato" (ngModelChange)="aplicar({ formato: $event })"
+            class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
+            <option value="">Formato: Todos</option>
+            @for (f of formatos; track f) {
+              <option [value]="f">{{ etiquetaFormato[f] }}</option>
+            }
           </select>
-          <select class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
-            <option>Departamento</option>
-            <option>Legal</option>
-            <option>Finanzas</option>
-            <option>Talento & RH</option>
-            <option>Operaciones</option>
+          <select aria-label="Departamento" [ngModel]="filtros().departamento" (ngModelChange)="aplicar({ departamento: $event })"
+            class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600 max-w-[220px]">
+            <option value="">Departamento: Todos</option>
+            @for (d of departamentos(); track d) {
+              <option [value]="d">{{ d }}</option>
+            }
           </select>
-          <select class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
-            <option>Más reciente</option>
-            <option>Más antiguo</option>
-            <option>Tamaño</option>
+          <select aria-label="Carpeta" [ngModel]="filtros().carpeta" (ngModelChange)="aplicar({ carpeta: $event })"
+            class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600 max-w-[220px]">
+            <option value="">Carpeta: Todas</option>
+            <option value="sin">Sin carpeta ({{ carpetasInfo()?.sinCarpeta ?? 0 }})</option>
+            @for (c of carpetas(); track c.id) {
+              <option [value]="c.id">{{ c.nombre }} ({{ c.documentos }})</option>
+            }
+          </select>
+          <select aria-label="Orden" [ngModel]="filtros().orden" (ngModelChange)="aplicar({ orden: $event })"
+            class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
+            <option value="reciente">{{ etiquetaOrden.reciente }}</option>
+            <option value="antiguo">{{ etiquetaOrden.antiguo }}</option>
+            <option value="tamano">{{ etiquetaOrden.tamano }}</option>
+            <option value="nombre">{{ etiquetaOrden.nombre }}</option>
           </select>
         </div>
 
-        @if (activeFilters().length > 0) {
-        <div class="flex flex-wrap items-center gap-2 text-xs">
-          <span class="text-slate-400">FILTROS ACTIVOS:</span>
-          @for (f of activeFilters(); track f) {
-          <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 rounded-full px-2.5 py-1 font-medium">
-            {{ f }}
-            <button (click)="removeFilter(f)" class="hover:text-blue-900">✕</button>
-          </span>
+        @if (carpetaFiltrada(); as c) {
+          @if (permisos().gestionar || permisos().eliminar) {
+            <div class="flex flex-wrap items-center gap-2 text-[12px] text-slate-600">
+              <span>Carpeta «{{ c.nombre }}»:</span>
+              @if (permisos().gestionar) {
+                <button (click)="abrir('renombrar')" class="border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50">Renombrar</button>
+              }
+              @if (permisos().eliminar) {
+                <button (click)="abrir('eliminar')" class="border border-red-200 text-red-700 rounded-lg px-2.5 py-1 hover:bg-red-50">Eliminar</button>
+              }
+            </div>
           }
-          <button (click)="clearFilters()" class="text-slate-400 hover:text-slate-600 underline">Limpiar todos</button>
-        </div>
+        }
+
+        @if (chips().length > 0) {
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="text-slate-400">FILTROS ACTIVOS:</span>
+            @for (f of chips(); track f.clave) {
+              <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 rounded-full px-2.5 py-1 font-medium">
+                {{ f.texto }}
+                <button (click)="quitarFiltro(f.clave)" class="hover:text-blue-900" [attr.aria-label]="'Quitar filtro ' + f.texto">✕</button>
+              </span>
+            }
+            <button (click)="limpiarFiltros()" class="text-slate-400 hover:text-slate-600 underline">Limpiar todos</button>
+          </div>
         }
       </div>
 
       <!-- Barra de acción masiva -->
       @if (selectedCount() > 0) {
-      <div
-        class="bg-slate-900 text-white rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <span class="font-medium">{{ selectedCount() }} documentos seleccionados</span>
-        <div class="flex items-center gap-2">
-          <button class="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5">
-            <img width="15" height="15" src="https://img.icons8.com/color/48/down--v1.png" alt="down--v1"/>
-             <span>Descargar archivos</span></button>
-          <button class="bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5">↔ Mover</button>
-          <button (click)="clearSelection()" class="text-white/60 hover:text-white px-2">✕</button>
+        <div class="bg-slate-900 text-white rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <span class="font-medium">
+            {{ selectedCount() }} {{ selectedCount() === 1 ? 'documento seleccionado' : 'documentos seleccionados' }}
+            @if (progreso()) {
+              <span class="ml-2 text-white/70" aria-live="polite">{{ progreso() }}</span>
+            }
+          </span>
+          <div class="flex items-center gap-2">
+            <button (click)="descargarSeleccion()" [disabled]="trabajando()"
+              [title]="'Descarga uno a uno los que tienen archivo original (máximo ' + maxDescargas + ')'"
+              class="flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-lg px-3 py-1.5">
+              <img width="15" height="15" src="https://img.icons8.com/color/48/down--v1.png" alt="" />
+              <span>Descargar archivos</span>
+            </button>
+            @if (permisos().gestionar) {
+              <button (click)="abrir('mover')" [disabled]="trabajando()" class="bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-lg px-3 py-1.5">↔ Mover</button>
+            } @else if (permisos().solicitar) {
+              <button (click)="abrir('solicitar')" [disabled]="trabajando()" class="bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-lg px-3 py-1.5">↔ Solicitar movimiento</button>
+            }
+            <button (click)="clearSelection()" class="text-white/60 hover:text-white px-2" aria-label="Quitar la selección">✕</button>
+          </div>
         </div>
-      </div>
       }
 
-      <!-- Tabla de documentos -->
+      <!-- Tabla de documentos (una página, ya filtrada y ordenada por el servidor) -->
       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm" [attr.aria-busy]="cargando()">
           <thead>
             <tr class="text-left text-[11px] text-slate-400 border-b border-slate-100">
               <th class="px-4 py-3 w-8">
-                <input type="checkbox" [checked]="allSelected()" (change)="toggleSelectAll()" class="rounded" />
+                <input type="checkbox" [checked]="allSelected()" (change)="toggleSelectAll()" class="rounded" aria-label="Seleccionar la página" />
               </th>
               <th class="px-2 py-3">DOCUMENTO & VERSIÓN</th>
               <th class="px-2 py-3">CÓDIGO</th>
-              <th class="px-2 py-3">DEPARTAMENTO</th>
-              <th class="px-2 py-3">AUTOR / REGISTRO</th>
+              <th class="px-2 py-3">DEPARTAMENTO / CARPETA</th>
+              <th class="px-2 py-3">AUTOR / ACTUALIZADO</th>
               <th class="px-4 py-3 text-right">TAMAÑO</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            @for (doc of visibleDocuments(); track doc.id) {
-            <tr class="hover:bg-slate-50 transition-colors cursor-pointer" (click)="openDocument(doc)">
-              <td class="px-4 py-3" (click)="$event.stopPropagation()">
-                <input type="checkbox" [checked]="doc.selected" (change)="toggleSelectDoc(doc)" class="rounded" />
-              </td>
-              <td class="px-2 py-3">
-                <div class="flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0"
-                    [ngClass]="formatIconClass(doc.format)">
-                    {{ doc.format.toUpperCase() }}
+            @for (doc of documentos(); track doc.id) {
+              <tr class="hover:bg-slate-50 transition-colors cursor-pointer" (click)="openDocument(doc)">
+                <td class="px-4 py-3" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="estaSeleccionado(doc)" (change)="toggleSelectDoc(doc)" class="rounded"
+                    [attr.aria-label]="'Seleccionar ' + doc.name" />
+                </td>
+                <td class="px-2 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0"
+                      [ngClass]="formatIconClass(doc.format)">
+                      {{ doc.format.toUpperCase() }}
+                    </div>
+                    <div class="min-w-0">
+                      <p class="font-medium text-blue-700 hover:underline truncate max-w-xs">
+                        {{ doc.name }} <span class="text-slate-400 font-normal">{{ doc.version }}</span>
+                      </p>
+                      <p class="text-[10px] text-slate-400">{{ doc.hashLabel }}</p>
+                    </div>
                   </div>
-                  <div class="min-w-0">
-                    <p class="font-medium text-blue-700 hover:underline truncate max-w-xs">
-                      {{ doc.name }} <span class="text-slate-400 font-normal">{{ doc.version }}</span>
-                    </p>
-                    <p class="text-[10px] text-slate-400">{{ doc.hashLabel }}</p>
-                  </div>
-                </div>
-              </td>
-              <td class="px-2 py-3 text-xs text-slate-500 whitespace-nowrap">{{ doc.folio }}</td>
-              <td class="px-2 py-3">
-                <span class="text-[11px] font-medium rounded-full px-2 py-0.5" [ngClass]="doc.departamentoColor">
-                  ● {{ doc.departamento }}
-                </span>
-              </td>
-              <td class="px-2 py-3">
-                <p class="text-xs font-medium text-slate-600">{{ doc.autor }}</p>
-                <p class="text-[10px] text-slate-400">{{ doc.autorEmail }}</p>
-              </td>
-              <td class="px-4 py-3 text-xs text-slate-500 text-right whitespace-nowrap">{{ doc.tamano }}</td>
-            </tr>
+                </td>
+                <td class="px-2 py-3 text-xs text-slate-500 whitespace-nowrap">{{ doc.folio }}</td>
+                <td class="px-2 py-3">
+                  <span class="text-[11px] font-medium rounded-full px-2 py-0.5" [ngClass]="doc.departamentoColor">
+                    ● {{ doc.departamento }}
+                  </span>
+                  <p class="text-[10px] text-slate-400 mt-1">📁 {{ doc.carpeta?.nombre ?? 'Sin carpeta' }}</p>
+                </td>
+                <td class="px-2 py-3">
+                  <p class="text-xs font-medium text-slate-600">{{ doc.autor }}</p>
+                  <p class="text-[10px] text-slate-400">{{ doc.actualizado }}</p>
+                </td>
+                <td class="px-4 py-3 text-xs text-slate-500 text-right whitespace-nowrap">
+                  {{ doc.tamano }}
+                  @if (!doc.tieneArchivo) {
+                    <p class="text-[10px] text-slate-400">Sin archivo original</p>
+                  }
+                </td>
+              </tr>
             } @empty {
-            <tr>
-              <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-400">
-                No se encontraron documentos con ese criterio.
-              </td>
-            </tr>
+              <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-400">
+                  @if (cargando()) {
+                    Cargando documentos…
+                  } @else if (errorCarga()) {
+                    <span class="text-red-600">{{ errorCarga() }}</span>
+                  } @else {
+                    No se encontraron documentos con ese criterio.
+                  }
+                </td>
+              </tr>
             }
           </tbody>
         </table>
 
-        <div class="flex items-center justify-between px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
-          <span>Mostrando 1-{{ visibleDocuments().length }} de 1,420 documentos</span>
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
+          <span>
+            @if (total() > 0) {
+              Mostrando {{ n(desde()) }}–{{ n(hasta()) }} de {{ n(total()) }} {{ total() === 1 ? 'documento' : 'documentos' }}
+            } @else {
+              0 documentos
+            }
+          </span>
           <div class="flex items-center gap-3">
             <span>Filas:
-              <select class="border border-slate-200 rounded px-1.5 py-0.5 ml-1">
-                <option>25</option>
-                <option>50</option>
-                <option>100</option>
+              <select aria-label="Filas por página" [ngModel]="filtros().porPagina" (ngModelChange)="cambiarPorPagina($event)"
+                class="border border-slate-200 rounded px-1.5 py-0.5 ml-1">
+                <option [ngValue]="25">25</option>
+                <option [ngValue]="50">50</option>
+                <option [ngValue]="100">100</option>
               </select>
             </span>
-            <div class="flex items-center gap-1">
-              <button class="px-2 py-1 rounded hover:bg-slate-100">‹</button>
-              <button class="w-6 h-6 rounded bg-blue-700 text-white">1</button>
-              <button class="w-6 h-6 rounded hover:bg-slate-100">2</button>
-              <button class="w-6 h-6 rounded hover:bg-slate-100">3</button>
-              <span>...</span>
-              <button class="w-6 h-6 rounded hover:bg-slate-100">57</button>
-              <button class="px-2 py-1 rounded hover:bg-slate-100">›</button>
-            </div>
+            <nav class="flex items-center gap-1" aria-label="Paginación">
+              <button (click)="irAPagina(filtros().pagina - 1)" [disabled]="filtros().pagina <= 1"
+                class="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-30" aria-label="Página anterior">‹</button>
+              @for (n of paginas(); track $index) {
+                @if (n === '…') {
+                  <span class="px-1">…</span>
+                } @else {
+                  <button (click)="irAPagina(n)" class="min-w-6 h-6 px-1 rounded"
+                    [ngClass]="n === filtros().pagina ? 'bg-blue-700 text-white' : 'hover:bg-slate-100'"
+                    [attr.aria-current]="n === filtros().pagina ? 'page' : null">{{ n }}</button>
+                }
+              }
+              <button (click)="irAPagina(filtros().pagina + 1)" [disabled]="filtros().pagina >= totalPaginas()"
+                class="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-30" aria-label="Página siguiente">›</button>
+            </nav>
           </div>
         </div>
       </div>
     </main>
   </div>
+
+  <!-- Diálogos -->
+  @if (dialogo(); as d) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40" (click)="cerrarDialogo()"></div>
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-xl p-5 space-y-4" role="dialog" aria-modal="true"
+        [attr.aria-label]="d === 'crear' ? 'Crear carpeta' : d === 'renombrar' ? 'Renombrar carpeta' : d === 'eliminar' ? 'Eliminar carpeta' : d === 'mover' ? 'Mover documentos' : 'Solicitar movimiento'">
+        @switch (d) {
+          @case ('crear') {
+            <h2 class="text-[14px] text-slate-900 font-bold">Crear carpeta</h2>
+            <p class="text-[12px] text-slate-500">Las carpetas solo organizan: no cambian quién puede ver cada documento.</p>
+            <label class="block">
+              <span class="text-[14px] text-slate-900 font-bold">Nombre</span>
+              <input type="text" maxlength="80" [ngModel]="nombreCarpeta()" (ngModelChange)="nombreCarpeta.set($event)" (keydown.enter)="crearCarpeta()"
+                class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm" />
+            </label>
+          }
+          @case ('renombrar') {
+            <h2 class="text-[14px] text-slate-900 font-bold">Renombrar carpeta</h2>
+            <label class="block">
+              <span class="text-[14px] text-slate-900 font-bold">Nuevo nombre</span>
+              <input type="text" maxlength="80" [ngModel]="nombreCarpeta()" (ngModelChange)="nombreCarpeta.set($event)" (keydown.enter)="renombrarCarpeta()"
+                class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm" />
+            </label>
+          }
+          @case ('eliminar') {
+            <h2 class="text-[14px] text-slate-900 font-bold">Eliminar carpeta «{{ carpetaFiltrada()?.nombre }}»</h2>
+            <p class="text-[12px] text-slate-600">Solo se puede eliminar si está vacía (también se cuentan los documentos que estén en la papelera).</p>
+          }
+          @case ('mover') {
+            <h2 class="text-[14px] text-slate-900 font-bold">Mover {{ selectedCount() }} {{ selectedCount() === 1 ? 'documento' : 'documentos' }}</h2>
+            <p class="text-[12px] text-slate-500">Mover no cambia quién puede ver cada documento. Queda en la auditoría.</p>
+          }
+          @case ('solicitar') {
+            <h2 class="text-[14px] text-slate-900 font-bold">Solicitar movimiento de {{ selectedCount() }} {{ selectedCount() === 1 ? 'documento' : 'documentos' }}</h2>
+            <p class="text-[12px] text-slate-500">Un Super Administrador u Operador OCR revisará la solicitud y la aprobará o rechazará.</p>
+          }
+        }
+        @if (d === 'mover' || d === 'solicitar') {
+          <label class="block">
+            <span class="text-[14px] text-slate-900 font-bold">Carpeta de destino</span>
+            <select [ngModel]="destino()" (ngModelChange)="destino.set($event)" class="mt-1 w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm">
+              <option value="">— Elija —</option>
+              <option value="sin">Sin carpeta</option>
+              @for (c of carpetas(); track c.id) {
+                <option [value]="c.id">{{ c.nombre }}</option>
+              }
+            </select>
+          </label>
+        }
+        @if (d === 'solicitar') {
+          <label class="block">
+            <span class="text-[14px] text-slate-900 font-bold">Motivo</span>
+            <textarea rows="3" maxlength="500" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"
+              class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm"></textarea>
+            <span class="text-[12px] text-slate-500">Entre 10 y 500 caracteres.</span>
+          </label>
+        }
+        @if (errorDialogo()) {
+          <p class="text-[12px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2" role="alert">{{ errorDialogo() }}</p>
+        }
+        <div class="flex justify-end gap-2 pt-1">
+          <button (click)="cerrarDialogo()" [disabled]="trabajando()" class="text-sm border border-slate-200 rounded-lg px-4 py-2 text-slate-600 hover:bg-slate-50">Cancelar</button>
+          @switch (d) {
+            @case ('crear') {
+              <button (click)="crearCarpeta()" [disabled]="trabajando()" class="text-sm bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Crear</button>
+            }
+            @case ('renombrar') {
+              <button (click)="renombrarCarpeta()" [disabled]="trabajando()" class="text-sm bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Guardar</button>
+            }
+            @case ('eliminar') {
+              <button (click)="eliminarCarpeta()" [disabled]="trabajando()" class="text-sm bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Eliminar</button>
+            }
+            @case ('mover') {
+              <button (click)="moverSeleccion()" [disabled]="trabajando()" class="text-sm bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Mover</button>
+            }
+            @case ('solicitar') {
+              <button (click)="solicitarSeleccion()" [disabled]="trabajando()" class="text-sm bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Enviar solicitud</button>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  }
 </div>
