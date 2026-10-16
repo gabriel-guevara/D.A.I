@@ -163,7 +163,7 @@
           @if (p.tipo === 'uno') {
             <p>
               Se borrarán para siempre <span class="font-semibold text-slate-800">«{{ p.doc.nombre }}»</span> ({{ p.doc.folio }}),
-              su archivo, sus {{ p.doc.versiones }} {{ p.doc.versiones === 1 ? 'versión' : 'versiones' }} y su texto.
+              su archivo, {{ p.doc.versiones === 1 ? 'su única versión' : 'sus ' + p.doc.versiones + ' versiones' }} y su texto.
             </p>
           } @else {
             <p>

@@ -75,11 +75,17 @@
     @if (puedeGestionar()) {
       <form class="border-t border-slate-100 pt-3 space-y-2" (submit)="$event.preventDefault(); subir(entrada)">
         <p class="text-[14px] text-slate-900 font-bold">Subir nueva versión</p>
-        <label class="block">
+        <div>
           <span class="block text-[12px] text-slate-600">Archivo PDF</span>
-          <input #entrada type="file" accept="application/pdf,.pdf" (change)="elegirArchivo($event)" [disabled]="subiendo()"
-            class="mt-1 block w-full text-[12px] text-slate-600 file:mr-2 file:rounded-lg file:border-0 file:bg-slate-100 file:px-2.5 file:py-1 file:text-[12px]" />
-        </label>
+          <!-- El selector nativo muestra textos del idioma del navegador ("Choose File"): se oculta y se usa un botón propio -->
+          <input #entrada id="archivo-version" type="file" accept="application/pdf,.pdf" class="sr-only"
+            (change)="elegirArchivo($event)" [disabled]="subiendo()" />
+          <label for="archivo-version"
+            class="mt-1 flex items-center gap-2 cursor-pointer text-[12px] text-slate-600">
+            <span class="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-medium hover:bg-slate-100">Elegir PDF</span>
+            <span class="truncate" [class.text-slate-400]="!archivo()">{{ archivo()?.name ?? 'Ningún archivo seleccionado' }}</span>
+          </label>
+        </div>
         <label class="block">
           <span class="block text-[12px] text-slate-600">¿Qué cambia en esta versión?</span>
           <textarea rows="2" [maxlength]="maxComentario" [ngModel]="comentario()" (ngModelChange)="comentario.set($event)"
