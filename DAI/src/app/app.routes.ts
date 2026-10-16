@@ -6,7 +6,6 @@ import { Digitalizacion } from './Componentes/digitalizacion/digitalizacion';
 import { Busqueda } from './Componentes/busqueda/busqueda';
 import { Notificaciones } from './Componentes/notificaciones/notificaciones';
 import { roles } from './Componentes/roles/roles';
-import { detalles } from './Componentes/detalles/detalles';
 import { authGuard } from './shared/auth-guard';
 
 export const routes: Routes = [
@@ -24,7 +23,19 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   { path: 'roles', component: roles, canActivate: [authGuard] },
-  { path: 'documento/:id', component: detalles, canActivate: [authGuard] },
+  // Papelera (Fase 4): solo Super Administrador y Oficial de Cumplimiento; carga diferida.
+  {
+    path: 'papelera',
+    loadComponent: () => import('./Componentes/papelera/papelera').then((m) => m.Papelera),
+    canActivate: [authGuard],
+  },
+  // Detalle del documento (visor, metadatos, versiones): carga diferida desde la Fase 4, porque el historial de
+  // versiones lo hizo crecer y el paquete inicial está al límite del presupuesto de 500 kB.
+  {
+    path: 'documento/:id',
+    loadComponent: () => import('./Componentes/detalles/detalles').then((m) => m.detalles),
+    canActivate: [authGuard],
+  },
   // Carga diferida: se descarga solo al abrir la pantalla (no pesa en el arranque de la app).
   {
     path: 'cuenta/seguridad',

@@ -1,12 +1,15 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NotificacionesEstado } from '../../shared/notificaciones-estado';
+import { AuthService } from '../../shared/auth';
 
 interface NavItem {
   id: string;
   label: string;
   route: string;
+  /** Si se indica, solo lo ven estos roles (el servidor también lo exige). */
+  roles?: string[];
 }
 
 @Component({
@@ -19,6 +22,7 @@ export class Barraizq {
   @Input() active = 'dashboard';
 
   private estado = inject(NotificacionesEstado);
+  private auth = inject(AuthService);
 
   constructor() {
     this.estado.iniciar();
@@ -39,7 +43,14 @@ export class Barraizq {
     { id: 'busqueda', label: 'Búsqueda Avanzada', route: '/busqueda' },
     { id: 'ocr', label: 'Digitalización (OCR)', route: '/digitalizacion' },
     { id: 'notificaciones', label: 'Notificaciones', route: '/notificaciones' },
+    { id: 'papelera', label: 'Papelera', route: '/papelera', roles: ['super-admin', 'compliance'] },
     { id: 'roles', label: 'Roles y Permisos', route: '/roles' },
     { id: 'cuenta', label: 'Seguridad de mi cuenta', route: '/cuenta/seguridad' },
   ];
+
+  /** Ítems visibles para el rol de la sesión. */
+  itemsVisibles = computed(() => {
+    const rol = this.auth.currentUser()?.rolClave ?? '';
+    return this.navItems.filter((i) => !i.roles || i.roles.includes(rol));
+  });
 }
