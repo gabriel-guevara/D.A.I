@@ -55,6 +55,8 @@ before(async () => {
 });
 
 after(async () => {
+  // Las subidas dejan extracciones de texto en segundo plano (Fase 2): se esperan antes de cerrar el pool.
+  await (await import('../src/lib/indexador.js')).detenerIndexador();
   await new Promise((r) => servidor?.close(r));
   await db?.pool.end();
   await base?.cerrar();

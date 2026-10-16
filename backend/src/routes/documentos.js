@@ -7,6 +7,7 @@ import { notificarConsulta } from '../lib/notify.js';
 import { escapeLike, fechaCorta, fechaHoraCO, formatBytes, hashCorto, haceCuanto, idValido } from '../lib/format.js';
 import { almacenamiento, ErrorObjetoNoEncontrado, ErrorRangoInvalido } from '../lib/storage.js';
 import { contentDisposition, interpretarRango, sha256DeStream } from '../lib/archivo-http.js';
+import { COLUMNAS_INDEXACION, despertarIndexador, presentarIndexacion, solicitarIndexacion } from '../lib/indexador.js';
 
 const router = Router();
 
@@ -18,6 +19,9 @@ const FROM = `
 // $1 siempre es el rango del usuario: solo ve documentos de su nivel o inferior
 const ACCESO = `(c.id IS NULL OR c.nivel_minimo <= $1)`;
 const ROLES_INTEGRIDAD = ['super-admin', 'compliance'];
+// Reprocesar el texto: quienes ingresan documentos (operador OCR) y el administrador. Cumplimiento y lectores
+// solo consultan: reprocesar cambia el índice de búsqueda (no el original), y es tarea de la ingesta.
+const ROLES_REINDEXAR = ['super-admin', 'ocr-operator'];
 const NO_DISPONIBLE = 'Archivo no disponible en este entorno';
 const SIN_ARCHIVO = 'Este documento no tiene archivo original cargado (solo metadatos y capa de texto).';
 
@@ -86,6 +90,7 @@ router.get('/:id', async (req, res) => {
   const verif = await query(
     `SELECT detalle, creado_en FROM auditoria WHERE documento_id = $1 AND accion = 'verificar_integridad'
       ORDER BY creado_en DESC, id DESC LIMIT 1`, [r.id]);
+  const indexacion = r.tiene_archivo ? await leerIndexacion(r.id) : null;
   await registrarAuditoria(req, 'ver_documento', r.id);
   await notificarConsulta(req, { id: r.id, nombre: r.nombre, folio: r.folio });
 
@@ -104,6 +109,10 @@ router.get('/:id', async (req, res) => {
     } : null,
     puedeVerificar: r.tiene_archivo && ROLES_INTEGRIDAD.includes(req.user.rol),
     ultimaVerificacion: verif.rows[0] ? { resultado: verif.rows[0].detalle.resultado, fecha: fechaHoraCO(verif.rows[0].creado_en) } : null,
+    // Texto para la búsqueda: con archivo, su estado de extracción; sin archivo, el texto es de demostración.
+    indexacion,
+    textoOrigen: r.tiene_archivo ? 'pdf' : 'demo',
+    puedeReindexar: r.tiene_archivo && ROLES_REINDEXAR.includes(req.user.rol),
     retencion: r.retencion_anios ? `${r.retencion_anios} Años${r.vence_retencion ? ` (Vence ${new Date(r.vence_retencion).getUTCFullYear()})` : ''}` : null,
     cifrado: r.tiene_archivo && r.storage_driver === 'r2', ocr: r.ocr_procesado, firmadoPor: r.firmado_por, firmaValida: r.firma_valida,
   });
@@ -195,18 +204,55 @@ router.post('/:id/verificar-integridad', requireRole(...ROLES_INTEGRIDAD), async
   });
 });
 
+/** Estado de indexación (fila presentada) o null si el documento nunca entró en la cola. */
+async function leerIndexacion(id) {
+  const { rows: [f] } = await query(`SELECT ${COLUMNAS_INDEXACION} FROM documento_indexacion WHERE documento_id = $1`, [id]);
+  // Pendiente = hay trabajo: se despierta el indexador (por si el servicio se reinició). Sin sondeo periódico.
+  if (f?.estado === 'pendiente') despertarIndexador();
+  return presentarIndexacion(f ?? null);
+}
+
+/**
+ * Estado de la extracción de texto (el detalle lo consulta cada pocos segundos mientras está pendiente).
+ * Ligero y SIN auditoría ni notificación, a diferencia de GET /:id.
+ */
+router.get('/:id/indexacion', async (req, res) => {
+  const d = await documentoConArchivo(req);
+  if (!d) return res.status(404).json({ error: 'Documento no encontrado' });
+  if (!d.tiene_archivo) return res.status(404).json({ error: SIN_ARCHIVO, codigo: 'sin_archivo' });
+  res.json(await leerIndexacion(d.id));
+});
+
+/** Volver a extraer el texto del PDF (tras un error, un "sin texto" dudoso o una mejora del extractor). Auditado. */
+router.post('/:id/reindexar', requireRole(...ROLES_REINDEXAR), async (req, res) => {
+  const d = await documentoConArchivo(req);
+  if (!d) return res.status(404).json({ error: 'Documento no encontrado' });
+  if (!d.tiene_archivo) return res.status(409).json({ error: `${SIN_ARCHIVO} No hay texto que extraer.`, codigo: 'sin_archivo' });
+
+  const { rows: [antes] } = await query(`SELECT estado FROM documento_indexacion WHERE documento_id = $1`, [d.id]);
+  if (antes?.estado === 'procesando')
+    return res.status(409).json({ error: 'El texto de este documento ya se está extrayendo. Espera a que termine.', codigo: 'en_proceso' });
+  // Ya en cola: no se duplica ni se audita otra vez (doble clic). Idempotente.
+  if (antes?.estado !== 'pendiente') {
+    await solicitarIndexacion({ query }, d.id, { motivo: 'reproceso', usuarioId: req.user.id });
+    await registrarAuditoria(req, 'reindexar_texto', d.id, { estadoAnterior: antes?.estado ?? null });
+  }
+  despertarIndexador();
+  res.status(202).json(await leerIndexacion(d.id));
+});
+
 /** Texto OCR de una página (capa de texto del visor). */
 router.get('/:id/paginas/:n', async (req, res) => {
   if (!idValido(req.params.id) || !idValido(req.params.n)) return res.status(404).json({ error: 'No encontrado' });
   const { rows: [p] } = await query(
-    `SELECT p.pagina, p.seccion, p.texto, p.confianza, d.paginas AS total
+    `SELECT p.pagina, p.seccion, p.texto, p.confianza, p.origen, d.paginas AS total
        FROM documento_paginas p
        JOIN documentos d ON d.id = p.documento_id
        LEFT JOIN clasificaciones c ON c.id = d.clasificacion_id
       WHERE p.documento_id = $2 AND p.pagina = $3 AND d.estado = 'activo' AND ${ACCESO}`,
     [req.user.rango, req.params.id, req.params.n]);
   if (!p) return res.status(404).json({ error: 'Página sin texto OCR' });
-  res.json({ pagina: p.pagina, totalPaginas: p.total, seccion: p.seccion, texto: p.texto, confianza: p.confianza && Number(p.confianza) });
+  res.json({ pagina: p.pagina, totalPaginas: p.total, seccion: p.seccion, texto: p.texto, origen: p.origen, confianza: p.confianza && Number(p.confianza) });
 });
 
 /** Historial de versiones. */

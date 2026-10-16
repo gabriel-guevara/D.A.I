@@ -8,6 +8,9 @@ import { almacenamiento, generarClaveObjeto } from '../lib/storage.js';
 import { ErrorPdf, inspeccionarPdf } from '../lib/pdf.js';
 import { ErrorSubida, recibirPdf, tomarCupoDeSubida } from '../lib/subida.js';
 import { sanearNombreArchivo } from '../lib/archivo-http.js';
+import { despertarIndexador, solicitarIndexacion } from '../lib/indexador.js';
+import { normalizarTexto, recortar } from '../lib/texto-normalizar.js';
+import { LIMITES_TEXTO } from '../lib/texto.js';
 
 const router = Router();
 router.use(requireRole('super-admin', 'ocr-operator'));
@@ -92,7 +95,9 @@ async function validarMetadatos(campos, usuario) {
  *  1. Todo se valida ANTES de tocar el almacenamiento o la base (tamaño, firma, apertura, contraseña, metadatos).
  *  2. Se reservan los ids (nextval) para construir la clave docs/{doc}/{ver}/{uuid}.pdf.
  *  3. Se sube el objeto. Si falla, no se ha creado ninguna fila.
- *  4. Se insertan documento + versión en UNA transacción. Si falla, se borra el objeto recién subido.
+ *  4. Se insertan documento + versión + "pendiente de indexar" en UNA transacción. Si falla, se borra el objeto.
+ *  5. Ya respondida la subida, el indexador extrae el texto en segundo plano (src/lib/indexador.js): si la
+ *     extracción falla, el documento sigue subido y su estado queda en "error" con opción de reprocesar.
  * Reservar ids en lugar de abrir la transacción antes evita tener una conexión de la base ocupada
  * mientras el archivo viaja a R2 (que puede tardar segundos).
  */
@@ -151,6 +156,7 @@ router.post('/documentos', async (req, res) => {
           `INSERT INTO documento_versiones (id, documento_id, version, hash_sha256, tamano_bytes, storage_path, storage_driver, autor_id, comentario)
            VALUES ($1,$2,'v1.0',$3,$4,$5,$6,$7,'Carga inicial')`,
           [ids.ver, ids.doc, archivo.sha256, archivo.tamano, clave, st.driver, req.user.id]);
+        await solicitarIndexacion(c, ids.doc, { motivo: 'subida', usuarioId: req.user.id });
       });
     } catch (e) {
       // La base falló DESPUÉS de subir: se borra el objeto para no dejar un archivo sin documento.
@@ -165,11 +171,12 @@ router.post('/documentos', async (req, res) => {
     res.status(201).json({
       id: ids.doc, folio, nombre: meta.titulo ?? nombreOriginal, nombreOriginal,
       hash: archivo.sha256, hashCorto: hashCorto(archivo.sha256),
-      tamanoBytes: archivo.tamano, tamano: formatBytes(archivo.tamano), paginas,
+      tamanoBytes: archivo.tamano, tamano: formatBytes(archivo.tamano), paginas, indexacion: 'pendiente',
     });
   } finally {
     liberar();
   }
+  despertarIndexador(); // no espera: la extracción corre después de responder
 });
 
 /**
@@ -202,14 +209,16 @@ router.post('/trabajos/:id/aprobar', async (req, res) => {
         [j.nombre_archivo, folio, formato, await id('departamentos', b.departamento), await id('tipos_documentales', b.tipoDocumental),
          clasificacionId, req.user.id, u.nombre, u.email, j.tamano_bytes]);
 
-      if (typeof b.textoRaw === 'string' && b.textoRaw.trim()) {
-        await c.query(`INSERT INTO documento_paginas (documento_id, pagina, texto, confianza) VALUES ($1,1,$2,$3)`,
-          [d.id, b.textoRaw, Number(b.confianza) || null]);
+      // Texto escrito o corregido por el operador: se limpia y limita igual que el extraído de un PDF.
+      const textoManual = typeof b.textoRaw === 'string' ? recortar(normalizarTexto(b.textoRaw), LIMITES_TEXTO.maxCaracteresPagina) : '';
+      if (textoManual) {
+        await c.query(`INSERT INTO documento_paginas (documento_id, pagina, texto, confianza, origen) VALUES ($1,1,$2,$3,'manual')`,
+          [d.id, textoManual, Number(b.confianza) || null]);
       }
       await c.query(
         `UPDATE ocr_trabajos SET estado = 'procesado', aprobado_en = now(), documento_id = $2,
                 texto_raw = $3, campos = $4, confianza = $5 WHERE id = $1`,
-        [j.id, d.id, b.textoRaw ?? null, b.campos ? JSON.stringify(b.campos) : null, Number(b.confianza) || null]);
+        [j.id, d.id, textoManual || null, b.campos ? JSON.stringify(b.campos) : null, Number(b.confianza) || null]);
       // El siguiente en espera pasa a "en foco"
       await c.query(`UPDATE ocr_trabajos SET estado = 'en_foco'
                       WHERE id = (SELECT id FROM ocr_trabajos WHERE estado = 'en_espera' ORDER BY id LIMIT 1)
