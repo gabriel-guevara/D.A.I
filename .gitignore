@@ -47,3 +47,5 @@ typings/
 # Archivos del sistema operativo
 .DS_Store
 Thumbs.db
+# Archivos subidos con STORAGE_DRIVER=local (solo desarrollo y pruebas)
+.storage/
