@@ -151,4 +151,14 @@ describe('Login', () => {
     component.onDigitPaste(evento);
     expect(component.otpDigits().join('')).toBe('987654');
   });
+
+  it('sin maquetas: ni "¿Olvidó su contraseña?" falso, ni dominios ni correos de soporte inventados', () => {
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('a[href^="javascript:"]')).toBeNull();
+    expect(el.querySelector('a[href^="mailto:"]')).toBeNull();
+    for (const falso of ['@empresa.gob', '@corporacion.com', 't.soto@empresa.com', 'soporte@dai'])
+      expect(el.innerHTML).not.toContain(falso);
+    expect(el.textContent).toContain('Contacte al administrador del sistema');
+  });
 });

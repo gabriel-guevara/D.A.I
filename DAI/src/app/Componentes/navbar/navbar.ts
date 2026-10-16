@@ -13,6 +13,8 @@ import { AuthService } from '../../shared/auth';
 })
 export class Navbar {
   searchQuery = signal('');
+  /** "Nuevo Documento" solo para quien puede subir (Super Administrador y Operador OCR; el servidor también lo exige). */
+  puedeSubir = computed(() => ['super-admin', 'ocr-operator'].includes(this.auth.currentUser()?.rolClave ?? ''));
 
   /** "GG" para "Gabriel Guevara"; ignora títulos como "Dra." o "Ing.". */
   iniciales = computed(() => {
