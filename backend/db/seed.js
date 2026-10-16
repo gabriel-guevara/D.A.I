@@ -1,5 +1,6 @@
 // Datos de DEMOSTRACIÓN: reproducen lo que el front tenía "quemado" en cada pantalla.
-// Contraseña de todos los usuarios demo: Dai2024!   |   Código 2FA (dev): MFA_DEV_CODE del .env
+// Contraseña de todos los usuarios demo: Dai2024!   |   2FA: ninguno lo tiene; en el primer ingreso cada uno
+// configura su app autenticadora (QR) como en producción.
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 
@@ -185,5 +186,5 @@ export async function seed(db) {
     for (let i = 0; i < n; i++) await db.query(`INSERT INTO busquedas (usuario_id,termino,resultados) VALUES ($1,$2,1)`, [elena, t]);
 
   console.log(`   ${usuarios.length} usuarios · ${docs.length} documentos · ${notifs.length * usuarios.length} notificaciones`);
-  console.log(`   Login demo: e.ramos@dai.corp / ${DEMO_PASSWORD}  (2FA dev: MFA_DEV_CODE)`);
+  console.log(`   Login demo: e.ramos@dai.corp / ${DEMO_PASSWORD}  (1.er ingreso: configurar 2FA con el QR)`);
 }

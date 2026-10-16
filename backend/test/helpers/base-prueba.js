@@ -13,6 +13,9 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { verificarEntornoDestructivo } from '../../src/lib/entorno.js';
 
+// Clave de cifrado 2FA SOLO para pruebas (config.js la exige). Si el comando o el .env traen otra, se respeta (||= también cubre "MFA_ENCRYPTION_KEY=" vacía).
+process.env.MFA_ENCRYPTION_KEY ||= 'q0Jm0cS8bWc3Yk8ZsP6m1QeH2vX9tL4rN7aD5fG8hJ0=';
+
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PREFIJO = 'dai_test_';
 const UNA_HORA_MS = 60 * 60 * 1000;

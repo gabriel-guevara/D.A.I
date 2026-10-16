@@ -13,6 +13,8 @@
  * o se aplica entera y queda registrada, o no se aplica nada.
  */
 
+import { cifrarSecreto, claveMfa, estaCifrado, normalizarSecretoBase32 } from './lib/cifrado-mfa.js';
+
 /** @type {{ nombre: string, up: (c: import('pg').ClientBase) => Promise<void> }[]} */
 export const MIGRACIONES = [
   {
@@ -99,7 +101,61 @@ export const MIGRACIONES = [
                      ON CONFLICT (documento_id) DO NOTHING`);
     },
   },
+  {
+    // Fase 3: 2FA TOTP real. Columnas para el alta en dos pasos (pendiente → confirmado), anti-reutilización
+    // de códigos, versión de sesión (invalidar tokens), códigos de recuperación y contador de intentos por cuenta.
+    // Y lo más delicado: CIFRA los secretos que estén en claro (el puente manual del administrador) SIN cambiarlos,
+    // así la app autenticadora del administrador sigue generando códigos válidos: no hay que volver a escanear.
+    nombre: '004_mfa_totp_real',
+    async up(c) {
+      for (const columna of [
+        'mfa_secreto_pendiente text',
+        'mfa_pendiente_en timestamptz',
+        'mfa_activado_en timestamptz',
+        'mfa_ultimo_paso bigint',
+        'sesion_version integer NOT NULL DEFAULT 0',
+        'password_cambiado_en timestamptz',
+      ]) await c.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ${columna}`);
+
+      await c.query(`CREATE TABLE IF NOT EXISTS mfa_codigos_recuperacion (
+        id          bigserial PRIMARY KEY,
+        usuario_id  bigint NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        huella      char(64) NOT NULL,
+        usado_en    timestamptz,
+        creado_en   timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (usuario_id, huella))`);
+      await c.query(`CREATE TABLE IF NOT EXISTS intentos_acceso (
+        clave           text PRIMARY KEY,
+        fallos          integer NOT NULL DEFAULT 0,
+        ventana_inicio  timestamptz NOT NULL DEFAULT now(),
+        bloqueado_hasta timestamptz)`);
+
+      await cifrarSecretosEnClaro(c);
+    },
+  },
 ];
+
+/**
+ * Cifra con AES-256-GCM los secretos TOTP guardados en claro. Idempotente: los que ya empiezan por "v1:" no se
+ * tocan. El VALOR del secreto no cambia (solo cómo se guarda), por eso la app del usuario sigue sirviendo.
+ * Nunca imprime secretos; si uno no es base32 válido, falla diciendo solo el id del usuario.
+ * @returns {Promise<number>} cuántos cifró
+ */
+export async function cifrarSecretosEnClaro(c, env = process.env) {
+  const { rows } = await c.query(
+    `SELECT id, mfa_secreto FROM usuarios WHERE mfa_secreto IS NOT NULL AND mfa_secreto NOT LIKE 'v1:%' ORDER BY id FOR UPDATE`);
+  if (!rows.length) return 0;
+  const clave = claveMfa(env); // lanza (y la migración no se aplica) si falta la clave
+  for (const u of rows) {
+    if (estaCifrado(u.mfa_secreto)) continue;
+    const secreto = normalizarSecretoBase32(u.mfa_secreto);
+    if (!secreto) throw new Error(`El secreto 2FA del usuario ${u.id} no es base32 válido; corrígelo o restablécelo antes de desplegar.`);
+    await c.query(
+      `UPDATE usuarios SET mfa_secreto = $2, mfa_activado_en = coalesce(mfa_activado_en, now()) WHERE id = $1`,
+      [u.id, cifrarSecreto(secreto, u.id, { clave })]);
+  }
+  return rows.length;
+}
 
 // Número arbitrario y fijo para el candado consultivo: si arrancan dos instancias a la vez,
 // la segunda espera a que la primera termine en lugar de aplicar lo mismo en paralelo.

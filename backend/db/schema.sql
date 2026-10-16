@@ -62,12 +62,36 @@ CREATE TABLE usuarios (
   rol_id           smallint NOT NULL REFERENCES roles(id),
   nivel_id         smallint NOT NULL REFERENCES niveles_acceso(id),
   mfa_metodo       text NOT NULL DEFAULT 'TOTP',
-  mfa_secreto      text,                       -- secreto TOTP base32 (cifrarlo en producción)
+  mfa_secreto      text,                       -- secreto TOTP CONFIRMADO, cifrado AES-256-GCM (v1:...). NULL = sin 2FA
+  mfa_secreto_pendiente text,                  -- secreto recién generado (cifrado); no sirve hasta confirmarlo
+  mfa_pendiente_en timestamptz,                -- el pendiente caduca a los 15 min
+  mfa_activado_en  timestamptz,
+  mfa_ultimo_paso  bigint,                     -- último paso TOTP aceptado (anti-reutilización de códigos)
+  sesion_version   integer NOT NULL DEFAULT 0, -- +1 = se invalidan todas las sesiones abiertas
+  password_cambiado_en timestamptz,
   activo           boolean NOT NULL DEFAULT true,
   ultimo_acceso    timestamptz,
   creado_en        timestamptz NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX usuarios_email_uq ON usuarios (lower(email));
+
+-- Códigos de recuperación 2FA: solo su huella HMAC-SHA256; cada uno sirve una vez.
+CREATE TABLE mfa_codigos_recuperacion (
+  id          bigserial PRIMARY KEY,
+  usuario_id  bigint NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  huella      char(64) NOT NULL,
+  usado_en    timestamptz,
+  creado_en   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (usuario_id, huella)
+);
+
+-- Fallos de acceso por cuenta (contraseña por huella del correo, 2FA por id) y bloqueo temporal.
+CREATE TABLE intentos_acceso (
+  clave           text PRIMARY KEY,
+  fallos          integer NOT NULL DEFAULT 0,
+  ventana_inicio  timestamptz NOT NULL DEFAULT now(),
+  bloqueado_hasta timestamptz
+);
 
 -- ---------- Documentos ----------
 CREATE TABLE documentos (
