@@ -167,7 +167,11 @@ router.get('/facetas', async (req, res) => {
          LEFT JOIN clasificaciones c ON c.id = d.clasificacion_id
         GROUP BY t.id ORDER BY t.id`, [req.user.rango]),
     query(`SELECT nombre AS label, punto_clase AS color FROM clasificaciones WHERE nivel_minimo <= $1 ORDER BY nivel_minimo DESC`, [req.user.rango]),
-    query(`SELECT termino FROM busquedas GROUP BY termino ORDER BY count(*) DESC, max(creado_en) DESC LIMIT 4`),
+    // Solo las búsquedas del propio usuario: agregarlas de todos filtraría términos que alguien de mayor nivel
+    // escribió buscando documentos que este usuario no puede ver (p. ej. el nombre en clave de un secreto).
+    query(
+      `SELECT termino FROM busquedas WHERE usuario_id = $1
+        GROUP BY termino ORDER BY count(*) DESC, max(creado_en) DESC LIMIT 4`, [req.user.id]),
     query(
       `SELECT count(*) FILTER (WHERE EXISTS (SELECT 1 FROM documento_paginas p WHERE p.documento_id = d.id))::int AS con_texto,
               count(*) FILTER (WHERE EXISTS (SELECT 1 FROM documento_paginas p WHERE p.documento_id = d.id AND p.origen = 'pdf'))::int AS con_texto_real
