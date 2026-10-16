@@ -116,7 +116,9 @@
                 <span class="text-slate-600 font-medium w-10 text-center">{{ zoom() }}%</span>
                 <button (click)="zoomIn()" class="text-slate-400 hover:text-slate-600" aria-label="Ampliar">+</button>
               </div>
-              <span class="bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-full">Capa de texto</span>
+              <span class="bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-full">
+                {{ paginaTexto()?.origen === 'manual' ? 'Texto capturado manualmente' : 'Texto de demostración' }}
+              </span>
             </div>
             <p class="mx-4 mt-3 text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
               Este documento no tiene archivo original cargado (datos de demostración o heredados). Se muestra solo la
@@ -142,7 +144,19 @@
               <span class="text-slate-600 font-medium truncate" [title]="doc()?.archivo?.nombreOriginal ?? ''">
                 {{ doc()?.archivo?.nombreOriginal ?? 'Documento original' }}
               </span>
-              <span class="bg-blue-50 text-blue-700 font-medium px-2 py-0.5 rounded-full shrink-0">PDF original</span>
+              <div class="flex items-center gap-2 shrink-0">
+                @if (paginaObjetivo() && visor() === 'listo') {
+                  <!-- #page=N: Chrome/Edge y Firefox saltan a la página; Safari abre en la 1 -->
+                  <button
+                    (click)="irAPaginaCoincidencia()"
+                    class="border border-amber-200 bg-amber-50 text-amber-800 rounded-lg px-2.5 py-1 font-medium hover:bg-amber-100"
+                    title="Si tu navegador no salta solo (por ejemplo, Safari), usa la navegación del visor."
+                  >
+                    Ir a la coincidencia (pág. {{ paginaObjetivo() }})
+                  </button>
+                }
+                <span class="bg-blue-50 text-blue-700 font-medium px-2 py-0.5 rounded-full">PDF original</span>
+              </div>
             </div>
             <div class="flex-1 flex bg-slate-50">
               @switch (visor()) {
@@ -242,6 +256,48 @@
                 <dd class="text-slate-700 font-medium">{{ doc()?.retencion ?? 'Sin política de retención' }}</dd>
               </div>
             </dl>
+          </div>
+
+          <!-- Texto para la búsqueda: estado de la extracción (Fase 2) -->
+          <div class="bg-white rounded-xl border border-slate-200 p-4" aria-live="polite">
+            <p class="text-sm font-semibold text-slate-800 mb-2">Texto para búsqueda</p>
+            @if (doc()?.tieneArchivo) {
+              @if (indexacion(); as ix) {
+                <span class="inline-block text-xs font-medium px-2.5 py-1 rounded-full" [ngClass]="claseEstadoTexto(ix.estado)">
+                  {{ ix.etiqueta }}
+                </span>
+                <p class="text-xs text-slate-600 mt-2">{{ ix.descripcion }}</p>
+                @if (ix.aviso) {
+                  <p class="text-[12px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-2.5 py-1.5 mt-2">{{ ix.aviso }}</p>
+                }
+                <p class="text-[12px] text-slate-400 mt-1">{{ ix.estado === 'pendiente' || ix.estado === 'procesando' ? 'Solicitado' : 'Procesado' }}: {{ ix.fecha }}</p>
+                @if (sondeoAgotado()) {
+                  <button (click)="actualizarIndexacion()" class="mt-2 text-xs border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50">
+                    Actualizar estado
+                  </button>
+                }
+              } @else {
+                <p class="text-xs text-slate-500">Aún no hay información de la extracción de texto.</p>
+              }
+              @if (doc()?.puedeReindexar && indexacion()?.estado !== 'pendiente' && indexacion()?.estado !== 'procesando') {
+                <button
+                  (click)="reindexar()"
+                  [disabled]="reindexando()"
+                  class="mt-2 block text-xs border border-blue-200 text-blue-700 rounded-lg px-3 py-1.5 font-medium hover:bg-blue-50 disabled:opacity-50"
+                  title="Vuelve a leer el PDF y reemplaza su texto en la búsqueda (queda en la auditoría)"
+                >
+                  {{ reindexando() ? 'Enviando…' : indexacion()?.estado === 'error' ? 'Reintentar extracción' : 'Reprocesar texto' }}
+                </button>
+              }
+              @if (reindexarError()) {
+                <p class="text-xs text-red-600 mt-2" role="alert">{{ reindexarError() }}</p>
+              }
+            } @else {
+              <span class="inline-block bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-full">Texto de demostración</span>
+              <p class="text-xs text-slate-600 mt-2">
+                Sin archivo original: su texto no proviene de un PDF y se muestra en la búsqueda como "Texto de demostración".
+              </p>
+            }
           </div>
 
           <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
