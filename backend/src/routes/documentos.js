@@ -37,54 +37,108 @@ async function documentoConArchivo(req) {
   return r ?? null;
 }
 
-/** Biblioteca: lista de documentos (misma forma que LibraryDoc del front, sin "selected"). */
+// Biblioteca: valores aceptados. Lo que no está aquí se rechaza con 400 (nunca se interpola en el SQL).
+export const FORMATOS = ['pdf', 'xlsx', 'docx', 'tiff'];
+const DIAS = { '30': 30, '90': 90, '180': 180, todo: null };
+// Siempre con desempate por id: con fechas o tamaños iguales, el orden (y por tanto cada página) es estable.
+const ORDENES = {
+  reciente: 'd.actualizado_en DESC, d.id DESC',
+  antiguo: 'd.actualizado_en ASC, d.id ASC',
+  tamano: 'd.tamano_bytes DESC, d.id DESC',
+  nombre: 'lower(d.nombre) ASC, d.id ASC',
+};
+const POR_PAGINA = [25, 50, 100];
+const MAX_PAGINA = 100_000;
+
+/** Valida los parámetros de la biblioteca. Devuelve { error } o los valores normalizados (con sus valores por defecto). */
+export function validarFiltrosBiblioteca(qs) {
+  const CLAVES = ['q', 'departamento', 'formato', 'dias', 'carpeta', 'orden', 'pagina', 'porPagina'];
+  // ?orden=a&orden=b (o ?orden[x]=1) no es un valor: se rechaza en vez de adivinar cuál quiso decir.
+  if (CLAVES.some((k) => qs[k] !== undefined && typeof qs[k] !== 'string')) return { error: 'Hay un parámetro repetido o mal formado.' };
+  const texto = (v) => (typeof v === 'string' ? v.trim() : '');
+  const f = {};
+  f.q = texto(qs.q);
+  if (f.q.length > 200) return { error: 'La búsqueda admite como máximo 200 caracteres.' };
+  f.departamento = texto(qs.departamento);
+  if (f.departamento.length > 100) return { error: 'Departamento no válido.' };
+  f.formato = texto(qs.formato);
+  if (f.formato && !FORMATOS.includes(f.formato)) return { error: 'Formato no válido. Use pdf, xlsx, docx o tiff.' };
+  const dias = texto(qs.dias) || 'todo';
+  if (!(dias in DIAS)) return { error: 'Periodo no válido. Use 30, 90, 180 o todo.' };
+  f.dias = DIAS[dias];
+  f.carpeta = texto(qs.carpeta);
+  if (f.carpeta && f.carpeta !== 'sin' && !idValido(f.carpeta)) return { error: 'Carpeta no válida.' };
+  f.orden = texto(qs.orden) || 'reciente';
+  if (!(f.orden in ORDENES)) return { error: 'Orden no válido. Use reciente, antiguo, tamano o nombre.' };
+  const pagina = texto(qs.pagina) || '1';
+  if (!/^\d{1,6}$/.test(pagina) || Number(pagina) < 1 || Number(pagina) > MAX_PAGINA) return { error: 'Página no válida.' };
+  f.pagina = Number(pagina);
+  f.porPagina = Number(texto(qs.porPagina) || '25');
+  if (!POR_PAGINA.includes(f.porPagina)) return { error: 'Filas por página no válidas. Use 25, 50 o 100.' };
+  return { filtros: f };
+}
+
+/**
+ * Biblioteca: filtros, orden y paginación EN EL SERVIDOR (el front solo pinta la página pedida).
+ * Responde { documentos, total, pagina, porPagina, resumen }. "total" cuenta con los filtros aplicados;
+ * "resumen" son las cifras generales del usuario (sin filtros), siempre respetando su nivel.
+ */
 router.get('/', async (req, res) => {
-  const { q, departamento, formato, dias } = req.query;
+  const v = validarFiltrosBiblioteca(req.query);
+  if (v.error) return res.status(400).json({ error: v.error });
+  const f = v.filtros;
   const params = [req.user.rango];
   const where = [`d.estado = 'activo'`, ACCESO];
+  const agregar = (valor, sql) => { params.push(valor); where.push(sql(`$${params.length}`)); };
 
-  if (typeof q === 'string' && q.trim()) {
-    params.push(`%${escapeLike(q.trim())}%`);
-    where.push(`(d.nombre ILIKE $${params.length} OR d.folio ILIKE $${params.length})`);
-  }
-  if (typeof departamento === 'string' && departamento) {
-    params.push(departamento);
-    where.push(`dep.nombre = $${params.length}`);
-  }
-  if (['pdf', 'xlsx', 'docx', 'tiff'].includes(formato)) {
-    params.push(formato);
-    where.push(`d.formato = $${params.length}`);
-  }
-  if (/^\d{1,4}$/.test(dias ?? '')) {
-    params.push(Number(dias));
-    where.push(`d.actualizado_en >= now() - ($${params.length} || ' days')::interval`);
-  }
-  const limit = Math.min(Number(req.query.limit) || 200, 500);
-  const offset = Math.max(Number(req.query.offset) || 0, 0);
+  if (f.q) agregar(`%${escapeLike(f.q)}%`, (p) => `(d.nombre ILIKE ${p} OR d.folio ILIKE ${p})`);
+  if (f.departamento) agregar(f.departamento, (p) => `dep.nombre = ${p}`);
+  if (f.formato) agregar(f.formato, (p) => `d.formato = ${p}`);
+  if (f.dias) agregar(f.dias, (p) => `d.actualizado_en >= now() - make_interval(days => ${p}::int)`);
+  if (f.carpeta === 'sin') where.push('d.carpeta_id IS NULL');
+  else if (f.carpeta) agregar(f.carpeta, (p) => `d.carpeta_id = ${p}`);
+  const condicion = where.join(' AND ');
 
-  const { rows } = await query(
-    `SELECT d.id, d.nombre, d.version_actual, d.formato, d.hash_sha256, d.origen, d.folio, d.tiene_archivo,
-            dep.nombre AS departamento, dep.color_clase AS dep_color,
-            d.autor_nombre, d.autor_email, d.tamano_bytes
-     ${FROM} WHERE ${where.join(' AND ')}
-     ORDER BY d.actualizado_en DESC LIMIT ${limit} OFFSET ${offset}`, params);
+  const [lista, cuenta, resumen] = await Promise.all([
+    query(
+      `SELECT d.id, d.nombre, d.version_actual, d.formato, d.hash_sha256, d.origen, d.folio, d.tiene_archivo, d.nombre_original,
+              d.actualizado_en, dep.nombre AS departamento, dep.color_clase AS dep_color,
+              d.autor_nombre, d.autor_email, d.tamano_bytes, ca.id AS carpeta_id, ca.nombre AS carpeta_nombre
+       ${FROM} LEFT JOIN carpetas ca ON ca.id = d.carpeta_id
+        WHERE ${condicion}
+        ORDER BY ${ORDENES[f.orden]} LIMIT ${f.porPagina} OFFSET ${(f.pagina - 1) * f.porPagina}`, params),
+    query(`SELECT count(*)::int AS total ${FROM} WHERE ${condicion}`, params),
+    query(
+      `SELECT count(*)::int AS total, count(*) FILTER (WHERE d.actualizado_en >= now() - interval '30 days')::int AS actualizados30
+       ${FROM} WHERE d.estado = 'activo' AND ${ACCESO}`, [req.user.rango]),
+  ]);
 
-  res.json(rows.map((r) => ({
-    id: String(r.id), name: r.nombre, version: r.version_actual, format: r.formato,
-    // Solo se muestra la huella de documentos con archivo real; la del seed no corresponde a ningún archivo.
-    hashLabel: r.tiene_archivo && r.hash_sha256 ? `SHA-256: ${hashCorto(r.hash_sha256)}` : (r.origen ?? 'Sin archivo original'),
-    folio: r.folio, departamento: r.departamento ?? 'Sin departamento',
-    departamentoColor: r.dep_color ?? 'bg-slate-100 text-slate-600',
-    autor: r.autor_nombre, autorEmail: r.autor_email ?? '', tamano: formatBytes(r.tamano_bytes),
-  })));
+  res.json({
+    documentos: lista.rows.map((r) => ({
+      id: String(r.id), name: r.nombre, version: r.version_actual, format: r.formato,
+      // Solo se muestra la huella de documentos con archivo real; la del seed no corresponde a ningún archivo.
+      hashLabel: r.tiene_archivo && r.hash_sha256 ? `SHA-256: ${hashCorto(r.hash_sha256)}` : (r.origen ?? 'Sin archivo original'),
+      folio: r.folio, departamento: r.departamento ?? 'Sin departamento',
+      departamentoColor: r.dep_color ?? 'bg-slate-100 text-slate-600',
+      autor: r.autor_nombre, autorEmail: r.autor_email ?? '', tamano: formatBytes(r.tamano_bytes),
+      carpeta: r.carpeta_id ? { id: String(r.carpeta_id), nombre: r.carpeta_nombre } : null,
+      tieneArchivo: r.tiene_archivo, nombreOriginal: r.tiene_archivo ? r.nombre_original : null,
+      actualizado: fechaHoraCO(r.actualizado_en),
+    })),
+    total: cuenta.rows[0].total,
+    pagina: f.pagina,
+    porPagina: f.porPagina,
+    resumen: resumen.rows[0],
+  });
 });
 
 /** Detalle de un documento (panel de metadatos de la pantalla de visualización). */
 router.get('/:id', async (req, res) => {
   if (!idValido(req.params.id)) return res.status(404).json({ error: 'Documento no encontrado' });
   const { rows: [r] } = await query(
-    `SELECT d.*, dep.nombre AS departamento, c.nombre AS clasificacion, t.nombre AS tipo
-     ${FROM} WHERE d.id = $2 AND d.estado = 'activo' AND ${ACCESO}`, [req.user.rango, req.params.id]);
+    `SELECT d.*, dep.nombre AS departamento, c.nombre AS clasificacion, t.nombre AS tipo, ca.nombre AS carpeta_nombre
+     ${FROM} LEFT JOIN carpetas ca ON ca.id = d.carpeta_id
+      WHERE d.id = $2 AND d.estado = 'activo' AND ${ACCESO}`, [req.user.rango, req.params.id]);
   if (!r) return res.status(404).json({ error: 'Documento no encontrado' });
 
   const tags = await query(
@@ -104,6 +158,7 @@ router.get('/:id', async (req, res) => {
     autor: r.autor_nombre, autorLinea: `${r.autor_nombre}${r.departamento ? ` — ${r.departamento}` : ''}`,
     fechaCreacion: fechaHoraCO(r.creado_en), tamano: formatBytes(r.tamano_bytes), paginas: r.paginas,
     etiquetas: tags.rows.map((x) => x.nombre),
+    carpeta: r.carpeta_id ? { id: String(r.carpeta_id), nombre: r.carpeta_nombre } : null,
     tieneArchivo: r.tiene_archivo,
     archivo: r.tiene_archivo ? {
       nombreOriginal: r.nombre_original, tamanoBytes: Number(r.tamano_bytes), almacenamiento: r.storage_driver,
@@ -255,7 +310,7 @@ router.delete('/:id', requireRole(...ROLES_PAPELERA), async (req, res) => {
     const purga = doc.purgar_despues_de ? `Purga automática: ${fechaHoraCO(doc.purgar_despues_de)}` : 'Sin purga automática (solo manual)';
     await c.query(
       `INSERT INTO notificaciones (usuario_id, categoria, borde_clase, badge, badge_clase, icono, titulo, descripcion, meta, acciones, documento_id)
-       SELECT u.id, 'eliminado', 'border-l-red-500', 'ISO 27001 Sec. 8.3', 'bg-red-50 text-red-700', '🗑️',
+       SELECT u.id, 'eliminado', 'border-l-red-500', 'Papelera', 'bg-red-50 text-red-700', '🗑️',
               $2, 'El expediente queda en la Papelera con su archivo y versiones intactos; se puede restaurar hasta su purga.', $3::jsonb,
               '[]'::jsonb, $1
          FROM usuarios u JOIN roles r ON r.id = u.rol_id

@@ -20,6 +20,8 @@ router.get('/', async (req, res) => {
     icon: n.icono ?? '🔔', title: n.titulo, description: n.descripcion, time: haceCuanto(n.creado_en, true),
     fecha: fechaHoraCO(n.creado_en), creadoEn: n.creado_en.toISOString(),
     meta: n.meta, actions: n.acciones, read: n.leida,
+    // El front ofrece "Abrir documento" con él; el detalle vuelve a comprobar el nivel de acceso.
+    documentoId: n.documento_id ? String(n.documento_id) : null,
   })));
 });
 

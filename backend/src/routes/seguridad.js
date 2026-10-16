@@ -50,7 +50,8 @@ router.get('/usuarios', async (_req, res) => {
 // ---------------------------------------------------------------------------------------------
 // Crear y modificar usuarios
 // ---------------------------------------------------------------------------------------------
-const MFA_METODOS = ['TOTP', 'TOTP 2 Dispositivos', 'FIDO2 Yubikey', 'Push OTP Dispositivo', 'SMS Backup', 'eOTP CorpID'];
+// El único segundo factor que el sistema implementa de verdad es TOTP (app autenticadora): no se acepta otro.
+const MFA_METODOS = ['TOTP'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Valida el cuerpo. En "crear" nombre, email, contraseña, rol y nivel son obligatorios; en "modificar" todo es opcional. */
@@ -86,7 +87,7 @@ function validarUsuario(b, crear) {
   }
   if (b.mfaMetodo !== undefined || crear) {
     const m = b.mfaMetodo ?? 'TOTP';
-    if (!MFA_METODOS.includes(m)) return err('Método de 2FA no válido.');
+    if (!MFA_METODOS.includes(m)) return err('El único método de verificación en dos pasos disponible es TOTP (app autenticadora).');
     d.mfaMetodo = m;
   }
   if (b.activo !== undefined) {
