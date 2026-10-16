@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, exhaustMap, tap, timer } from 'rxjs';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
 import { ApiService } from '../../shared/api';
@@ -16,11 +17,6 @@ const formatoHora = new Intl.DateTimeFormat('es-CO', {
   timeZone: ZONA, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
 });
 
-interface NotifAction {
-  label: string;
-  style: 'border' | 'solid' | 'danger';
-}
-
 interface Notification {
   id: string;
   category: Exclude<NotifCategory, 'todas'>;
@@ -33,8 +29,9 @@ interface Notification {
   fecha: string; // fecha y hora de Colombia, ya formateada por el servidor
   creadoEn: string; // ISO, para calcular "hace X" en vivo
   meta: string[];
-  actions: NotifAction[];
   read: boolean;
+  /** Documento al que se refiere (si lo hay): "Abrir documento". El detalle vuelve a comprobar el nivel de acceso. */
+  documentoId: string | null;
 }
 
 @Component({
@@ -47,6 +44,7 @@ export class Notificaciones {
   activeTab = signal<NotifCategory>('todas');
 
   private api = inject(ApiService);
+  private router = inject(Router);
   private estado = inject(NotificacionesEstado);
 
   notifications = signal<Notification[]>([]);
@@ -155,14 +153,7 @@ export class Notificaciones {
     this.api.marcarTodasLeidas().subscribe({ error: (err) => console.error('No se pudieron marcar como leídas', err) });
   }
 
-  actionButtonClass(style: NotifAction['style']): string {
-    switch (style) {
-      case 'solid':
-        return 'bg-blue-900 hover:bg-blue-950 text-white';
-      case 'danger':
-        return 'bg-red-600 hover:bg-red-700 text-white';
-      default:
-        return 'border border-slate-200 text-slate-600 hover:bg-slate-50';
-    }
+  abrirDocumento(n: Notification): void {
+    if (n.documentoId) this.router.navigate(['/documento', n.documentoId]);
   }
 }

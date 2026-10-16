@@ -24,11 +24,13 @@ describe('Digitalizacion (subida real)', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Digitalizacion);
     component = fixture.componentInstance;
-    http.expectOne('/api/digitalizacion/cola').flush({ queue: [], processedCount: 0, totalInQueue: 0 });
     http.expectOne('/api/catalogos').flush(catalogos);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    http.verify();
+    sessionStorage.clear();
+  });
 
   it('rechaza en el navegador un archivo que no empieza por %PDF- o que supera el máximo', async () => {
     await component.elegirArchivo(new File(['\x89PNG....'], 'falso.pdf', { type: 'application/pdf' }));
@@ -64,7 +66,7 @@ describe('Digitalizacion (subida real)', () => {
     req.flush({ id: '9', folio: 'EXP-1', nombre: 'acta', nombreOriginal: 'acta.pdf', hash: 'f'.repeat(64), hashCorto: 'ffff...ffff', tamanoBytes: 18, tamano: '18 B', paginas: 1 });
     expect(component.estado()).toBe('exito');
     expect(component.resultado()?.id).toBe('9');
-    http.expectOne('/api/digitalizacion/cola').flush({ queue: [], processedCount: 1, totalInQueue: 1 });
+    http.expectNone('/api/digitalizacion/cola'); // la cola de escáner inventada ya no existe
   });
 
   it('muestra el mensaje del servidor y conserva el archivo para reintentar', async () => {
