@@ -5,6 +5,7 @@ import { config } from './config.js';
 import { pool } from './db.js';
 import { requireAuth } from './middleware/auth.js';
 import { aplicarMigraciones } from './migrate.js';
+import { inicializarAlmacenamiento } from './lib/storage.js';
 import auth from './routes/auth.js';
 import catalogos from './routes/catalogos.js';
 import dashboard from './routes/dashboard.js';
@@ -43,7 +44,15 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: config.isProd ? 'Error interno del servidor' : err.message });
 });
 
-// Actualiza el esquema si hace falta (idempotente). Si falla, la API arranca igual y lo deja en el log.
-await aplicarMigraciones().catch((e) => console.error('Migración no aplicada:', e.message));
+// Antes de aceptar peticiones: almacenamiento configurado y esquema al día. Si algo falla, la API NO
+// arranca: es preferible a servir con columnas que faltan o escribir archivos en el sitio equivocado.
+try {
+  const st = await inicializarAlmacenamiento(config.storage);
+  console.log(`Almacenamiento: ${st.driver}${st.bucket ? ` (bucket ${st.bucket})` : ''} · APP_ENV=${config.appEnv}`);
+  await aplicarMigraciones(pool);
+} catch (e) {
+  console.error('✖ La API no puede arrancar:', e.message);
+  process.exit(1);
+}
 
 app.listen(config.port, () => console.log(`API DAI escuchando en http://localhost:${config.port}`));
