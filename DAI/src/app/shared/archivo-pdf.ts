@@ -9,6 +9,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
  */
 export class UrlPdf {
   private url: string | null = null;
+  private datos: Blob | null = null;
 
   constructor(private readonly sanitizer: DomSanitizer) {}
 
@@ -16,11 +17,24 @@ export class UrlPdf {
    * Crea el URL para el <iframe>. El Blob se re-etiqueta como application/pdf: así el navegador SIEMPRE lo
    * abre con su visor de PDF y nunca lo interpreta como HTML, aunque el servidor ya haya validado el contenido.
    * bypassSecurityTrustResourceUrl es seguro aquí porque el URL lo generamos nosotros a partir de bytes PDF.
+   *
+   * pagina: añade "#page=N" (parámetro de apertura de PDF). Lo respetan el visor de Chrome/Edge y el de Firefox
+   * (pdf.js); Safari lo ignora y abre en la página 1. Ver fragmentoPagina().
    */
-  crear(datos: Blob): SafeResourceUrl {
+  crear(datos: Blob, pagina?: number | null): SafeResourceUrl {
     this.revocar();
-    this.url = URL.createObjectURL(new Blob([datos], { type: 'application/pdf' }));
-    return this.sanitizer.bypassSecurityTrustResourceUrl(this.url);
+    this.datos = new Blob([datos], { type: 'application/pdf' });
+    this.url = URL.createObjectURL(this.datos);
+    return this.sanitizer.bypassSecurityTrustResourceUrl(this.url + fragmentoPagina(pagina));
+  }
+
+  /**
+   * Vuelve a abrir el MISMO PDF (ya en memoria, sin pedirlo otra vez al servidor) en otra página.
+   * Se crea un object URL nuevo a propósito: cambiar solo el "#page=N" de un iframe que ya muestra el PDF no
+   * siempre hace que el visor nativo salte (es una navegación "dentro del mismo documento"); un URL nuevo sí.
+   */
+  irAPagina(pagina: number): SafeResourceUrl | null {
+    return this.datos ? this.crear(this.datos, pagina) : null;
   }
 
   revocar(): void {
@@ -29,6 +43,18 @@ export class UrlPdf {
       this.url = null;
     }
   }
+}
+
+/** "#page=N" solo para enteros positivos (el número viene de la URL de la app: nunca se confía en él). */
+export function fragmentoPagina(pagina?: number | null): string {
+  return Number.isInteger(pagina) && (pagina as number) >= 1 && (pagina as number) <= 100_000 ? `#page=${pagina}` : '';
+}
+
+/** Lee ?pagina=N de la ruta: entero positivo o null. */
+export function paginaDeConsulta(valor: string | null): number | null {
+  if (!valor || !/^\d{1,6}$/.test(valor)) return null;
+  const n = Number(valor);
+  return n >= 1 ? n : null;
 }
 
 /** Ofrece un Blob como descarga con el nombre indicado y libera el object URL enseguida. */

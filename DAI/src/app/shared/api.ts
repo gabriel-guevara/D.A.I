@@ -29,6 +29,29 @@ export interface DocumentoSubido {
   tamanoBytes: number;
   tamano: string;
   paginas: number;
+  /** La extracción de texto corre en segundo plano después de responder: siempre llega 'pendiente'. */
+  indexacion: 'pendiente';
+}
+
+/** Estado de la extracción de texto de un documento con archivo (detalle y GET /documentos/:id/indexacion). */
+export type EstadoTexto = 'pendiente' | 'procesando' | 'procesado' | 'sin_texto' | 'error';
+export interface EstadoIndexacion {
+  estado: EstadoTexto;
+  etiqueta: string;
+  descripcion: string;
+  /** Aviso cuando se alcanzó un límite (páginas, caracteres o tiempo) y parte del documento no se indexó. */
+  aviso: string | null;
+  paginasConTexto: number | null;
+  paginasTotales: number | null;
+  caracteres: number | null;
+  errorCodigo: string | null;
+  fecha: string;
+}
+
+/** Trozo de un fragmento de búsqueda; "resaltado" = coincide con lo buscado. Se pinta sin innerHTML. */
+export interface SegmentoFragmento {
+  texto: string;
+  resaltado: boolean;
 }
 
 export interface ResultadoIntegridad {
@@ -98,6 +121,14 @@ export class ApiService {
   }
   verificarIntegridad(id: string): Observable<ResultadoIntegridad> {
     return this.http.post<ResultadoIntegridad>(`${API_URL}/documentos/${encodeURIComponent(id)}/verificar-integridad`, {});
+  }
+  /** Estado de la extracción de texto (ligero, sin auditoría: se consulta cada pocos segundos mientras está pendiente). */
+  indexacionDocumento(id: string): Observable<EstadoIndexacion> {
+    return this.http.get<EstadoIndexacion>(`${API_URL}/documentos/${encodeURIComponent(id)}/indexacion`);
+  }
+  /** Vuelve a extraer el texto del PDF (solo Super Administrador y Operador OCR; queda auditado). */
+  reindexarDocumento(id: string): Observable<EstadoIndexacion> {
+    return this.http.post<EstadoIndexacion>(`${API_URL}/documentos/${encodeURIComponent(id)}/reindexar`, {});
   }
   eliminarDocumento(id: string): Observable<void> {
     return this.http.delete<void>(`${API_URL}/documentos/${encodeURIComponent(id)}`);
