@@ -207,8 +207,9 @@ router.post('/:id/verificar-integridad', requireRole(...ROLES_INTEGRIDAD), async
 /** Estado de indexación (fila presentada) o null si el documento nunca entró en la cola. */
 async function leerIndexacion(id) {
   const { rows: [f] } = await query(`SELECT ${COLUMNAS_INDEXACION} FROM documento_indexacion WHERE documento_id = $1`, [id]);
-  // Pendiente = hay trabajo: se despierta el indexador (por si el servicio se reinició). Sin sondeo periódico.
-  if (f?.estado === 'pendiente') despertarIndexador();
+  // En cola o "procesando" (quizá abandonado por un reinicio): se despierta el indexador, que retoma lo abandonado
+  // pasado el umbral. Si ya está trabajando no hace nada. Así no hace falta un sondeo periódico.
+  if (f?.estado === 'pendiente' || f?.estado === 'procesando') despertarIndexador();
   return presentarIndexacion(f ?? null);
 }
 
