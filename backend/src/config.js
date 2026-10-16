@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { erroresEntornoApi } from './lib/entorno.js';
 import { configAlmacenamientoDesdeEnv } from './lib/storage.js';
+import { errorClaveMfa } from './lib/cifrado-mfa.js';
 
 /**
  * Valida TODAS las variables al arrancar y, si algo falla, muestra la lista completa de problemas y
@@ -13,6 +14,13 @@ if (process.env.NODE_ENV === 'production' && (process.env.JWT_SECRET?.length ?? 
   errores.push('JWT_SECRET debe tener al menos 32 caracteres en producción.');
 
 errores.push(...erroresEntornoApi(process.env));
+
+// 2FA (Fase 3): la clave de cifrado de los secretos TOTP es obligatoria en TODOS los entornos. Sin ella
+// no se puede ni activar el 2FA ni verificar un código, así que no tiene sentido arrancar "a medias".
+const errorMfa = errorClaveMfa(process.env.MFA_ENCRYPTION_KEY);
+if (errorMfa) errores.push(errorMfa);
+if (process.env.MFA_DEV_CODE)
+  console.warn('⚠ MFA_DEV_CODE ya no se usa (Fase 3): todos los entornos usan TOTP real. Puedes borrarla de tu .env.');
 
 let storage = null;
 try {
@@ -39,7 +47,6 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:4200',
-  mfaDevCode: process.env.MFA_DEV_CODE || null,
   storage,
   maxUploadBytes: maxUploadMb * 1024 * 1024,
 };
