@@ -1,22 +1,34 @@
-import { Component, OnDestroy, computed, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../../shared/auth';
+import { AltaDosPasos, ApiService, SegundoFactor } from '../../shared/api';
+import { Alta2fa } from '../../shared/alta-2fa';
+import { CodigosRecuperacion } from '../../shared/codigos-recuperacion';
 
-type LoginStep = 'credentials' | 'twofactor';
-type TwoFactorMethod = 'totp' | 'yubikey' | 'sms';
+/**
+ * Login en dos pasos con 2FA TOTP real:
+ *  credentials → twofactor (ya tiene 2FA)            → dashboard
+ *  credentials → enrolar (no tiene 2FA: obligatorio) → codigos (recuperación, una vez) → dashboard
+ */
+type LoginStep = 'credentials' | 'twofactor' | 'enrolar' | 'codigos';
+
+const PASO_TOTP_S = 30;
+const DIGITOS_VACIOS = ['', '', '', '', '', ''];
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Alta2fa, CodigosRecuperacion],
   templateUrl: './login.html',
 })
 export class Login implements OnDestroy {
+  private router = inject(Router);
+  private auth = inject(AuthService);
+  private api = inject(ApiService);
 
-  // Esto es para el login de dos pasos, primero se ingresa usuario y contraseña, luego se ingresa el token de seguridad
   step = signal<LoginStep>('credentials');
 
   username = signal('');
@@ -24,24 +36,29 @@ export class Login implements OnDestroy {
   showPassword = signal(false);
   errorMessage = signal('');
 
-  twoFactorMethod = signal<TwoFactorMethod>('totp');
-  otpDigits = signal<string[]>(['', '', '', '', '', '']);
-  countdown = signal(44);
+  otpDigits = signal<string[]>([...DIGITOS_VACIOS]);
+  /** Segundos que le quedan al código actual de la app (los códigos TOTP cambian cada 30 s, a la vez en todo el mundo). */
+  countdown = signal(this.segundosRestantes());
   isVerifying = signal(false);
   isSubmitting = signal(false);
 
-  // Token temporal que entrega el backend tras validar usuario/contraseña (se envía junto con el código 2FA)
-  private mfaToken: string | null = null;
+  // Paso 2 con código de recuperación (perdió el teléfono)
+  usarRecuperacion = signal(false);
+  codigoRecuperacion = signal('');
 
-  // Timer para el countdown del token de seguridad
+  // Alta obligatoria
+  alta = signal<AltaDosPasos | null>(null);
+  cargandoAlta = signal(false);
+  codigosNuevos = signal<string[]>([]);
+  codigosGuardados = signal(false);
+
+  // Tokens temporales que entrega el backend tras la contraseña (no se guardan en ningún almacenamiento)
+  private mfaToken: string | null = null;
+  private enrolToken: string | null = null;
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
 
-  // Esto es para el paso de credenciales y segundo factor
   otpComplete = computed(() => this.otpDigits().every((d) => d !== ''));
 
-  constructor(private router: Router, private auth: AuthService) { }
-
-  // Limpiar el timer aqui es donde se resetea me da pereza cambiarlo tons yo creo que por el momento esta bien asi
   ngOnDestroy(): void {
     this.clearCountdown();
   }
@@ -49,27 +66,30 @@ export class Login implements OnDestroy {
   togglePassword(): void {
     this.showPassword.set(!this.showPassword());
   }
-  // Esta es la parte del segundo factor
-  selectMethod(method: TwoFactorMethod): void {
-    this.twoFactorMethod.set(method);
-  }
 
   onSubmitCredentials(): void {
     this.errorMessage.set('');
-
     if (!this.username().trim() || !this.password().trim()) {
       this.errorMessage.set('Ingrese su usuario institucional y su contraseña.');
       return;
     }
 
-    // Valida usuario y contraseña contra el backend (PostgreSQL). Si son correctos, pasa al segundo factor.
     this.isSubmitting.set(true);
     this.auth.login(this.username().trim(), this.password()).subscribe({
-      next: ({ mfaToken }) => {
-        this.mfaToken = mfaToken;
+      next: (r) => {
         this.isSubmitting.set(false);
-        this.step.set('twofactor');
+        this.password.set(''); // ya no hace falta en memoria
+        this.otpDigits.set([...DIGITOS_VACIOS]);
+        if (r.paso === '2fa') {
+          this.mfaToken = r.mfaToken;
+          this.step.set('twofactor');
+        } else {
+          this.enrolToken = r.enrolToken;
+          this.step.set('enrolar');
+          this.generarQr();
+        }
         this.startCountdown();
+        this.enfocarPrimerDigito();
       },
       error: (err: HttpErrorResponse) => {
         this.isSubmitting.set(false);
@@ -78,17 +98,17 @@ export class Login implements OnDestroy {
     });
   }
 
-  // Inicia el countdown esta es la logica del conteo
-  startCountdown(): void {
-    this.clearCountdown();
-    this.countdown.set(44);
-    this.countdownTimer = setInterval(() => {
-      const current = this.countdown();
-      this.countdown.set(current <= 1 ? 44 : current - 1);
-    }, 1000);
+  // ------------------------------------------------------------------ contador real del código TOTP
+  private segundosRestantes(): number {
+    return PASO_TOTP_S - (Math.floor(Date.now() / 1000) % PASO_TOTP_S);
   }
 
-  // Limpiar el timer
+  startCountdown(): void {
+    this.clearCountdown();
+    this.countdown.set(this.segundosRestantes());
+    this.countdownTimer = setInterval(() => this.countdown.set(this.segundosRestantes()), 1000);
+  }
+
   private clearCountdown(): void {
     if (this.countdownTimer) {
       clearInterval(this.countdownTimer);
@@ -96,62 +116,143 @@ export class Login implements OnDestroy {
     }
   }
 
-  // Aqui es donde se ingresan los numeros lo de borrar los numeros tambien esta raro pero como solo es para ejemplo esta bien
+  // ------------------------------------------------------------------ casillas del código de 6 dígitos
   onDigitInput(index: number, event: Event): void {
     const input = event.target as HTMLInputElement;
     const value = input.value.replace(/[^0-9]/g, '').slice(-1);
-
     const digits = [...this.otpDigits()];
     digits[index] = value;
     this.otpDigits.set(digits);
-
-    if (value && index < 5) {
-      const next = document.getElementById('otp-' + (index + 1)) as HTMLInputElement | null;
-      next?.focus();
-    }
+    input.value = value;
+    if (value && index < 5) (document.getElementById('otp-' + (index + 1)) as HTMLInputElement | null)?.focus();
   }
 
-  // Esta es la logica de borrar los numeros
   onDigitKeydown(index: number, event: KeyboardEvent): void {
     if (event.key === 'Backspace' && !this.otpDigits()[index] && index > 0) {
-      const prev = document.getElementById('otp-' + (index - 1)) as HTMLInputElement | null;
-      prev?.focus();
+      (document.getElementById('otp-' + (index - 1)) as HTMLInputElement | null)?.focus();
     }
+    if (event.key === 'Enter' && this.otpComplete()) this.enviarCodigo();
   }
 
-  // Esta es la logica de verificar el token de seguridad y si es correcto te lleva al dashboard
+  /** Pegar "123456" (copiado de la app) llena las 6 casillas de una vez. */
+  onDigitPaste(event: ClipboardEvent): void {
+    const pegado = (event.clipboardData?.getData('text') ?? '').replace(/\D/g, '');
+    if (pegado.length < 6) return;
+    event.preventDefault();
+    this.otpDigits.set(pegado.slice(0, 6).split(''));
+    (document.getElementById('otp-5') as HTMLInputElement | null)?.focus();
+  }
+
+  private enfocarPrimerDigito(): void {
+    setTimeout(() => (document.getElementById('otp-0') as HTMLInputElement | null)?.focus());
+  }
+
+  private limpiarDigitos(): void {
+    this.otpDigits.set([...DIGITOS_VACIOS]);
+    this.enfocarPrimerDigito();
+  }
+
+  /** Botón principal del paso actual (verificar el 2FA o confirmar el alta). */
+  enviarCodigo(): void {
+    if (this.step() === 'enrolar') this.confirmarAlta();
+    else this.onVerify();
+  }
+
+  // ------------------------------------------------------------------ paso 2: verificar
+  toggleRecuperacion(): void {
+    this.usarRecuperacion.set(!this.usarRecuperacion());
+    this.codigoRecuperacion.set('');
+    this.errorMessage.set('');
+  }
+
   onVerify(): void {
-    if (!this.otpComplete()) {
-      this.errorMessage.set('Complete el código de verificación de 6 dígitos.');
-      return;
+    let factor: SegundoFactor;
+    if (this.usarRecuperacion()) {
+      const c = this.codigoRecuperacion().trim();
+      if (!/^[A-Za-z0-9]{5}-?[A-Za-z0-9]{5}$/.test(c)) {
+        this.errorMessage.set('El código de recuperación tiene la forma XXXXX-XXXXX.');
+        return;
+      }
+      factor = { codigoRecuperacion: c };
+    } else {
+      if (!this.otpComplete()) {
+        this.errorMessage.set('Complete el código de verificación de 6 dígitos.');
+        return;
+      }
+      factor = { code: this.otpDigits().join('') };
     }
+    if (!this.mfaToken) return this.backToCredentials();
 
     this.isVerifying.set(true);
     this.errorMessage.set('');
-
-    if (!this.mfaToken) {
-      this.isVerifying.set(false);
-      this.backToCredentials();
-      return;
-    }
-
-    // El backend valida el código; si es correcto devuelve el token de sesión (JWT)
-    this.auth.verify2fa(this.mfaToken, this.otpDigits().join('')).subscribe({
-      next: () => {
+    this.auth.verify2fa(this.mfaToken, factor).subscribe({
+      next: (r) => {
         this.isVerifying.set(false);
-        this.password.set('');
-        this.router.navigate(['/dashboard']);
+        // Entró con un código de recuperación: se le lleva a "Seguridad de mi cuenta" para que configure
+        // un autenticador nuevo y vea cuántos códigos le quedan.
+        if (r.codigosRestantes !== undefined) {
+          this.router.navigate(['/cuenta/seguridad'], { queryParams: { recuperacion: r.codigosRestantes } });
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
       },
       error: (err: HttpErrorResponse) => {
         this.isVerifying.set(false);
-        if (err.error?.reiniciar) {
-          this.backToCredentials(); // el token temporal venció: hay que repetir el paso 1
-        } else {
-          this.otpDigits.set(['', '', '', '', '', '']);
-        }
+        if (err.error?.reiniciar) this.backToCredentials();
+        else this.limpiarDigitos();
         this.errorMessage.set(this.mensajeDeError(err));
       },
     });
+  }
+
+  // ------------------------------------------------------------------ alta obligatoria
+  generarQr(): void {
+    if (!this.enrolToken) return this.backToCredentials();
+    this.cargandoAlta.set(true);
+    this.alta.set(null);
+    this.api.iniciarAlta2fa(this.enrolToken).subscribe({
+      next: (a) => {
+        this.cargandoAlta.set(false);
+        this.alta.set(a);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.cargandoAlta.set(false);
+        if (err.error?.reiniciar) this.backToCredentials();
+        this.errorMessage.set(this.mensajeDeError(err));
+      },
+    });
+  }
+
+  confirmarAlta(): void {
+    if (!this.otpComplete()) {
+      this.errorMessage.set('Escriba el código de 6 dígitos que muestra su app.');
+      return;
+    }
+    if (!this.enrolToken) return this.backToCredentials();
+    this.isVerifying.set(true);
+    this.errorMessage.set('');
+    this.auth.confirmarAlta(this.enrolToken, this.otpDigits().join('')).subscribe({
+      next: (r) => {
+        this.isVerifying.set(false);
+        this.alta.set(null); // el secreto deja de estar en pantalla y en memoria
+        this.enrolToken = null;
+        this.clearCountdown();
+        this.codigosNuevos.set(r.codigosRecuperacion ?? []);
+        this.step.set('codigos');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isVerifying.set(false);
+        if (err.error?.reiniciar) return this.backToCredentials(this.mensajeDeError(err));
+        if (err.error?.nuevoQr) this.generarQr();
+        this.limpiarDigitos();
+        this.errorMessage.set(this.mensajeDeError(err));
+      },
+    });
+  }
+
+  continuarTrasCodigos(): void {
+    this.codigosNuevos.set([]);
+    this.router.navigate(['/dashboard']);
   }
 
   private mensajeDeError(err: HttpErrorResponse): string {
@@ -159,11 +260,15 @@ export class Login implements OnDestroy {
     return err.error?.error ?? 'Ocurrió un error inesperado. Inténtelo de nuevo.';
   }
 
-  backToCredentials(): void {
+  backToCredentials(mensaje = ''): void {
     this.clearCountdown();
     this.mfaToken = null;
-    this.errorMessage.set('');
-    this.otpDigits.set(['', '', '', '', '', '']);
+    this.enrolToken = null;
+    this.alta.set(null);
+    this.usarRecuperacion.set(false);
+    this.codigoRecuperacion.set('');
+    this.errorMessage.set(mensaje);
+    this.otpDigits.set([...DIGITOS_VACIOS]);
     this.step.set('credentials');
   }
 }
