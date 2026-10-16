@@ -27,6 +27,7 @@
             {{ r.nombreOriginal }} · {{ r.tamano }} · {{ r.paginas }} {{ r.paginas === 1 ? 'página' : 'páginas' }}
           </p>
           <p class="text-[11px] font-mono break-all">SHA-256: {{ r.hash }}</p>
+          <p class="text-xs">El texto se extrae en segundo plano para la búsqueda; su estado aparece en el detalle del documento.</p>
           <a [routerLink]="['/documento', r.id]" class="inline-block text-xs font-medium text-emerald-700 underline">Abrir el documento</a>
         </div>
       }

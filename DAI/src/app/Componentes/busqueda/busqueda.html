@@ -15,8 +15,11 @@
           </div>
           <div class="flex items-center gap-4 text-xs text-right shrink-0">
             <div>
-              <p class="text-slate-400">DOCUMENTOS INDEXADOS</p>
-              <p class="text-base font-bold text-slate-800">1,489,204 regs.</p>
+              <p class="text-slate-400">DOCUMENTOS CON TEXTO</p>
+              <p class="text-base font-bold text-slate-800">{{ documentosConTexto() ?? '—' }}</p>
+              @if (documentosConTextoReal() !== null) {
+                <p class="text-[12px] text-slate-500">{{ documentosConTextoReal() }} extraídos de PDF</p>
+              }
             </div>
           </div>
         </div>
@@ -93,7 +96,7 @@
             <div class="bg-white rounded-xl border border-slate-200 p-4">
               <div class="flex flex-wrap items-start justify-between gap-2 mb-2">
                 <div>
-                  <p class="text-m mb-3 font-semibold text-blue-700 hover:underline cursor-pointer" (click)="abrirDocumento(r.docId)">
+                  <p class="text-m mb-3 font-semibold text-blue-700 hover:underline cursor-pointer" (click)="abrirDocumento(r)">
                     {{ r.title }}
                   </p>
                   <p class="text-[12px] mb-1 text-slate-800">{{ r.formatLabel }} · {{ r.hashLabel }} · Expediente: {{ r.expediente }}</p>
@@ -101,13 +104,31 @@
                 </div>
               </div>
 
-              <p class="text-[12px] text-slate-800 mb-1">{{ r.pagina }} · {{ r.score }}</p>
-              <p class="text-xs text-slate-600 leading-relaxed mb-3">
-                {{ r.before }}
-                @if (r.highlight) {
-                  <mark class="bg-yellow-100 text-slate-800 font-medium px-0.5">{{ r.highlight }}</mark>
+              <div class="flex flex-wrap items-center gap-2 text-[12px] text-slate-800 mb-1">
+                @if (r.pagina) {
+                  <span class="font-medium">{{ r.pagina }}</span>
                 }
-                {{ r.after }}
+                @if (r.paginasCoincidentes && r.paginasCoincidentes > 1) {
+                  <span class="text-slate-500">· coincide en {{ r.paginasCoincidentes }} páginas</span>
+                }
+                @if (r.score) {
+                  <span class="text-slate-500">· {{ r.score }}</span>
+                }
+                @if (r.origenEtiqueta) {
+                  <span class="px-2 py-0.5 rounded-full font-medium" [ngClass]="claseOrigen(r.origenTexto)">{{ r.origenEtiqueta }}</span>
+                }
+              </div>
+              <!-- Segmentos con interpolación ({{ }}): Angular escapa todo, el texto del PDF nunca se interpreta como HTML -->
+              <p class="text-xs text-slate-600 leading-relaxed mb-3">
+                @for (s of r.segmentos; track $index) {
+                  @if (s.resaltado) {
+                    <mark class="bg-yellow-100 text-slate-800 font-medium px-0.5">{{ s.texto }}</mark>
+                  } @else {
+                    <span>{{ s.texto }}</span>
+                  }
+                } @empty {
+                  <span class="text-slate-400">Sin texto indexado para este documento.</span>
+                }
               </p>
 
               <div class="flex flex-wrap items-center justify-between gap-2 text-[12px] text-slate-800 border-t border-slate-100 pt-2">
@@ -116,7 +137,9 @@
                   <button class="flex items-center gap-2 text-slate-500 hover:text-blue-600">
                     <img width="15" height="15" src="https://img.icons8.com/ios-filled/50/ophthalmology.png" alt="ophthalmology"/>
                     <span class="hidden md:inline"> Previsualizar coincidencia</span></button>
-                  <button (click)="abrirDocumento(r.docId)" class="text-blue-600 font-medium hover:underline">Abrir documento</button>
+                  <button (click)="abrirDocumento(r)" class="text-blue-600 font-medium hover:underline">
+                    {{ r.numeroPagina ? 'Abrir en la página ' + r.numeroPagina : 'Abrir documento' }}
+                  </button>
                 </div>
               </div>
             </div>
