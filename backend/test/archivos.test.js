@@ -360,3 +360,10 @@ test('verificar integridad de un documento sin archivo: 409', async () => {
   const r = await fetch(`${url}/documentos/${d.id}/verificar-integridad`, { method: 'POST', headers: auth('admin') });
   assert.equal(r.status, 409);
 });
+
+test('catálogos: límite de subida y clasificaciones permitidas según el nivel del usuario', async () => {
+  const c = await (await fetch(`${url}/catalogos`, { headers: auth('operador') })).json();
+  assert.deepEqual(c.subida, { maxMb: 1 });
+  assert.deepEqual(Object.fromEntries(c.clasificaciones.map((x) => [x.nombre, x.permitida])),
+    { 'Secreto Corporativo': false, 'Confidencial Nivel 2': true, 'Uso Interno General': true });
+});
