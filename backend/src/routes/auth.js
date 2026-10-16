@@ -108,8 +108,11 @@ router.post('/login', limitadorIp, async (req, res) => {
   await limpiarFallos(clave);
 
   const base = { sub: String(u.id), ver: u.sesion_version };
-  if (u.mfa_secreto) return res.json({ paso: '2fa', mfaToken: firmarToken(base, 'mfa', VIDA_MFA), metodo: u.mfa_metodo });
-  res.json({ paso: 'enrolar', enrolToken: firmarToken(base, 'enrolar', VIDA_ENROLAR) });
+  // "ahora" (ms): hora del servidor, para que el contador del front marque los mismos segundos que la app del
+  // teléfono aunque el reloj del computador esté desfasado (el servidor es quien valida los códigos).
+  const ahora = Date.now();
+  if (u.mfa_secreto) return res.json({ paso: '2fa', mfaToken: firmarToken(base, 'mfa', VIDA_MFA), metodo: u.mfa_metodo, ahora });
+  res.json({ paso: 'enrolar', enrolToken: firmarToken(base, 'enrolar', VIDA_ENROLAR), ahora });
 });
 
 /** Paso 2: código TOTP de 6 dígitos (o un código de recuperación) → token de sesión. */

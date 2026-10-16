@@ -88,9 +88,13 @@ export async function leerErrorApi(err: unknown): Promise<ErrorApi> {
 // ---------------------------------------------------------------------------- Seguridad (Fase 3)
 
 /** Paso 1 del login: con 2FA activo se pide el código; sin 2FA hay que configurarlo en ese momento. */
-export type RespuestaLogin =
+export type RespuestaLogin = (
   | { paso: '2fa'; mfaToken: string; metodo: string }
-  | { paso: 'enrolar'; enrolToken: string };
+  | { paso: 'enrolar'; enrolToken: string }
+) & {
+  /** Hora del servidor (ms desde 1970). Sirve para sincronizar el contador de 30 s con el de la app del teléfono. */
+  ahora?: number;
+};
 
 /** Segundo factor: código de 6 dígitos de la app o un código de recuperación (XXXXX-XXXXX). */
 export type SegundoFactor = { code: string } | { codigoRecuperacion: string };
