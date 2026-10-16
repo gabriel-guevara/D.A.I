@@ -19,10 +19,12 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  // App es solo el shell de la aplicación: su plantilla contiene únicamente
+  // <router-outlet>, y cada vista (login, dashboard, biblioteca…) la pinta el router.
+  it('renderiza el router-outlet como contenedor de las vistas', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, DAI');
+    expect(compiled.querySelector('router-outlet')).not.toBeNull();
   });
 });
