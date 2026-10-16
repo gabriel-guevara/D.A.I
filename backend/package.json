@@ -12,6 +12,7 @@
     "db:setup": "node db/setup.js",
     "db:setup:demo": "node db/setup.js --seed",
     "texto:indexar": "node scripts/indexar-texto.js",
+    "admin:reset-2fa": "node scripts/admin-reset-2fa.js",
     "test": "node --test --test-concurrency=1 \"test/**/*.test.js\""
   },
   "dependencies": {
