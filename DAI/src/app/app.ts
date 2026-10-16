@@ -5,7 +5,7 @@ import { Biblioteca } from './Componentes/biblioteca/biblioteca';
 import { Dashboard } from './Componentes/dashboard/dashboard';
 
 @Component({
-  imports: [RouterOutlet, Login, Biblioteca, Dashboard],
+  imports: [RouterOutlet],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',

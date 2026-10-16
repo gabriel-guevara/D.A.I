@@ -36,14 +36,6 @@ export class Login implements OnDestroy {
   // Timer para el countdown del token de seguridad
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
 
-  passwordStrength = computed(() => {
-    const pwd = this.password();
-    if (pwd.length === 0) return { label: '', percent: 0, color: '' };
-    if (pwd.length < 6) return { label: 'Débil', percent: 33, color: 'bg-red-500' };
-    if (pwd.length < 10) return { label: 'Media', percent: 66, color: 'bg-yellow-500' };
-    return { label: 'Robusta', percent: 100, color: 'bg-emerald-500' };
-  });
-
   // Esto es para el paso de credenciales y segundo factor
   otpComplete = computed(() => this.otpDigits().every((d) => d !== ''));
 
