@@ -39,7 +39,32 @@ export async function notificarConsulta(req, doc) {
 const ESTILOS = {
   eliminado: { borde: 'border-l-red-500', badge: 'Papelera', badgeClase: 'bg-red-50 text-red-700', icono: '🗑️' },
   version: { borde: 'border-l-blue-500', badge: 'Versiones', badgeClase: 'bg-blue-50 text-blue-700', icono: '📄' },
+  // Carpetas y movimientos (Fase 5): pestaña "Edición de Documentos".
+  edicion: { borde: 'border-l-amber-500', badge: 'Carpetas', badgeClase: 'bg-amber-50 text-amber-700', icono: '📁' },
 };
+
+/**
+ * Notificación para un grupo de usuarios activos: por rol (roles) o por id (usuarioIds). Si se indica nivelMinimo,
+ * solo la reciben quienes alcanzan ese nivel: nadie se entera por una notificación de un documento que no puede ver.
+ * Nunca rompe la petición principal: la acción ya ocurrió y quedó auditada.
+ * @param {{ categoria?: 'edicion'|'eliminado'|'version', roles?: string[], usuarioIds?: (string|number)[],
+ *           nivelMinimo?: number|null, titulo: string, descripcion: string, meta?: string[], documentoId?: string|number|null }} n
+ */
+export async function notificarUsuarios({ categoria = 'edicion', roles = [], usuarioIds = [], nivelMinimo = null, titulo, descripcion, meta = [], documentoId = null }) {
+  const e = ESTILOS[categoria];
+  try {
+    await query(
+      `INSERT INTO notificaciones (usuario_id, categoria, borde_clase, badge, badge_clase, icono, titulo, descripcion, meta, acciones, documento_id)
+       SELECT u.id, $1, $2, $3, $4, $5, $6, $7, $8::jsonb, '[]'::jsonb, $9
+         FROM usuarios u JOIN roles r ON r.id = u.rol_id JOIN niveles_acceso n ON n.id = u.nivel_id
+        WHERE u.activo AND (r.clave = ANY($10::text[]) OR u.id = ANY($11::bigint[]))
+          AND ($12::int IS NULL OR n.rango >= $12::int)`,
+      [categoria, e.borde, e.badge, e.badgeClase, e.icono, titulo, descripcion, JSON.stringify(meta), documentoId,
+        roles, usuarioIds.map(String), nivelMinimo]);
+  } catch (err) {
+    console.error('No se pudo registrar la notificación:', err.message);
+  }
+}
 
 /**
  * Avisa a los Super Administradores y Oficiales de Cumplimiento activos (papelera y versiones).

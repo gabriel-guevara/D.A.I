@@ -19,6 +19,7 @@ import seguridad from './routes/seguridad.js';
 import digitalizacion from './routes/digitalizacion.js';
 import cuenta from './routes/cuenta.js';
 import papelera from './routes/papelera.js';
+import carpetas from './routes/carpetas.js';
 
 export function crearApp() {
   const app = express();
@@ -39,6 +40,7 @@ export function crearApp() {
   app.use('/api/dashboard', dashboard);
   app.use('/api/documentos', documentos);           // incluye /:id/versiones (routes/versiones.js)
   app.use('/api/papelera', papelera);
+  app.use('/api/carpetas', carpetas);               // carpetas, mover y solicitudes de movimiento (Fase 5)
   app.use('/api/busqueda', busqueda);
   app.use('/api/notificaciones', notificaciones);
   app.use('/api/seguridad', seguridad);
