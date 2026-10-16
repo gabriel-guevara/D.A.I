@@ -2,10 +2,17 @@
 -- DAI · Esquema PostgreSQL (14+)
 -- Solo incluye lo que el front realmente usa (8 pantallas).
 -- Se ejecuta con:  npm run db:setup   (¡borra y recrea el esquema public!)
+-- El borrado (DROP SCHEMA public) lo hace db/setup.js tras verificar el entorno;
+-- este archivo solo crea objetos, así las pruebas lo pueden cargar en un esquema temporal.
+-- Las bases YA existentes no usan este archivo: se actualizan con src/migrate.js al arrancar la API.
 -- =====================================================================
-DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- ---------- Control de migraciones (src/migrate.js) ----------
+CREATE TABLE migraciones_aplicadas (
+  nombre      text PRIMARY KEY,
+  aplicada_en timestamptz NOT NULL DEFAULT now()
+);
 
 -- ---------- Catálogos (los *_clase son clases Tailwind que usa el front) ----------
 CREATE TABLE roles (
