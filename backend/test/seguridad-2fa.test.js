@@ -384,9 +384,9 @@ test('cambio de contraseña: exige la actual y un código; cierra TODAS las sesi
   assert.equal((await cambiar({ actual: u.password, nueva })).status, 400, 'sin código');
   await lejosDelBorde();
   const malActual = await cambiar({ actual: 'No-Es-La-Actual-1', nueva, code: codigo(u.secreto, 1) });
-  assert.equal(malActual.status, 401);
+  assert.equal(malActual.status, 403, '403 y no 401: el front no debe cerrar la sesión por un error al escribir');
   assert.match(malActual.cuerpo.error, /contraseña actual/);
-  assert.equal((await cambiar({ actual: u.password, nueva, code: '000000' })).status, 401);
+  assert.equal((await cambiar({ actual: u.password, nueva, code: '000000' })).status, 403);
 
   const ok = await cambiar({ actual: u.password, nueva, code: codigo(u.secreto, 1) });
   assert.equal(ok.status, 200, JSON.stringify(ok.cuerpo));
@@ -413,7 +413,7 @@ test('reconfigurar el autenticador: el anterior sigue valiendo hasta confirmar e
   const u = await usuarioConDosPasos();
   await lejosDelBorde();
   const mal = await post('/cuenta/2fa/reconfigurar/iniciar', { password: 'Otra-Cosa-123', code: codigo(u.secreto, -1) }, { token: u.token });
-  assert.equal(mal.status, 401);
+  assert.equal(mal.status, 403);
   const ini = await post('/cuenta/2fa/reconfigurar/iniciar', { password: u.password, code: codigo(u.secreto, -1) }, { token: u.token });
   assert.equal(ini.status, 200);
   const nuevo = ini.cuerpo.secreto;
@@ -421,7 +421,7 @@ test('reconfigurar el autenticador: el anterior sigue valiendo hasta confirmar e
   assert.notEqual(nuevo, u.secreto);
 
   assert.equal((await entrar(u)).status, 200, 'sin confirmar, el autenticador anterior sigue funcionando');
-  assert.equal((await post('/cuenta/2fa/reconfigurar/confirmar', { code: '000000' }, { token: u.token })).status, 401);
+  assert.equal((await post('/cuenta/2fa/reconfigurar/confirmar', { code: '000000' }, { token: u.token })).status, 403);
   await lejosDelBorde();
   assert.equal((await post('/cuenta/2fa/reconfigurar/confirmar', { code: codigo(nuevo, 1) }, { token: u.token })).status, 200);
   await olvidarPaso(u.id);
@@ -439,7 +439,7 @@ test('restablecer el 2FA de otro usuario: solo super-admin, con su propio códig
 
   assert.equal((await post(ruta, { code: '000000' }, { token: cumplimiento.token })).status, 403);
   assert.equal((await post(ruta, {}, { token: admin.token })).status, 400);
-  assert.equal((await post(ruta, { code: '000000' }, { token: admin.token })).status, 401);
+  assert.equal((await post(ruta, { code: '000000' }, { token: admin.token })).status, 403);
   await lejosDelBorde();
   assert.equal((await post(`/seguridad/usuarios/${admin.id}/restablecer-2fa`, { code: codigo(admin.secreto) }, { token: admin.token })).status, 400, 'a sí mismo no');
   assert.equal((await post('/seguridad/usuarios/999999/restablecer-2fa', { code: codigo(admin.secreto, 1) }, { token: admin.token })).status, 404);

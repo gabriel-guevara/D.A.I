@@ -4,6 +4,9 @@
  * Toda acción sensible pide reautenticación ("step-up"): con solo robar una sesión abierta (un equipo sin
  * bloquear, un token filtrado) no se puede cambiar la contraseña ni el autenticador. Hace falta además la
  * contraseña actual y/o un código de la app (o de recuperación), con los mismos límites de intentos que el login.
+ *
+ * Un dato de reautenticación incorrecto responde 403 y NO 401: 401 significa "no hay sesión" y el front cierra
+ * la sesión al recibirlo; equivocarse al escribir la contraseña actual no debe sacar a nadie.
  */
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
@@ -48,14 +51,14 @@ async function reautenticar(req, u, { password = false, factor }, accionFallo) {
   if (password !== false) {
     if (!u.password_hash || !(await bcrypt.compare(password, u.password_hash))) {
       await fallo(req, clavePwd, accionFallo, { tipo: 'contrasena' });
-      return { status: 401, error: 'La contraseña actual no es correcta.' };
+      return { status: 403, error: 'La contraseña actual no es correcta.' };
     }
     await limpiarFallos(clavePwd);
   }
   if (factor) {
     if (!(await verificarSegundoFactor(u.id, factor))) {
       await fallo(req, clave2, accionFallo, { tipo: factor.tipo });
-      return { status: 401, error: factor.tipo === 'recuperacion' ? 'Código de recuperación incorrecto o ya usado.' : 'Código de verificación incorrecto.' };
+      return { status: 403, error: factor.tipo === 'recuperacion' ? 'Código de recuperación incorrecto o ya usado.' : 'Código de verificación incorrecto.' };
     }
     await limpiarFallos(clave2);
   }
@@ -132,7 +135,7 @@ router.post('/2fa/reconfigurar/confirmar', limitadorIp, async (req, res) => {
   if (r === 'sin_pendiente' || r === 'caducado') return res.status(400).json({ error: 'El código QR caducó. Empiece de nuevo.', nuevoQr: true });
   if (r !== 'ok') {
     await fallo(req, clave, '2fa_fallido', { tipo: 'reconfigurar' });
-    return res.status(401).json({ error: 'Código incorrecto. Revise que la hora de su teléfono esté en automático.' });
+    return res.status(403).json({ error: 'Código incorrecto. Revise que la hora de su teléfono esté en automático.' });
   }
   await limpiarFallos(clave);
   await registrarAuditoria(req, '2fa_reconfigurado');

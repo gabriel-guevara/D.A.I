@@ -212,7 +212,7 @@ router.post('/usuarios/:id/restablecer-2fa', requireRole('super-admin'), async (
     const f = await registrarFallo(clave);
     await registrarAuditoria(req, '2fa_fallido', null, { tipo: factor.tipo, accion: 'restablecer_2fa' });
     if (f.recienBloqueado) await registrarAuditoria(req, 'bloqueo_temporal', null, { motivo: factor.tipo, minutos: BLOQUEO_MIN });
-    return res.status(401).json({ error: 'Su código de verificación no es correcto.' });
+    return res.status(403).json({ error: 'Su código de verificación no es correcto.' }); // 403: la sesión sigue siendo válida
   }
   await limpiarFallos(clave);
 
