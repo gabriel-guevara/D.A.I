@@ -123,7 +123,7 @@ export async function seed(db) {
                     VALUES ($1,$2,$3,$4,$5,$6,'Versión vigente',$7)`,
       [id, d.version, d.hashNull ? null : sha(d.nombre + d.version), bytes, null, uid[d.autorEmail] ?? null, d.actualizado]);
     for (const [pagina, seccion, texto] of d.textos)
-      await db.query(`INSERT INTO documento_paginas (documento_id,pagina,seccion,texto,confianza) VALUES ($1,$2,$3,$4,98.9)`, [id, pagina, seccion, texto]);
+      await db.query(`INSERT INTO documento_paginas (documento_id,pagina,seccion,texto,confianza,origen) VALUES ($1,$2,$3,$4,98.9,'demo')`, [id, pagina, seccion, texto]);
     for (const tag of d.tags) {
       const t = await db.query(`INSERT INTO etiquetas (nombre) VALUES ($1) ON CONFLICT (nombre) DO UPDATE SET nombre = EXCLUDED.nombre RETURNING id`, [tag]);
       await db.query(`INSERT INTO documento_etiquetas VALUES ($1,$2)`, [id, t.rows[0].id]);

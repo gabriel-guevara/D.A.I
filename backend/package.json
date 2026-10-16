@@ -11,6 +11,7 @@
     "dev": "node --watch src/server.js",
     "db:setup": "node db/setup.js",
     "db:setup:demo": "node db/setup.js --seed",
+    "texto:indexar": "node scripts/indexar-texto.js",
     "test": "node --test --test-concurrency=1 \"test/**/*.test.js\""
   },
   "dependencies": {

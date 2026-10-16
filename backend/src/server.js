@@ -3,6 +3,7 @@ import { pool } from './db.js';
 import { aplicarMigraciones } from './migrate.js';
 import { inicializarAlmacenamiento } from './lib/storage.js';
 import { crearApp } from './app.js';
+import { despertarIndexador } from './lib/indexador.js';
 
 // Antes de aceptar peticiones: almacenamiento configurado y esquema al día. Si algo falla, la API NO
 // arranca: es preferible a servir con columnas que faltan o escribir archivos en el sitio equivocado.
@@ -15,4 +16,8 @@ try {
   process.exit(1);
 }
 
-crearApp().listen(config.port, () => console.log(`API DAI escuchando en http://localhost:${config.port}`));
+crearApp().listen(config.port, () => {
+  console.log(`API DAI escuchando en http://localhost:${config.port}`);
+  // Documentos pendientes de extraer texto (subidas interrumpidas o backfill de la migración 003).
+  despertarIndexador();
+});

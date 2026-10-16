@@ -91,3 +91,32 @@ test('seed: los documentos de demostración no tienen archivo ni clave ficticia'
   const { rows: [v] } = await base.pool.query(`SELECT count(storage_path)::int AS n FROM documento_versiones`);
   assert.equal(v.n, 0);
 });
+
+test('003: base de producción sin la tabla de indexación ni el origen del texto; aditiva e idempotente', async () => {
+  await base.pool.query(`DROP TABLE documento_indexacion`);
+  await base.pool.query(`ALTER TABLE documento_paginas DROP CONSTRAINT documento_paginas_origen_check, DROP COLUMN origen`);
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '003_texto_indexacion'`);
+  const doc = async (folio, conArchivo) => (await base.pool.query(
+    `INSERT INTO documentos (nombre, folio, formato, clasificacion_id, autor_nombre, tiene_archivo, storage_path, storage_driver, hash_sha256, nombre_original)
+     VALUES ($1, $1, 'pdf', 1, 'X', $2, $3, $4, $5, $6) RETURNING id`,
+    [folio, conArchivo, conArchivo ? 'docs/1/1/a.pdf' : null, conArchivo ? 'r2' : null, conArchivo ? 'a'.repeat(64) : null, conArchivo ? 'a.pdf' : null])).rows[0].id;
+  const demo = await doc('EXP-003-DEMO', false);
+  const real = await doc('EXP-003-REAL', true);
+  const manual = await doc('EXP-003-OCR', false);
+  await base.pool.query(`INSERT INTO documento_paginas (documento_id, pagina, texto) VALUES ($1, 1, 'demo'), ($2, 1, 'ocr')`, [demo, manual]);
+  await base.pool.query(`INSERT INTO ocr_trabajos (nombre_archivo, documento_id, estado) VALUES ('x.pdf', $1, 'procesado')`, [manual]);
+
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['003_texto_indexacion']);
+  const origen = async (id) => (await base.pool.query(`SELECT origen FROM documento_paginas WHERE documento_id = $1`, [id])).rows[0].origen;
+  assert.equal(await origen(demo), 'demo');
+  assert.equal(await origen(manual), 'manual');
+  const { rows } = await base.pool.query(`SELECT documento_id::int, estado, motivo FROM documento_indexacion`);
+  assert.deepEqual(rows, [{ documento_id: Number(real), estado: 'pendiente', motivo: 'backfill' }]); // solo los que tienen archivo
+  await assert.rejects(base.pool.query(`UPDATE documento_indexacion SET estado = 'otro'`), /documento_indexacion_estado_check/);
+  await assert.rejects(base.pool.query(`UPDATE documento_paginas SET origen = 'otro'`), /documento_paginas_origen_check/);
+
+  // Volver a aplicarla (sin registro de control) no duplica ni falla.
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '003_texto_indexacion'`);
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['003_texto_indexacion']);
+  assert.equal((await base.pool.query(`SELECT count(*)::int AS n FROM documento_indexacion`)).rows[0].n, 1);
+});

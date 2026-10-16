@@ -135,11 +135,37 @@ CREATE TABLE documento_paginas (
   seccion      text,                           -- "Párrafo 3", "Cláusula Vigésima Cuarta"
   texto        text NOT NULL,
   confianza    numeric(4,1),
+  origen       text NOT NULL DEFAULT 'demo',   -- 'pdf' extraído del archivo real | 'manual' (aprobación OCR) | 'demo' (seed)
   tsv          tsvector GENERATED ALWAYS AS (to_tsvector('spanish', texto)) STORED,
-  PRIMARY KEY (documento_id, pagina)
+  PRIMARY KEY (documento_id, pagina),
+  CONSTRAINT documento_paginas_origen_check CHECK (origen IN ('demo','pdf','manual'))
 );
 CREATE INDEX documento_paginas_tsv  ON documento_paginas USING gin (tsv);
 CREATE INDEX documento_paginas_trgm ON documento_paginas USING gin (texto gin_trgm_ops);
+
+-- Estado de la extracción de texto de cada documento CON archivo (cola persistente del indexador, src/lib/indexador.js)
+CREATE TABLE documento_indexacion (
+  documento_id      bigint PRIMARY KEY REFERENCES documentos(id) ON DELETE CASCADE,
+  estado            text NOT NULL DEFAULT 'pendiente',  -- pendiente | procesando | procesado | sin_texto | error
+  motivo            text NOT NULL DEFAULT 'backfill',   -- subida | reproceso | backfill | script
+  solicitado_por    bigint REFERENCES usuarios(id) ON DELETE SET NULL,
+  solicitado_en     timestamptz NOT NULL DEFAULT now(),
+  intentos          smallint NOT NULL DEFAULT 0,
+  iniciado_en       timestamptz,
+  procesado_en      timestamptz,
+  hash_sha256       char(64),                           -- huella del archivo cuyo texto se indexó
+  paginas_totales   integer,
+  paginas_con_texto integer,
+  caracteres        integer,
+  limite            text,                               -- límite alcanzado: paginas | caracteres | tiempo
+  error_codigo      text,
+  error             text,
+  duracion_ms       integer,
+  CONSTRAINT documento_indexacion_estado_check CHECK (estado IN ('pendiente','procesando','procesado','sin_texto','error')),
+  CONSTRAINT documento_indexacion_motivo_check CHECK (motivo IN ('subida','reproceso','backfill','script')),
+  CONSTRAINT documento_indexacion_limite_check CHECK (limite IS NULL OR limite IN ('paginas','caracteres','tiempo'))
+);
+CREATE INDEX documento_indexacion_cola ON documento_indexacion (solicitado_en, documento_id) WHERE estado IN ('pendiente','procesando');
 
 CREATE TABLE etiquetas (
   id     serial PRIMARY KEY,

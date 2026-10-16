@@ -50,6 +50,55 @@ export const MIGRACIONES = [
       }
     },
   },
+  {
+    // Fase 2: texto real de los PDF. Una cola/estado por documento con archivo (documento_indexacion, tabla
+    // aparte para no tocar documentos: su trigger cambiaría "actualizado_en" en cada cambio de estado) y el
+    // ORIGEN de cada página de texto, para no confundir texto real con el de demostración.
+    // Backfill: los documentos con archivo que ya existían quedan "pendiente" y la API los procesa al arrancar.
+    nombre: '003_texto_indexacion',
+    async up(c) {
+      await c.query(`CREATE TABLE IF NOT EXISTS documento_indexacion (
+        documento_id      bigint PRIMARY KEY REFERENCES documentos(id) ON DELETE CASCADE,
+        estado            text NOT NULL DEFAULT 'pendiente',
+        motivo            text NOT NULL DEFAULT 'backfill',
+        solicitado_por    bigint REFERENCES usuarios(id) ON DELETE SET NULL,
+        solicitado_en     timestamptz NOT NULL DEFAULT now(),
+        intentos          smallint NOT NULL DEFAULT 0,
+        iniciado_en       timestamptz,
+        procesado_en      timestamptz,
+        hash_sha256       char(64),
+        paginas_totales   integer,
+        paginas_con_texto integer,
+        caracteres        integer,
+        limite            text,
+        error_codigo      text,
+        error             text,
+        duracion_ms       integer)`);
+      for (const [nombre, check] of [
+        ['documento_indexacion_estado_check', `estado IN ('pendiente','procesando','procesado','sin_texto','error')`],
+        ['documento_indexacion_motivo_check', `motivo IN ('subida','reproceso','backfill','script')`],
+        ['documento_indexacion_limite_check', `limite IS NULL OR limite IN ('paginas','caracteres','tiempo')`],
+      ]) {
+        await c.query(`ALTER TABLE documento_indexacion DROP CONSTRAINT IF EXISTS ${nombre}`);
+        await c.query(`ALTER TABLE documento_indexacion ADD CONSTRAINT ${nombre} CHECK (${check})`);
+      }
+      // Índice parcial: la cola solo mira las filas por hacer, que son pocas aunque la tabla crezca.
+      await c.query(`CREATE INDEX IF NOT EXISTS documento_indexacion_cola
+                       ON documento_indexacion (solicitado_en, documento_id) WHERE estado IN ('pendiente','procesando')`);
+
+      // ADD COLUMN con DEFAULT constante no reescribe la tabla (PostgreSQL 11+). Lo existente es demostración...
+      await c.query(`ALTER TABLE documento_paginas ADD COLUMN IF NOT EXISTS origen text NOT NULL DEFAULT 'demo'`);
+      await c.query(`ALTER TABLE documento_paginas DROP CONSTRAINT IF EXISTS documento_paginas_origen_check`);
+      await c.query(`ALTER TABLE documento_paginas ADD CONSTRAINT documento_paginas_origen_check CHECK (origen IN ('demo','pdf','manual'))`);
+      // ...salvo el texto que un operador escribió al aprobar un trabajo OCR (heredado): es "manual".
+      await c.query(`UPDATE documento_paginas SET origen = 'manual'
+                      WHERE origen = 'demo' AND documento_id IN (SELECT documento_id FROM ocr_trabajos WHERE documento_id IS NOT NULL)`);
+
+      await c.query(`INSERT INTO documento_indexacion (documento_id, motivo)
+                     SELECT id, 'backfill' FROM documentos WHERE tiene_archivo
+                     ON CONFLICT (documento_id) DO NOTHING`);
+    },
+  },
 ];
 
 // Número arbitrario y fijo para el candado consultivo: si arrancan dos instancias a la vez,
