@@ -30,7 +30,7 @@
       <!-- Campo de segundo factor (app o recuperación), reutilizado en los tres formularios -->
       <ng-template #campoFactor let-f="f" let-cual="cual">
         <label class="block">
-          <span class="text-[14px] text-slate-900 font-bold">{{ f.usarRecuperacion ? 'Código de recuperación' : 'Código de su app autenticadora' }}</span>
+          <span class="block text-[14px] text-slate-900 font-bold">{{ f.usarRecuperacion ? 'Código de recuperación' : 'Código de su app autenticadora' }}</span>
           <input type="text" [attr.inputmode]="f.usarRecuperacion ? 'text' : 'numeric'" autocomplete="one-time-code"
             [attr.maxlength]="f.usarRecuperacion ? 11 : 6" [placeholder]="f.usarRecuperacion ? 'XXXXX-XXXXX' : '123456'"
             [ngModel]="f.valor" (ngModelChange)="parcheFactor(cual, { valor: $event })"
@@ -47,7 +47,7 @@
         <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-center gap-2">
-              <img width="24" height="24" src="https://img.icons8.com/ios-filled/50/1e3a8a/shield.png" alt="" />
+              <img width="24" height="24" src="https://img.icons8.com/ios-filled/50/shield.png" alt="" />
               <h2 class="text-[15px] font-bold text-slate-800">Verificación en dos pasos (2FA)</h2>
             </div>
             @if (estado(); as e) {
@@ -168,11 +168,11 @@
         <!-- ============================================================ Contraseña -->
         <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
           <div class="flex items-center gap-2">
-            <img width="24" height="24" src="https://img.icons8.com/ios-filled/50/1e3a8a/password.png" alt="" />
+            <img width="24" height="24" src="https://img.icons8.com/ios-filled/50/password.png" alt="" />
             <h2 class="text-[15px] font-bold text-slate-800">Cambiar contraseña</h2>
           </div>
           <p class="text-[12px] text-slate-500">
-            Último cambio: {{ estado()?.passwordCambiadoEn ?? 'sin registro' }}. Al cambiarla se cerrarán sus sesiones en otros equipos.
+            Último cambio: {{ estado()?.passwordCambiadoEn ?? 'sin registro' }} · Al cambiarla se cerrarán sus sesiones en otros equipos.
           </p>
 
           <form class="space-y-3" (ngSubmit)="cambiarContrasena()">

@@ -23,7 +23,7 @@ import { QrCodigo } from './qr-codigo';
       <div class="w-full rounded-lg bg-slate-50 border border-slate-200 p-3">
         <p class="text-[12px] text-slate-500 mb-1">Clave manual · cuenta <span class="font-medium text-slate-700">{{ alta().cuenta }}</span></p>
         <div class="flex items-center justify-between gap-2">
-          <code class="font-mono text-[13px] text-slate-800 break-all tracking-wider">{{ claveAgrupada() }}</code>
+          <code class="font-mono text-[13px] text-slate-800 tracking-wider">{{ claveAgrupada() }}</code>
           <button type="button" (click)="copiar()"
             class="shrink-0 text-[12px] font-medium text-blue-700 hover:underline">{{ copiado() ? 'Copiada' : 'Copiar' }}</button>
         </div>
