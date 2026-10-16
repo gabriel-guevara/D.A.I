@@ -27,7 +27,6 @@ interface Notification {
   borderColor: string;
   badge: string;
   badgeColor: string;
-  icon: string;
   title: string;
   description: string;
   time: string;

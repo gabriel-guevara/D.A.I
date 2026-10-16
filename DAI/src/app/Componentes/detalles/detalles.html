@@ -9,7 +9,7 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <button
-            (click)="backToDashboard()"
+            (click)="backtoBilbioteca()"
             class="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1 mb-1"
           >
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -25,7 +25,14 @@
 
         <div class="flex flex-wrap items-center gap-2 text-xs">
           <span class="bg-slate-100 text-slate-600 font-medium px-2.5 py-1 rounded-full">Versión {{ doc()?.version }} (Actual)</span>
-          <span class="bg-emerald-50 text-emerald-700 font-medium px-2.5 py-1 rounded-full">CIFRADO AES-256 ACTIVO</span>
+          @if (etiquetaCifrado(); as cifrado) {
+            <span
+              class="font-medium px-2.5 py-1 rounded-full"
+              [ngClass]="doc()?.archivo?.cifradoEnReposo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'"
+            >
+              {{ cifrado }}
+            </span>
+          }
           <button
             (click)="openAudit()"
             class="border border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50"
@@ -38,75 +45,167 @@
           <button class="border border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50">
             Editar Versión
           </button>
-          <button class="bg-blue-900 hover:bg-blue-950 text-white rounded-lg px-3 py-1.5 font-medium">
-            Descargar Original
+          @if (doc()?.puedeVerificar) {
+            <button
+              (click)="verificarIntegridad()"
+              [disabled]="verificando()"
+              class="border border-emerald-200 text-emerald-700 rounded-lg px-3 py-1.5 font-medium hover:bg-emerald-50 disabled:opacity-50"
+            >
+              {{ verificando() ? 'Verificando…' : 'Verificar integridad' }}
+            </button>
+          }
+          <button
+            (click)="descargar()"
+            [disabled]="!doc()?.tieneArchivo || descargando()"
+            [title]="doc()?.tieneArchivo ? 'Descarga el PDF original (queda registrado en la auditoría)' : 'Este documento no tiene archivo original'"
+            class="bg-blue-900 hover:bg-blue-950 disabled:opacity-40 text-white rounded-lg px-3 py-1.5 font-medium"
+          >
+            {{ descargando() ? 'Descargando…' : 'Descargar Original' }}
           </button>
         </div>
       </div>
+
+      @if (descargaError()) {
+        <p class="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2" role="alert">{{ descargaError() }}</p>
+      }
+      @if (verificacionError()) {
+        <p class="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2" role="alert">{{ verificacionError() }}</p>
+      }
+      @if (verificacion(); as v) {
+        <div
+          class="text-xs rounded-lg px-3 py-2 border"
+          [ngClass]="v.integro ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'"
+          role="status"
+        >
+          <p class="font-semibold">
+            {{ v.integro ? '✔ Integridad verificada: el archivo coincide con su huella original.' : '✖ ALERTA: el archivo NO coincide con la huella registrada al subirlo.' }}
+          </p>
+          <p class="font-mono text-[10px] break-all mt-1">Registrada: {{ v.hashEsperado }}</p>
+          <p class="font-mono text-[10px] break-all">Calculada: {{ v.hashCalculado }}</p>
+          <p class="text-[10px] mt-1">{{ v.verificadoEn }}</p>
+        </div>
+      }
 
       <p class="text-xs text-slate-400">{{ doc()?.firmadoPor ? 'Firmado Digitalmente por ' + doc()?.firmadoPor : 'Sin firma digital' }}</p>
 
       <div class="grid grid-cols-1 lg:grid-cols-[220px_1fr_300px] gap-4">
         <!-- Mini panel izquierdo -->
         <div class="space-y-3">
-          <div class="bg-white rounded-xl border border-slate-200 p-4">
-            <p class="text-xs text-slate-400">Almacenamiento</p>
-            <p class="text-lg font-bold text-slate-800">28%</p>
-            <div class="h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
-              <div class="h-full bg-blue-600" style="width: 28%"></div>
-            </div>
-            <p class="text-[10px] text-slate-400 mt-1">1.4 TB de 5 TB utilizados</p>
-          </div>
           <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
-            <p class="text-xs font-semibold text-slate-600">ISO 27001 & GDPR</p>
+            <p class="text-xs font-semibold text-slate-600">Equipo TI DAI </p>
             <p class="text-[10px] text-slate-400 mt-0.5">Ayuda & Soporte</p>
           </div>
         </div>
 
         <!-- Visor de documento -->
-        <div class="bg-white rounded-xl border border-slate-200 flex flex-col">
-          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 text-xs">
-            <div class="flex items-center gap-2">
-              <button (click)="prevPage()" class="text-slate-400 hover:text-slate-600 disabled:opacity-30" [disabled]="currentPage() === 1">
-                ‹
-              </button>
-              <span class="text-slate-600 font-medium">{{ currentPage() }} / {{ totalPages() }}</span>
-              <button (click)="nextPage()" class="text-slate-400 hover:text-slate-600 disabled:opacity-30" [disabled]="currentPage() === totalPages()">
-                ›
-              </button>
+        <div class="bg-white rounded-xl border border-slate-200 flex flex-col min-h-[32rem]">
+          @if (visor() === 'sin_archivo') {
+            <!-- Sin archivo real: capa de texto registrada, con navegación por páginas -->
+            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 text-xs">
+              <div class="flex items-center gap-2">
+                <button (click)="prevPage()" class="text-slate-400 hover:text-slate-600 disabled:opacity-30" [disabled]="currentPage() === 1" aria-label="Página anterior">
+                  ‹
+                </button>
+                <span class="text-slate-600 font-medium">{{ currentPage() }} / {{ totalPages() }}</span>
+                <button (click)="nextPage()" class="text-slate-400 hover:text-slate-600 disabled:opacity-30" [disabled]="currentPage() === totalPages()" aria-label="Página siguiente">
+                  ›
+                </button>
+              </div>
+              <div class="flex items-center gap-2">
+                <button (click)="zoomOut()" class="text-slate-400 hover:text-slate-600" aria-label="Reducir">−</button>
+                <span class="text-slate-600 font-medium w-10 text-center">{{ zoom() }}%</span>
+                <button (click)="zoomIn()" class="text-slate-400 hover:text-slate-600" aria-label="Ampliar">+</button>
+              </div>
+              <span class="bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-full">
+                {{ paginaTexto()?.origen === 'manual' ? 'Texto capturado manualmente' : 'Texto de demostración' }}
+              </span>
             </div>
-            <div class="flex items-center gap-2">
-              <button (click)="zoomOut()" class="text-slate-400 hover:text-slate-600">−</button>
-              <span class="text-slate-600 font-medium w-10 text-center">{{ zoom() }}%</span>
-              <button (click)="zoomIn()" class="text-slate-400 hover:text-slate-600">+</button>
+            <p class="mx-4 mt-3 text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
+              Este documento no tiene archivo original cargado (datos de demostración o heredados). Se muestra solo la
+              capa de texto registrada; la descarga y la verificación de integridad no están disponibles.
+            </p>
+            <div class="flex-1 p-6 flex justify-center overflow-auto bg-slate-50">
+              <div
+                class="bg-white shadow border border-slate-200 rounded-md w-full max-w-sm p-6 leading-relaxed text-slate-600 h-fit"
+                [style.font-size.px]="11 * zoom() / 100"
+              >
+                @if (paginaTexto(); as p) {
+                  @if (p.seccion) {
+                    <p class="font-semibold text-slate-700 mb-2">{{ p.seccion }}</p>
+                  }
+                  <p class="whitespace-pre-line">{{ p.texto }}</p>
+                } @else {
+                  <p class="text-slate-400 text-center">{{ paginaTextoError() || 'Cargando texto…' }}</p>
+                }
+              </div>
             </div>
-            <span class="bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded-full">Capa OCR Activa</span>
-          </div>
-
-          <div class="flex-1 p-6 flex justify-center overflow-auto bg-slate-50">
-            <div class="bg-white shadow border border-slate-200 rounded-md w-full max-w-sm p-6 text-[11px] leading-relaxed text-slate-600">
-              <p class="text-center font-semibold text-slate-800 mb-1">CONTRATO MARCO DE SERVICIOS CLOUD</p>
-              <p class="text-center text-slate-400 mb-4">Ref: 1AT-2025-CORP-SERV-891</p>
-              <p class="mb-3">
-                En la ciudad de Madrid, a 15 de Enero de 2025, comparecen de una parte el
-                Proveedor de Infraestructura Digital y de otra el Cliente institucional
-                debidamente conforme al expediente
-                <span class="bg-blue-50 text-blue-700 font-medium px-1 rounded">EXP-2024-LE-089</span>.
-              </p>
-              <p class="font-semibold text-slate-700 mb-1">CLÁUSULA 1.1 MARCO DEL SERVICIO Y GOBERNANZA CLOUD</p>
-              <p>
-                El presente acuerdo obliga a la provisión, auditoría continua y salvaguarda de
-                repositorios heterogéneos bajo normativas europeas ISO 27001 y el Reglamento
-                General de Protección de Datos (GDPR). Todas las operaciones de transformación
-                documental u OCR se ejecutan dentro del cifrado activo AES-256.
-              </p>
+          } @else {
+            <div class="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 text-xs">
+              <span class="text-slate-600 font-medium truncate" [title]="doc()?.archivo?.nombreOriginal ?? ''">
+                {{ doc()?.archivo?.nombreOriginal ?? 'Documento original' }}
+              </span>
+              <div class="flex items-center gap-2 shrink-0">
+                @if (paginaObjetivo() && visor() === 'listo') {
+                  <!-- #page=N: Chrome/Edge y Firefox saltan a la página; Safari abre en la 1 -->
+                  <button
+                    (click)="irAPaginaCoincidencia()"
+                    class="border border-amber-200 bg-amber-50 text-amber-800 rounded-lg px-2.5 py-1 font-medium hover:bg-amber-100"
+                    title="Si tu navegador no salta solo (por ejemplo, Safari), usa la navegación del visor."
+                  >
+                    Ir a la coincidencia (pág. {{ paginaObjetivo() }})
+                  </button>
+                }
+                <span class="bg-blue-50 text-blue-700 font-medium px-2 py-0.5 rounded-full">PDF original</span>
+              </div>
             </div>
-          </div>
+            <div class="flex-1 flex bg-slate-50">
+              @switch (visor()) {
+                @case ('listo') {
+                  <iframe [src]="pdfUrl()" [title]="'Visor: ' + (doc()?.nombre ?? 'documento')" class="w-full flex-1 min-h-[30rem] border-0"></iframe>
+                }
+                @case ('cargando') {
+                  <div class="m-auto text-center" aria-live="polite">
+                    <div class="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+                    <p class="text-xs text-slate-400">Cargando el documento…</p>
+                  </div>
+                }
+                @case ('no_disponible') {
+                  <div class="m-auto text-center px-8" role="alert">
+                    <p class="text-sm font-semibold text-slate-700">Archivo no disponible en este entorno</p>
+                    <p class="text-xs text-slate-400 mt-1">
+                      El registro existe, pero su archivo no está en el almacenamiento de este entorno
+                      (por ejemplo, un documento de producción visto desde desarrollo).
+                    </p>
+                  </div>
+                }
+                @default {
+                  <div class="m-auto text-center px-8" role="alert">
+                    <p class="text-sm font-semibold text-red-700">{{ error() || 'No se pudo cargar el archivo.' }}</p>
+                    @if (doc()) {
+                      <button (click)="cargarPdf()" class="mt-2 text-xs border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50">
+                        Reintentar
+                      </button>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          }
 
           <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t border-slate-100 text-[10px] text-slate-400">
-            <span>Motor OCR: Tesseract Enterprise v5.6</span>
-            <span>Modo de Vista: Ajuste de Página</span>
-            <span class="text-emerald-600 font-medium">Integridad Mantenida</span>
+            @if (doc()?.tieneArchivo) {
+              <span>Visor nativo del navegador</span>
+            } @else {
+              <span>Zoom: {{ zoom() }}%</span>
+            }
+            @if (doc()?.ultimaVerificacion; as uv) {
+              <span [ngClass]="uv.resultado === 'integro' ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'">
+                Última verificación: {{ uv.resultado === 'integro' ? 'íntegro' : uv.resultado === 'alterado' ? 'ALTERADO' : 'archivo no disponible' }}
+                · {{ uv.fecha }}
+              </span>
+            } @else if (doc()?.tieneArchivo) {
+              <span>Integridad aún no verificada</span>
+            }
           </div>
         </div>
 
@@ -115,19 +214,18 @@
           <div class="bg-white rounded-xl border border-slate-200 p-4">
             <div class="flex items-center justify-between mb-3">
               <p class="text-sm font-semibold text-slate-800">Metadatos</p>
-              <span class="text-[10px] font-semibold text-red-600 bg-red-50 rounded-full px-2 py-0.5">
-                {{ doc()?.clasificacion ?? '—' }}
-              </span>
             </div>
             <dl class="text-xs space-y-2.5">
               <div>
                 <dt class="text-slate-400">ID de Expediente</dt>
                 <dd class="text-slate-700 font-medium">{{ doc()?.folio }}</dd>
               </div>
-              <div>
-                <dt class="text-slate-400">Hash Criptográfico SHA-256</dt>
-                <dd class="text-slate-500 font-mono text-[10px] break-all">{{ doc()?.hash ?? '—' }}</dd>
-              </div>
+              @if (doc()?.tieneArchivo) {
+                <div>
+                  <dt class="text-slate-400">Hash Criptográfico SHA-256</dt>
+                  <dd class="text-slate-500 font-mono text-[10px] break-all">{{ doc()?.hash }}</dd>
+                </div>
+              }
               <div>
                 <dt class="text-slate-400">Autor de Carga</dt>
                 <dd class="text-slate-700 font-medium">{{ doc()?.autorLinea }}</dd>
@@ -138,7 +236,12 @@
               </div>
               <div>
                 <dt class="text-slate-400">Tamaño y Páginas</dt>
-                <dd class="text-slate-700 font-medium">{{ doc()?.tamano }} · {{ doc()?.paginas }} páginas</dd>
+                @if (doc()?.archivo; as a) {
+                  <dd class="text-slate-700 font-medium">{{ tamanoLegible(a.tamanoBytes) }} · {{ doc()?.paginas }} {{ doc()?.paginas === 1 ? 'página' : 'páginas' }}</dd>
+                  <dd class="text-[10px] text-slate-400 break-all">{{ a.nombreOriginal }}</dd>
+                } @else {
+                  <dd class="text-slate-700 font-medium">{{ doc()?.tamano }} · {{ doc()?.paginas }} páginas <span class="text-slate-400 font-normal">(declarados)</span></dd>
+                }
               </div>
               <div>
                 <dt class="text-slate-400">Etiquetas</dt>
@@ -153,6 +256,48 @@
                 <dd class="text-slate-700 font-medium">{{ doc()?.retencion ?? 'Sin política de retención' }}</dd>
               </div>
             </dl>
+          </div>
+
+          <!-- Texto para la búsqueda: estado de la extracción (Fase 2) -->
+          <div class="bg-white rounded-xl border border-slate-200 p-4" aria-live="polite">
+            <p class="text-sm font-semibold text-slate-800 mb-2">Texto para búsqueda</p>
+            @if (doc()?.tieneArchivo) {
+              @if (indexacion(); as ix) {
+                <span class="inline-block text-xs font-medium px-2.5 py-1 rounded-full" [ngClass]="claseEstadoTexto(ix.estado)">
+                  {{ ix.etiqueta }}
+                </span>
+                <p class="text-xs text-slate-600 mt-2">{{ ix.descripcion }}</p>
+                @if (ix.aviso) {
+                  <p class="text-[12px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-2.5 py-1.5 mt-2">{{ ix.aviso }}</p>
+                }
+                <p class="text-[12px] text-slate-400 mt-1">{{ ix.estado === 'pendiente' || ix.estado === 'procesando' ? 'Solicitado' : 'Procesado' }}: {{ ix.fecha }}</p>
+                @if (sondeoAgotado()) {
+                  <button (click)="actualizarIndexacion()" class="mt-2 text-xs border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50">
+                    Actualizar estado
+                  </button>
+                }
+              } @else {
+                <p class="text-xs text-slate-500">Aún no hay información de la extracción de texto.</p>
+              }
+              @if (doc()?.puedeReindexar && indexacion()?.estado !== 'pendiente' && indexacion()?.estado !== 'procesando') {
+                <button
+                  (click)="reindexar()"
+                  [disabled]="reindexando()"
+                  class="mt-2 block text-xs border border-blue-200 text-blue-700 rounded-lg px-3 py-1.5 font-medium hover:bg-blue-50 disabled:opacity-50"
+                  title="Vuelve a leer el PDF y reemplaza su texto en la búsqueda (queda en la auditoría)"
+                >
+                  {{ reindexando() ? 'Enviando…' : indexacion()?.estado === 'error' ? 'Reintentar extracción' : 'Reprocesar texto' }}
+                </button>
+              }
+              @if (reindexarError()) {
+                <p class="text-xs text-red-600 mt-2" role="alert">{{ reindexarError() }}</p>
+              }
+            } @else {
+              <span class="inline-block bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-full">Texto de demostración</span>
+              <p class="text-xs text-slate-600 mt-2">
+                Sin archivo original: su texto no proviene de un PDF y se muestra en la búsqueda como "Texto de demostración".
+              </p>
+            }
           </div>
 
           <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">

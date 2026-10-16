@@ -51,7 +51,7 @@ export class roles {
   esSuperAdmin = computed(() => this.auth.currentUser()?.rolClave === 'super-admin');
 
   constructor() {
-    // Solo Super Administrador y Oficial de Cumplimiento pueden ver esta pantalla (el backend responde 403 al resto)
+    // Solo Administrador y Oficial de Cumplimiento pueden ver esta pantalla)
     this.api.rolesTarjetas<RoleCard[]>().subscribe({
       next: (r) => this.roleCards.set(r),
       error: (err) => console.error('No se pudieron cargar los roles', err),
@@ -71,13 +71,11 @@ export class roles {
   roleCards = signal<RoleCard[]>([]);
 
   roleLabels: Record<RoleKey, string> = {
-    'super-admin': 'Super Administrador',
+    'super-admin': 'Administrador',
     compliance: 'Oficial Cumplimiento',
     'ocr-operator': 'Operador OCR / Ingesta',
     'read-only': 'Lector Restringido',
   };
-
-  niveles = ['Nivel 5 Secreto', 'Nivel 3 Alto', 'Nivel 3 Restringido', 'Nivel 2 Auditoría', 'Nivel 2 Confidencial'];
 
   users = signal<SecurityUser[]>([]);
 

@@ -3,15 +3,21 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=22.13.0 <25"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "db:setup": "node db/setup.js",
-    "db:setup:demo": "node db/setup.js --seed"
+    "db:setup:demo": "node db/setup.js --seed",
+    "texto:indexar": "node scripts/indexar-texto.js",
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\""
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1144.0",
     "bcryptjs": "^2.4.3",
+    "busboy": "1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
@@ -19,6 +25,7 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "otplib": "^12.0.1",
+    "pdfjs-dist": "6.3.289",
     "pg": "^8.13.0"
   }
 }

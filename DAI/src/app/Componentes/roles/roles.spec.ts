@@ -2,19 +2,19 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Roles } from './roles';
+import { roles } from './roles';
 
-describe('Roles', () => {
-  let component: Roles;
-  let fixture: ComponentFixture<Roles>;
+describe('roles', () => {
+  let component: roles;
+  let fixture: ComponentFixture<roles>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Roles],
+      imports: [roles],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(Roles);
+    fixture = TestBed.createComponent(roles);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

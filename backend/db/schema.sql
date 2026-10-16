@@ -2,10 +2,17 @@
 -- DAI · Esquema PostgreSQL (14+)
 -- Solo incluye lo que el front realmente usa (8 pantallas).
 -- Se ejecuta con:  npm run db:setup   (¡borra y recrea el esquema public!)
+-- El borrado (DROP SCHEMA public) lo hace db/setup.js tras verificar el entorno;
+-- este archivo solo crea objetos, así las pruebas lo pueden cargar en un esquema temporal.
+-- Las bases YA existentes no usan este archivo: se actualizan con src/migrate.js al arrancar la API.
 -- =====================================================================
-DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- ---------- Control de migraciones (src/migrate.js) ----------
+CREATE TABLE migraciones_aplicadas (
+  nombre      text PRIMARY KEY,
+  aplicada_en timestamptz NOT NULL DEFAULT now()
+);
 
 -- ---------- Catálogos (los *_clase son clases Tailwind que usa el front) ----------
 CREATE TABLE roles (
@@ -83,7 +90,7 @@ CREATE TABLE documentos (
   paginas          integer NOT NULL DEFAULT 1,
   hash_sha256      char(64),
   ocr_procesado    boolean NOT NULL DEFAULT false,
-  cifrado_aes      boolean NOT NULL DEFAULT true,
+  cifrado_aes      boolean NOT NULL DEFAULT false, -- true solo si el archivo real está en R2 (cifrado en reposo AES-256)
   firmado_por      text,
   firma_valida     boolean NOT NULL DEFAULT false,
   retencion_anios  smallint,
@@ -92,9 +99,15 @@ CREATE TABLE documentos (
   estado           text NOT NULL DEFAULT 'activo' CHECK (estado IN ('activo','papelera','purgado')),
   eliminado_en     timestamptz,
   eliminado_por    bigint REFERENCES usuarios(id) ON DELETE SET NULL,
-  storage_path     text,                       -- clave del archivo físico (disco, S3, ...)
+  storage_path     text,                       -- clave del objeto (docs/{doc}/{ver}/{uuid}.pdf), la genera el servidor
+  tiene_archivo    boolean NOT NULL DEFAULT false, -- false: solo metadatos (seed, heredados); true: PDF real subido
+  nombre_original  text,                       -- nombre del archivo que subió el usuario, saneado (solo para mostrar/descargar)
+  storage_driver   text,                       -- 'local' | 'r2': dónde se guardó
   creado_en        timestamptz NOT NULL DEFAULT now(),
-  actualizado_en   timestamptz NOT NULL DEFAULT now()
+  actualizado_en   timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT documentos_storage_driver_check CHECK (storage_driver IS NULL OR storage_driver IN ('local','r2')),
+  CONSTRAINT documentos_archivo_completo_check CHECK (NOT tiene_archivo OR
+    (storage_path IS NOT NULL AND storage_driver IS NOT NULL AND hash_sha256 IS NOT NULL AND nombre_original IS NOT NULL))
 );
 CREATE INDEX documentos_estado_idx   ON documentos (estado, actualizado_en DESC);
 CREATE INDEX documentos_nombre_trgm  ON documentos USING gin (nombre gin_trgm_ops);
@@ -107,10 +120,12 @@ CREATE TABLE documento_versiones (
   hash_sha256  char(64),
   tamano_bytes bigint,
   storage_path text,
+  storage_driver text,
   autor_id     bigint REFERENCES usuarios(id) ON DELETE SET NULL,
   comentario   text,
   creado_en    timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (documento_id, version)
+  UNIQUE (documento_id, version),
+  CONSTRAINT documento_versiones_storage_driver_check CHECK (storage_driver IS NULL OR storage_driver IN ('local','r2'))
 );
 
 -- Texto OCR por página: alimenta la Búsqueda Avanzada (full-text en español)
@@ -120,11 +135,37 @@ CREATE TABLE documento_paginas (
   seccion      text,                           -- "Párrafo 3", "Cláusula Vigésima Cuarta"
   texto        text NOT NULL,
   confianza    numeric(4,1),
+  origen       text NOT NULL DEFAULT 'demo',   -- 'pdf' extraído del archivo real | 'manual' (aprobación OCR) | 'demo' (seed)
   tsv          tsvector GENERATED ALWAYS AS (to_tsvector('spanish', texto)) STORED,
-  PRIMARY KEY (documento_id, pagina)
+  PRIMARY KEY (documento_id, pagina),
+  CONSTRAINT documento_paginas_origen_check CHECK (origen IN ('demo','pdf','manual'))
 );
 CREATE INDEX documento_paginas_tsv  ON documento_paginas USING gin (tsv);
 CREATE INDEX documento_paginas_trgm ON documento_paginas USING gin (texto gin_trgm_ops);
+
+-- Estado de la extracción de texto de cada documento CON archivo (cola persistente del indexador, src/lib/indexador.js)
+CREATE TABLE documento_indexacion (
+  documento_id      bigint PRIMARY KEY REFERENCES documentos(id) ON DELETE CASCADE,
+  estado            text NOT NULL DEFAULT 'pendiente',  -- pendiente | procesando | procesado | sin_texto | error
+  motivo            text NOT NULL DEFAULT 'backfill',   -- subida | reproceso | backfill | script
+  solicitado_por    bigint REFERENCES usuarios(id) ON DELETE SET NULL,
+  solicitado_en     timestamptz NOT NULL DEFAULT now(),
+  intentos          smallint NOT NULL DEFAULT 0,
+  iniciado_en       timestamptz,
+  procesado_en      timestamptz,
+  hash_sha256       char(64),                           -- huella del archivo cuyo texto se indexó
+  paginas_totales   integer,
+  paginas_con_texto integer,
+  caracteres        integer,
+  limite            text,                               -- límite alcanzado: paginas | caracteres | tiempo
+  error_codigo      text,
+  error             text,
+  duracion_ms       integer,
+  CONSTRAINT documento_indexacion_estado_check CHECK (estado IN ('pendiente','procesando','procesado','sin_texto','error')),
+  CONSTRAINT documento_indexacion_motivo_check CHECK (motivo IN ('subida','reproceso','backfill','script')),
+  CONSTRAINT documento_indexacion_limite_check CHECK (limite IS NULL OR limite IN ('paginas','caracteres','tiempo'))
+);
+CREATE INDEX documento_indexacion_cola ON documento_indexacion (solicitado_en, documento_id) WHERE estado IN ('pendiente','procesando');
 
 CREATE TABLE etiquetas (
   id     serial PRIMARY KEY,

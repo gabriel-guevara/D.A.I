@@ -13,9 +13,9 @@
           </svg>
           Roles y Permisos
         </button>
-        <h1 class="text-xl font-bold text-slate-800">Gestión de Usuarios</h1>
+        <h1 class="text-2xl font-bold text-slate-800">Gestión de Usuarios</h1>
         <p class="text-sm text-slate-500 mt-1 max-w-2xl">
-          Cree cuentas nuevas y asígneles su rol, nivel de confidencialidad y método de verificación en dos pasos.
+          Cree cuentas nuevas y asígneles su rol.
         </p>
       </div>
 
@@ -49,8 +49,7 @@
         </div>
         @if (!esSuperAdmin()) {
           <p class="text-[11px] text-slate-400 mt-2">
-            Solo el Super Administrador puede modificar usuarios. Usted puede crear cuentas de Operador OCR o Lector
-            con un nivel de confidencialidad igual o inferior al suyo.
+            Solo el Administrador puede modificar usuarios. Usted puede crear cuentas de Operador OCR o Lector.
           </p>
         }
       </div>
@@ -138,20 +137,6 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Nivel de confidencialidad *</label>
-            <select
-              [ngModel]="f.nivel"
-              (ngModelChange)="parche(modo, { nivel: $event })"
-              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700"
-            >
-              <option value="">Seleccione un nivel…</option>
-              @for (n of nivelesDisponibles(); track n.id) {
-                <option [value]="n.nombre">{{ n.nombre }}</option>
-              }
-            </select>
-          </div>
-
-          <div>
             <label class="block text-xs font-medium text-slate-600 mb-1">Departamento / Área</label>
             <select
               [ngModel]="f.departamento"
@@ -161,19 +146,6 @@
               <option value="">Sin departamento</option>
               @for (d of catalogos()?.departamentos ?? []; track d.id) {
                 <option [value]="d.nombre">{{ d.nombre }}</option>
-              }
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Verificación en dos pasos (2FA)</label>
-            <select
-              [ngModel]="f.mfaMetodo"
-              (ngModelChange)="parche(modo, { mfaMetodo: $event })"
-              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700"
-            >
-              @for (m of opciones2fa(f.mfaMetodo); track m) {
-                <option [value]="m">{{ m }}</option>
               }
             </select>
           </div>

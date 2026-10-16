@@ -4,11 +4,17 @@ import { config } from './config.js';
 export const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 10 });
 pool.on('error', (err) => console.error('Error inesperado en el pool de PostgreSQL:', err.message));
 
-export const query = (text, params) => pool.query(text, params);
+// Pool que usan las rutas. Solo las pruebas lo cambian (usarPool) para trabajar en su esquema temporal.
+let activo = pool;
+export function usarPool(otro) {
+  activo = otro;
+}
+
+export const query = (text, params) => activo.query(text, params);
 
 /** Ejecuta fn(client) dentro de una transacción. */
 export async function withTransaction(fn) {
-  const client = await pool.connect();
+  const client = await activo.connect();
   try {
     await client.query('BEGIN');
     const out = await fn(client);

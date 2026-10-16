@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -13,6 +13,12 @@ import { AuthService } from '../../shared/auth';
 })
 export class Navbar {
   searchQuery = signal('');
+
+  /** "GG" para "Gabriel Guevara"; ignora títulos como "Dra." o "Ing.". */
+  iniciales = computed(() => {
+    const nombre = (this.auth.currentUser()?.name ?? '').replace(/^(Dra?\.|Lic\.|Ing\.|Mtro\.|MSc\.)\s+/i, '').trim();
+    return nombre.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
+  });
 
   constructor(private router: Router, public auth: AuthService) {}
 
@@ -33,5 +39,10 @@ export class Navbar {
       queryParams: { q: query || null },
       queryParamsHandling: 'merge',
     });
+  }
+
+  cerrarSesion(): void {
+    this.auth.logout();
+    this.router.navigate(['/login']);
   }
 }
