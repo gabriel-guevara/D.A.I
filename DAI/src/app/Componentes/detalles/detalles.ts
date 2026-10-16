@@ -41,7 +41,7 @@ interface DocDetalle {
   paginas: number;
   etiquetas: string[];
   retencion: string | null;
-  firmadoPor: string | null;
+  carpeta?: { id: string; nombre: string } | null;
   tieneArchivo: boolean;
   archivo: ArchivoInfo | null;
   puedeVerificar: boolean;
