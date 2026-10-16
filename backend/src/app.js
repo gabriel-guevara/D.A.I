@@ -18,6 +18,7 @@ import notificaciones from './routes/notificaciones.js';
 import seguridad from './routes/seguridad.js';
 import digitalizacion from './routes/digitalizacion.js';
 import cuenta from './routes/cuenta.js';
+import papelera from './routes/papelera.js';
 
 export function crearApp() {
   const app = express();
@@ -36,7 +37,8 @@ export function crearApp() {
   app.use('/api/cuenta', cuenta);                   // seguridad de mi cuenta (contraseña, 2FA)
   app.use('/api/catalogos', catalogos);
   app.use('/api/dashboard', dashboard);
-  app.use('/api/documentos', documentos);
+  app.use('/api/documentos', documentos);           // incluye /:id/versiones (routes/versiones.js)
+  app.use('/api/papelera', papelera);
   app.use('/api/busqueda', busqueda);
   app.use('/api/notificaciones', notificaciones);
   app.use('/api/seguridad', seguridad);
