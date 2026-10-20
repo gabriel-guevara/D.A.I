@@ -97,7 +97,11 @@
                     {{ r.title }}
                   </p>
                   <p class="text-[12px] mb-1 text-slate-800">{{ r.formatLabel }} · {{ r.hashLabel }} · Expediente: {{ r.expediente }}</p>
-                  <p class="text-[12px] text-slate-800">Ruta: {{ r.ruta }} · Actualizado: {{ r.actualizado }}</p>
+                  <p class="text-[12px] text-slate-800">
+                    Carpeta:
+                    <a routerLink="/biblioteca" [queryParams]="r.carpeta ? { carpeta: r.carpeta.id } : {}" class="text-blue-700 hover:underline">📁 {{ ubicacion(r.carpeta) }}</a>
+                    · Actualizado: {{ r.actualizado }}
+                  </p>
                 </div>
               </div>
 
