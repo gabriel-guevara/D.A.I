@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, Injector, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -6,18 +6,21 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, firstValueFrom, map, of, switchMap } from 'rxjs';
 import {
-  ApiService, DocumentoBiblioteca, FiltrosBiblioteca, FormatoDoc, ListaCarpetas, RespuestaBiblioteca, SolicitudMovimiento, leerErrorApi,
+  ApiService, ArbolCarpetas, Carpeta, ContenidoCarpeta, DocumentoBiblioteca, FiltrosBiblioteca, FormatoDoc,
+  PermisosCarpetas, RespuestaBiblioteca, SolicitudMovimiento, leerErrorApi,
 } from '../../shared/api';
 import { AuthService } from '../../shared/auth';
 import { guardarComo } from '../../shared/archivo-pdf';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { ArbolDestino } from './arbol-destino';
+import { rutaEnArbol, textoCarpeta, textoRuta, ubicacion } from './arbol-carpetas';
 import {
   ETIQUETA_DIAS, ETIQUETA_FORMATO, ETIQUETA_ORDEN, FILTROS_POR_DEFECTO, filtrosDesdeUrl, paginasVisibles, queryParamsDe,
 } from './biblioteca-filtros';
 
-/** Diálogo abierto (uno a la vez). */
-type Dialogo = 'crear' | 'renombrar' | 'eliminar' | 'mover' | 'solicitar' | null;
+/** Diálogo abierto (uno a la vez). renombrar, eliminar y moverCarpeta actúan sobre carpetaObjetivo. */
+type Dialogo = 'crear' | 'renombrar' | 'eliminar' | 'moverCarpeta' | 'mover' | 'solicitar' | null;
 type Aviso = { tipo: 'ok' | 'error'; texto: string } | null;
 
 export const MAX_DESCARGAS = 20;
@@ -25,6 +28,7 @@ const MAX_MOVER = 100;
 const ROLES_SUBEN = ['super-admin', 'ocr-operator'];
 const ESPERA_BUSQUEDA_MS = 350;
 const numero = new Intl.NumberFormat('es-CO'); // 1.420 (separador de miles de Colombia)
+const SIN_PERMISOS: PermisosCarpetas = { gestionar: false, eliminar: false, solicitar: false, resolver: false };
 
 /** Mensaje de error de la API en español (o uno genérico). */
 async function mensajeDe(err: unknown, porDefecto: string): Promise<string> {
@@ -35,7 +39,7 @@ async function mensajeDe(err: unknown, porDefecto: string): Promise<string> {
 @Component({
   selector: 'app-biblioteca',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, Barraizq, Navbar],
+  imports: [CommonModule, FormsModule, RouterLink, Barraizq, Navbar, ArbolDestino],
   templateUrl: './biblioteca.html',
 })
 export class Biblioteca {
@@ -43,6 +47,9 @@ export class Biblioteca {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private auth = inject(AuthService);
+  private injector = inject(Injector);
+  /** Elemento que tenía el foco al abrir un diálogo: lo recupera al cerrarlo (teclado y lectores de pantalla). */
+  private focoPrevio: HTMLElement | null = null;
 
   readonly etiquetaFormato = ETIQUETA_FORMATO;
   readonly etiquetaDias = ETIQUETA_DIAS;
@@ -67,13 +74,32 @@ export class Biblioteca {
   total = computed(() => this.respuesta()?.total ?? 0);
   resumen = computed(() => this.respuesta()?.resumen ?? null);
   departamentos = signal<string[]>([]);
-  carpetasInfo = signal<ListaCarpetas | null>(null);
-  carpetas = computed(() => this.carpetasInfo()?.carpetas ?? []);
-  permisos = computed(() => this.carpetasInfo()?.permisos ?? { gestionar: false, eliminar: false, solicitar: false, resolver: false });
   solicitudes = signal<SolicitudMovimiento[]>([]);
   puedeSubir = computed(() => ROLES_SUBEN.includes(this.auth.currentUser()?.rolClave ?? ''));
-  /** Carpeta elegida en el filtro (para renombrarla o eliminarla). */
-  carpetaFiltrada = computed(() => this.carpetas().find((c) => c.id === this.filtros().carpeta) ?? null);
+
+  // ------------------------------------------------------------------ explorador de carpetas (Fase 6)
+  /** Carpeta que se explora (la URL manda): '' = la raíz (Inicio). */
+  carpetaId = computed(() => this.filtros().carpeta);
+  contenido = signal<ContenidoCarpeta | null>(null);
+  errorCarpeta = signal('');
+  /** Subcarpetas de la carpeta actual (las tarjetas de arriba de la tabla). */
+  subcarpetas = computed(() => this.contenido()?.carpetas ?? []);
+  permisos = computed(() => this.contenido()?.permisos ?? SIN_PERMISOS);
+  maxNivel = computed(() => this.contenido()?.maxNivel ?? 5);
+  /** Migas de pan: Inicio › Legal › 2024 (id null = Inicio). La última es la carpeta actual. */
+  migas = computed<{ id: string | null; nombre: string }[]>(() => [
+    { id: null, nombre: 'Inicio' }, ...(this.contenido()?.carpeta?.ruta ?? []),
+  ]);
+  nivelActual = computed(() => this.contenido()?.carpeta?.nivel ?? 0);
+  /** Dentro del último nivel ya no se pueden crear subcarpetas. */
+  puedeCrearAqui = computed(() => this.permisos().gestionar && this.nivelActual() < this.maxNivel());
+  /** Menú "⋯" abierto (id de la carpeta) y carpeta sobre la que actúan renombrar, mover y eliminar. */
+  menuAbierto = signal<string | null>(null);
+  carpetaObjetivo = signal<Carpeta | null>(null);
+  /** Árbol completo para los diálogos de mover (se pide al abrirlos: así está al día). */
+  arbol = signal<ArbolCarpetas | null>(null);
+  readonly textoCarpeta = textoCarpeta;
+  readonly ubicacion = ubicacion;
 
   // ------------------------------------------------------------------ paginación
   totalPaginas = computed(() => Math.max(1, Math.ceil(this.total() / this.filtros().porPagina)));
@@ -89,7 +115,7 @@ export class Biblioteca {
     if (f.departamento) out.push({ clave: 'departamento', texto: `Departamento: ${f.departamento}` });
     if (f.formato) out.push({ clave: 'formato', texto: `Formato: ${ETIQUETA_FORMATO[f.formato]}` });
     if (f.dias !== 'todo') out.push({ clave: 'dias', texto: ETIQUETA_DIAS[f.dias] });
-    if (f.carpeta) out.push({ clave: 'carpeta', texto: f.carpeta === 'sin' ? 'Sin carpeta' : `Carpeta: ${this.carpetaFiltrada()?.nombre ?? '…'}` });
+    if (f.subcarpetas) out.push({ clave: 'subcarpetas', texto: 'Incluye subcarpetas' });
     return out;
   });
 
@@ -99,7 +125,8 @@ export class Biblioteca {
   allSelected = computed(() => this.documentos().length > 0 && this.documentos().every((d) => this.seleccion().has(d.id)));
   dialogo = signal<Dialogo>(null);
   nombreCarpeta = signal('');
-  destino = signal(''); // '' sin elegir · 'sin' = sin carpeta · id
+  /** Destino elegido en el árbol: id · null = Inicio · undefined = sin elegir. */
+  destino = signal<string | null | undefined>(undefined);
   motivo = signal('');
   errorDialogo = signal('');
   trabajando = signal(false);
@@ -145,20 +172,39 @@ export class Biblioteca {
       next: (c) => this.departamentos.set(c.departamentos.map((d) => d.nombre)),
       error: () => this.departamentos.set([]),
     });
-    this.cargarCarpetas();
+
+    // Contenido de la carpeta actual (migas, tarjetas y permisos): al entrar o salir de una carpeta y tras cada acción.
+    // carpetaId es un computed de texto: cambiar otro filtro (formato, página...) NO vuelve a pedirlo.
+    let solicitudesCargadas = false;
+    toObservable(computed(() => ({ id: this.carpetaId(), v: this.version() })))
+      .pipe(
+        switchMap(({ id }) => this.api.contenidoCarpeta(id || null).pipe(
+          map((c) => ({ c, err: null as unknown })),
+          catchError((err: unknown) => of({ c: null, err })),
+        )),
+        takeUntilDestroyed(),
+      )
+      .subscribe(async ({ c, err }) => {
+        this.menuAbierto.set(null);
+        if (!c) {
+          this.contenido.set(null);
+          this.errorCarpeta.set(err instanceof HttpErrorResponse && err.status === 404
+            ? 'Esta carpeta no existe (quizá se eliminó o se movió). Vuelva a Inicio.'
+            : await mensajeDe(err, 'No se pudieron cargar las carpetas.'));
+          return;
+        }
+        this.errorCarpeta.set('');
+        this.contenido.set(c);
+        // Las solicitudes no dependen de la carpeta: se cargan una vez (y al refrescar), si el rol las usa.
+        if (!solicitudesCargadas && (c.permisos.resolver || c.permisos.solicitar)) {
+          solicitudesCargadas = true;
+          this.cargarSolicitudes();
+        }
+      });
     inject(DestroyRef).onDestroy(() => this.esperaBusqueda && clearTimeout(this.esperaBusqueda));
   }
 
   // ------------------------------------------------------------------ carga
-  private cargarCarpetas(): void {
-    this.api.carpetas().subscribe({
-      next: (c) => {
-        this.carpetasInfo.set(c);
-        if (c.permisos.resolver || c.permisos.solicitar) this.cargarSolicitudes();
-      },
-      error: () => this.carpetasInfo.set(null),
-    });
-  }
 
   cargarSolicitudes(): void {
     this.api.solicitudesMovimiento('pendiente').subscribe({
@@ -169,8 +215,46 @@ export class Biblioteca {
 
   private refrescar(): void {
     this.version.update((v) => v + 1);
-    this.cargarCarpetas();
+    const p = this.permisos();
+    if (p.resolver || p.solicitar) this.cargarSolicitudes();
   }
+
+  // ------------------------------------------------------------------ explorador
+  /** Entrar en una carpeta o volver a una de las migas (null = Inicio). Los demás filtros se conservan. */
+  irACarpeta(id: string | null): void {
+    if ((id ?? '') === this.carpetaId()) return;
+    this.aplicar({ carpeta: id ?? '' });
+  }
+
+  alternarMenu(c: Carpeta): void {
+    this.menuAbierto.update((id) => (id === c.id ? null : c.id));
+  }
+
+  /** Abre un diálogo sobre una carpeta (desde su menú "⋯"). */
+  accionCarpeta(c: Carpeta, d: 'renombrar' | 'moverCarpeta' | 'eliminar'): void {
+    this.menuAbierto.set(null);
+    this.carpetaObjetivo.set(c);
+    this.abrir(d);
+  }
+
+  private cargarArbol(): void {
+    this.arbol.set(null);
+    this.api.arbolCarpetas().subscribe({
+      next: (a) => this.arbol.set(a),
+      error: async (err: unknown) => this.errorDialogo.set(await mensajeDe(err, 'No se pudo cargar el árbol de carpetas.')),
+    });
+  }
+
+  /** «Legal › 2024» del destino elegido en el árbol. */
+  private nombreDestino(): string {
+    return textoRuta(rutaEnArbol(this.arbol()?.carpetas ?? [], this.destino() ?? null));
+  }
+
+  /** Dónde están los documentos seleccionados, si todos están en la misma carpeta (para marcarla en el árbol). */
+  ubicacionSeleccion = computed<string | null | undefined>(() => {
+    const ids = new Set([...this.seleccion().values()].map((d) => d.carpeta?.id ?? null));
+    return ids.size === 1 ? [...ids][0] : undefined;
+  });
 
   // ------------------------------------------------------------------ filtros
   /** Cambia filtros en la URL. Cualquier cambio que no sea de página vuelve a la página 1. */
@@ -198,8 +282,9 @@ export class Biblioteca {
   }
 
   limpiarFiltros(): void {
-    const { q, departamento, formato, dias, carpeta } = FILTROS_POR_DEFECTO;
-    this.aplicar({ q, departamento, formato, dias, carpeta });
+    // La carpeta no es un filtro: es dónde se está. Limpiar no saca al usuario de ella.
+    const { q, departamento, formato, dias, subcarpetas } = FILTROS_POR_DEFECTO;
+    this.aplicar({ q, departamento, formato, dias, subcarpetas });
   }
 
   cambiarPorPagina(valor: number | string): void {
@@ -282,14 +367,44 @@ export class Biblioteca {
   abrir(d: Exclude<Dialogo, null>): void {
     this.errorDialogo.set('');
     this.aviso.set(null);
-    this.nombreCarpeta.set(d === 'renombrar' ? this.carpetaFiltrada()?.nombre ?? '' : '');
-    this.destino.set('');
+    this.nombreCarpeta.set(d === 'renombrar' ? this.carpetaObjetivo()?.nombre ?? '' : '');
+    this.destino.set(undefined);
     this.motivo.set('');
+    if (d === 'mover' || d === 'solicitar' || d === 'moverCarpeta') this.cargarArbol();
+    this.focoPrevio = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.dialogo.set(d);
+    // El foco entra al diálogo (al campo de texto si lo hay): así Esc, Tab y Enter actúan sobre él y no sobre la página.
+    afterNextRender(() => {
+      const dlg = document.querySelector<HTMLElement>('[role="dialog"]');
+      (dlg?.querySelector<HTMLElement>('input[type="text"], textarea') ?? dlg)?.focus();
+    }, { injector: this.injector });
+  }
+
+  /** Esc cierra el menú de carpeta abierto o, si no hay, el diálogo. */
+  @HostListener('document:keydown.escape')
+  alPulsarEscape(): void {
+    if (this.menuAbierto()) this.menuAbierto.set(null);
+    else if (this.dialogo()) this.cerrarDialogo();
+  }
+
+  tituloDialogo(d: Exclude<Dialogo, null>): string {
+    const nombre = this.carpetaObjetivo()?.nombre ?? '';
+    return {
+      crear: 'Nueva carpeta', renombrar: `Renombrar la carpeta ${nombre}`, eliminar: `Eliminar la carpeta ${nombre}`,
+      moverCarpeta: `Mover la carpeta ${nombre}`, mover: 'Mover documentos', solicitar: 'Solicitar movimiento',
+    }[d];
   }
 
   cerrarDialogo(): void {
-    if (!this.trabajando()) this.dialogo.set(null);
+    if (this.trabajando()) return;
+    this.dialogo.set(null);
+    this.devolverFoco();
+  }
+
+  private devolverFoco(): void {
+    const f = this.focoPrevio;
+    this.focoPrevio = null;
+    if (f?.isConnected) f.focus();
   }
 
   /** Ejecuta una acción del diálogo: bloquea el botón, muestra el error del servidor o cierra con un aviso. */
@@ -300,6 +415,7 @@ export class Biblioteca {
       const texto = await accion();
       this.trabajando.set(false);
       this.dialogo.set(null);
+      this.devolverFoco();
       this.aviso.set({ tipo: 'ok', texto });
       this.refrescar();
     } catch (err) {
@@ -308,17 +424,19 @@ export class Biblioteca {
     }
   }
 
+  /** Crea la carpeta DENTRO de la que se está explorando (en Inicio, en la raíz). */
   crearCarpeta(): Promise<void> {
     const nombre = this.nombreCarpeta().trim();
     if (nombre.length < 2) return Promise.resolve(this.errorDialogo.set('El nombre debe tener al menos 2 caracteres.'));
+    const donde = this.contenido()?.carpeta ?? null;
     return this.ejecutar(async () => {
-      const c = await firstValueFrom(this.api.crearCarpeta(nombre));
-      return `Carpeta «${c.nombre}» creada.`;
+      const c = await firstValueFrom(this.api.crearCarpeta(nombre, donde?.id ?? null));
+      return `Carpeta «${c.nombre}» creada en ${textoRuta(donde?.ruta)}.`;
     }, 'No se pudo crear la carpeta.');
   }
 
   renombrarCarpeta(): Promise<void> {
-    const c = this.carpetaFiltrada();
+    const c = this.carpetaObjetivo();
     const nombre = this.nombreCarpeta().trim();
     if (!c) return Promise.resolve();
     if (nombre.length < 2) return Promise.resolve(this.errorDialogo.set('El nombre debe tener al menos 2 caracteres.'));
@@ -329,29 +447,33 @@ export class Biblioteca {
   }
 
   eliminarCarpeta(): Promise<void> {
-    const c = this.carpetaFiltrada();
+    const c = this.carpetaObjetivo();
     if (!c) return Promise.resolve();
     return this.ejecutar(async () => {
       await firstValueFrom(this.api.eliminarCarpeta(c.id));
-      this.aplicar({ carpeta: '' });
       return `Carpeta «${c.nombre}» eliminada.`;
     }, 'No se pudo eliminar la carpeta.');
   }
 
-  private destinoId(): string | null {
-    return this.destino() === 'sin' ? null : this.destino();
-  }
-
-  private nombreDestino(): string {
-    return this.destino() === 'sin' ? '«Sin carpeta»' : `«${this.carpetas().find((c) => c.id === this.destino())?.nombre ?? ''}»`;
+  /** Mueve la carpeta del menú (con todo su contenido) al destino elegido en el árbol. */
+  moverCarpeta(): Promise<void> {
+    const c = this.carpetaObjetivo();
+    const destino = this.destino();
+    if (!c) return Promise.resolve();
+    if (destino === undefined) return Promise.resolve(this.errorDialogo.set('Elija la carpeta de destino.'));
+    if ((destino ?? '') === this.carpetaId()) return Promise.resolve(this.errorDialogo.set('La carpeta ya está ahí. Elija otro destino.'));
+    return this.ejecutar(async () => {
+      await firstValueFrom(this.api.moverCarpeta(c.id, destino));
+      return `Carpeta «${c.nombre}» movida a ${this.nombreDestino()} con sus subcarpetas y documentos.`;
+    }, 'No se pudo mover la carpeta.');
   }
 
   moverSeleccion(): Promise<void> {
     const ids = [...this.seleccion().keys()];
-    if (!this.destino()) return Promise.resolve(this.errorDialogo.set('Elija la carpeta de destino.'));
+    if (this.destino() === undefined) return Promise.resolve(this.errorDialogo.set('Elija la carpeta de destino.'));
     if (ids.length > MAX_MOVER) return Promise.resolve(this.errorDialogo.set(`Como máximo ${MAX_MOVER} documentos por operación.`));
     return this.ejecutar(async () => {
-      const r = await firstValueFrom(this.api.moverDocumentos(ids, this.destinoId()));
+      const r = await firstValueFrom(this.api.moverDocumentos(ids, this.destino() ?? null));
       const partes = [`${r.movidos === 1 ? 'Se movió 1 documento' : `Se movieron ${r.movidos} documentos`} a ${this.nombreDestino()}.`];
       if (r.sinCambios) partes.push(`${r.sinCambios} ya ${r.sinCambios === 1 ? 'estaba' : 'estaban'} ahí.`);
       if (r.omitidos.length) partes.push(`${r.omitidos.length} se omitieron (sin acceso o ya no están activos).`);
@@ -363,7 +485,7 @@ export class Biblioteca {
   solicitarSeleccion(): Promise<void> {
     const docs = [...this.seleccion().values()];
     const motivo = this.motivo().trim();
-    if (!this.destino()) return Promise.resolve(this.errorDialogo.set('Elija la carpeta de destino.'));
+    if (this.destino() === undefined) return Promise.resolve(this.errorDialogo.set('Elija la carpeta de destino.'));
     if (motivo.length < 10) return Promise.resolve(this.errorDialogo.set('Explique el motivo (mínimo 10 caracteres).'));
     if (docs.length > MAX_MOVER) return Promise.resolve(this.errorDialogo.set(`Como máximo ${MAX_MOVER} documentos por operación.`));
     return this.ejecutar(async () => {
@@ -371,7 +493,7 @@ export class Biblioteca {
       const problemas: string[] = [];
       for (const d of docs) {
         try {
-          await firstValueFrom(this.api.solicitarMovimiento(d.id, this.destinoId(), motivo));
+          await firstValueFrom(this.api.solicitarMovimiento(d.id, this.destino() ?? null, motivo));
           ok++;
         } catch (err) {
           problemas.push(`${d.name}: ${await mensajeDe(err, 'no se pudo enviar')}`);
@@ -388,7 +510,7 @@ export class Biblioteca {
     this.aviso.set(null);
     try {
       await firstValueFrom(this.api.aprobarSolicitud(s.id));
-      this.aviso.set({ tipo: 'ok', texto: `Solicitud aprobada: «${s.documento.nombre}» se movió a ${s.carpetaDestino ? `«${s.carpetaDestino.nombre}»` : '«Sin carpeta»'}.` });
+      this.aviso.set({ tipo: 'ok', texto: `Solicitud aprobada: «${s.documento.nombre}» se movió a ${textoCarpeta(s.carpetaDestino)}.` });
       this.refrescar();
     } catch (err) {
       this.aviso.set({ tipo: 'error', texto: await mensajeDe(err, 'No se pudo aprobar la solicitud.') });
