@@ -100,7 +100,7 @@ function Biblioteca {
 function Carpetas {
   $c = Llamar 'Get' '/carpetas'; if (-not $c) { return $null }
   $c.carpetas | Select-Object id, nombre, documentos | Format-Table -AutoSize | Out-Host
-  Write-Host "  Sin carpeta: $($c.sinCarpeta).  Permisos: gestionar=$($c.permisos.gestionar) eliminar=$($c.permisos.eliminar) solicitar=$($c.permisos.solicitar) resolver=$($c.permisos.resolver)"
+  Write-Host "  En Inicio (sin carpeta): $($c.documentosAqui).  Permisos: gestionar=$($c.permisos.gestionar) eliminar=$($c.permisos.eliminar) solicitar=$($c.permisos.solicitar) resolver=$($c.permisos.resolver)"
   return $c
 }
 
