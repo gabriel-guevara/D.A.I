@@ -27,31 +27,13 @@
       </div>
 
       <!-- Tabs -->
-      <div class="flex flex-wrap items-center gap-2 text-xs">
-        <button (click)="setTab('todas')" class="rounded-full px-3 py-1.5 font-medium border"
-          [ngClass]="activeTab() === 'todas' ? 'bg-blue-700 text-white border-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'">
-          Todas {{ counts().todas }}
+      <div class="flex flex-wrap items-center gap-2 text-xs" role="tablist" aria-label="Categorías de notificaciones">
+        @for (t of pestanas(); track t.id) {
+        <button (click)="setTab(t.id)" class="rounded-full px-3 py-1.5 font-medium border" role="tab" [attr.aria-selected]="activeTab() === t.id"
+          [ngClass]="activeTab() === t.id ? 'bg-blue-700 text-white border-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'">
+          {{ t.etiqueta }} {{ t.total }}
         </button>
-        <button (click)="setTab('consulta')" class="rounded-full px-3 py-1.5 font-medium border"
-          [ngClass]="activeTab() === 'consulta' ? 'bg-blue-700 text-white border-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'">
-          Consultas de Documentos {{ counts().consulta }}
-        </button>
-        <button (click)="setTab('edicion')" class="rounded-full px-3 py-1.5 font-medium border"
-          [ngClass]="activeTab() === 'edicion' ? 'bg-blue-700 text-white border-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'">
-          Edición de Documentos {{ counts().edicion }}
-        </button>
-        <button (click)="setTab('version')" class="rounded-full px-3 py-1.5 font-medium border"
-          [ngClass]="activeTab() === 'version' ? 'bg-blue-700 text-white border-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'">
-          Nuevas Versiones {{ counts().version }}
-        </button>
-        <button (click)="setTab('eliminado')" class="rounded-full px-3 py-1.5 font-medium border"
-          [ngClass]="activeTab() === 'eliminado' ? 'bg-blue-700 text-white border-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'">
-          Eliminados / Papelera {{ counts().eliminado }}
-        </button>
-        <button (click)="setTab('seguridad')" class="rounded-full px-3 py-1.5 font-medium border"
-          [ngClass]="activeTab() === 'seguridad' ? 'bg-blue-700 text-white border-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'">
-          Alertas de Seguridad {{ counts().seguridad }}
-        </button>
+        }
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">

@@ -10,6 +10,7 @@
 #
 # Con permisos de gestión crea un árbol TEMPORAL «Prueba F6 <hora>» (5 niveles), prueba los límites (400/409), mueve
 # una subcarpeta y, si el rol puede eliminar, lo borra todo al final (de abajo arriba). No toca documentos.
+# Al final muestra las categorías de notificaciones del rol y comprueba que no le llegue ninguna de otra categoría.
 set -u
 API="${API:-http://127.0.0.1:3000/api}"
 CORREO="${1:-e.ramos@dai.corp}"
@@ -32,6 +33,16 @@ json() { node -e 'const a = process.argv.slice(1); const o = {}; for (let i = 0;
 error() { echo "  ERROR $ESTADO : $(js 'r && r.error' 2>/dev/null)"; }
 esperado() { if [ "$ESTADO" = "$1" ]; then echo "  OK ($ESTADO) $2"; else echo "  FALLO: se esperaba $1 y llegó $ESTADO — $2"; error; FALLOS=$((FALLOS + 1)); fi; }
 migas() { js '"Inicio › " + r.ruta.map((c) => c.nombre).join(" › ")'; }
+notificaciones() {
+  echo; echo '5) Notificaciones de este rol'
+  pedir GET /notificaciones/categorias; esperado 200 "categorías que recibe: $(js 'r.categorias.join(", ")')"
+  CATS="$(js 'r.categorias')"
+  pedir GET /notificaciones
+  echo "  Por categoría: $(js 'Object.entries(r.reduce((a, n) => (a[n.category] = (a[n.category] || 0) + 1, a), {})).map(([k, v]) => k + "=" + v).join(" ") || "(ninguna)"')"
+  echo "  Última alerta de seguridad: $(js '(r.find((n) => n.category === "seguridad") || { title: "(ninguna)" }).title')"
+  FUERA="$(js "r.filter((n) => !${CATS}.includes(n.category)).length")"
+  if [ "$FUERA" = 0 ]; then echo '  OK ninguna notificación fuera de sus categorías'; else echo "  FALLO: $FUERA notificación(es) fuera de sus categorías"; FALLOS=$((FALLOS + 1)); fi
+}
 
 echo "API: $API   Usuario: $CORREO"
 read -r -s -p 'Contraseña: ' CLAVE; echo
@@ -61,6 +72,7 @@ if [ "$GESTIONAR" != true ]; then
   echo; echo '2) Este rol no gestiona carpetas'
   pedir POST /carpetas "$(json nombre 'No debería crearse')"; esperado 403 'crear'
   pedir PATCH /carpetas/1 "$(json padreId null)"; esperado 403 'mover carpeta'
+  notificaciones
   echo; [ "$FALLOS" = 0 ] && echo 'Listo: todo como se esperaba.' || echo "Listo, con $FALLOS fallo(s)."
   exit 0
 fi
@@ -98,5 +110,7 @@ else
   esperado 403 'este rol no elimina carpetas'
   echo "  Quedó el árbol «$RAIZ»: elimínelo como Super Administrador (de abajo arriba)."
 fi
+
+notificaciones
 
 echo; [ "$FALLOS" = 0 ] && echo 'Listo: todo como se esperaba.' || echo "Listo, con $FALLOS fallo(s)."

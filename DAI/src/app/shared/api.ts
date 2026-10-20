@@ -361,6 +361,9 @@ export interface CatalogosApi {
   subida: { maxMb: number };
 }
 
+/** Categorías de notificaciones (la matriz rol → categorías vive en el servidor). */
+export type CategoriaNotificacion = 'seguridad' | 'solicitud' | 'consulta' | 'edicion' | 'version' | 'eliminado';
+
 /** Único punto de acceso HTTP al backend. Cada método devuelve un Observable tipado por quien lo llama. */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -500,6 +503,10 @@ export class ApiService {
   // Notificaciones
   notificaciones<T = unknown>() { return this.get<T>('/notificaciones'); }
   notificacionesResumen<T = unknown>() { return this.get<T>('/notificaciones/resumen'); }
+  /** Categorías que ESTE usuario recibe, en el orden de las pestañas (las decide el servidor según el rol). */
+  notificacionesCategorias(): Observable<{ categorias: CategoriaNotificacion[] }> {
+    return this.get<{ categorias: CategoriaNotificacion[] }>('/notificaciones/categorias');
+  }
   marcarLeida(id: string): Observable<void> {
     return this.http.patch<void>(`${API_URL}/notificaciones/${encodeURIComponent(id)}/leida`, {});
   }

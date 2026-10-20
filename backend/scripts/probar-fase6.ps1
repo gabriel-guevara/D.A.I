@@ -11,6 +11,7 @@
   Con permisos de gestión (Super Admin, Operador OCR) crea un árbol TEMPORAL «Prueba F6 <hora>» de 5 niveles,
   prueba los límites (400/409), mueve una subcarpeta y, si el rol puede eliminar (Super Admin), lo borra todo al final.
   Con Cumplimiento o Lector solo explora y comprueba que crear y mover dan 403. No toca documentos.
+  Al final muestra las categorías de notificaciones del rol y comprueba que no le llegue ninguna de otra categoría.
 #>
 param(
   [string]$Api = 'http://127.0.0.1:3000/api',
@@ -133,6 +134,20 @@ if (-not $p.gestionar) {
     Write-Host "  Quedó el árbol «$raiz»: elimínelo como Super Administrador (de abajo arriba)." -ForegroundColor Yellow
   }
 }
+
+# ------------------------------------------------------------------------------------------- 5) notificaciones
+Write-Host ''; Write-Host '5) Notificaciones de este rol' -ForegroundColor Cyan
+$cat = Llamar 'Get' '/notificaciones/categorias'
+Esperar $cat 200 ("categorías que recibe: " + (@($cat.R.categorias) -join ', '))
+$lista = @((Llamar 'Get' '/notificaciones').R)
+$porCat = $lista | Group-Object category | ForEach-Object { "$($_.Name)=$($_.Count)" }
+if (-not $porCat) { $porCat = '(ninguna)' }
+Write-Host "  Por categoría: $(@($porCat) -join ' ')"
+$alerta = $lista | Where-Object { $_.category -eq 'seguridad' } | Select-Object -First 1
+if ($alerta) { Write-Host "  Última alerta de seguridad: $($alerta.title)" } else { Write-Host '  Última alerta de seguridad: (ninguna)' }
+$fuera = @($lista | Where-Object { @($cat.R.categorias) -notcontains $_.category }).Count
+if ($fuera -eq 0) { Write-Host '  OK ninguna notificación fuera de sus categorías' -ForegroundColor Green }
+else { $script:Fallos++; Write-Host "  FALLO: $fuera notificación(es) fuera de sus categorías" -ForegroundColor Red }
 
 Write-Host ''
 if ($script:Fallos -eq 0) { Write-Host 'Listo: todo como se esperaba.' -ForegroundColor Green }

@@ -25,6 +25,13 @@ describe('Barraizq', () => {
     expect(component).toBeTruthy();
   });
 
+  it('el logo de DAI lleva al Dashboard (enlace accesible con teclado)', () => {
+    fixture.detectChanges();
+    const logo = (fixture.nativeElement as HTMLElement).querySelector('a[aria-label="DAI, ir al Dashboard"]') as HTMLAnchorElement;
+    expect(logo.getAttribute('href')).toBe('/dashboard');
+    expect(logo.querySelector('img')?.getAttribute('src')).toBe('Dai.svg');
+  });
+
   it('sin sesión (o rol sin permiso) no muestra la Papelera', () => {
     expect(component.itemsVisibles().some((i) => i.id === 'papelera')).toBe(false);
   });

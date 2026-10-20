@@ -48,6 +48,31 @@ describe('Notificaciones', () => {
     expect(navegar).toHaveBeenCalledWith(['/documento', '42']);
   });
 
+  it('pestañas según el rol: solo las categorías que el servidor indica, con su contador', async () => {
+    http.expectOne('/api/notificaciones/categorias').flush({ categorias: ['seguridad', 'solicitud', 'edicion', 'version'] });
+    http.expectOne('/api/notificaciones').flush([
+      notif('1'), notif('2', { category: 'seguridad', title: 'Nuevo inicio de sesión en tu cuenta' }), notif('3', { category: 'edicion' }),
+    ]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const pestanas = [...(fixture.nativeElement as HTMLElement).querySelectorAll('[role="tab"]')].map((b) => b.textContent?.trim());
+    expect(pestanas).toEqual(['Todas 3', 'Alertas de Seguridad 1', 'Solicitudes 0', 'Carpetas y Movimientos 2', 'Nuevas Versiones 0']);
+    expect(texto()).not.toContain('Consultas de Documentos');
+    expect(texto()).not.toContain('Papelera');
+    component.setTab('seguridad');
+    fixture.detectChanges();
+    expect(component.filtered().map((n) => n.title)).toEqual(['Nuevo inicio de sesión en tu cuenta']);
+  });
+
+  it('Lector: solo "Todas" y "Alertas de Seguridad"', async () => {
+    http.expectOne('/api/notificaciones/categorias').flush({ categorias: ['seguridad'] });
+    http.expectOne('/api/notificaciones').flush([]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect([...(fixture.nativeElement as HTMLElement).querySelectorAll('[role="tab"]')].map((b) => b.textContent?.trim()))
+      .toEqual(['Todas 0', 'Alertas de Seguridad 0']);
+  });
+
   it('sin paneles inventados: ni "Configurar alertas", ni "Actividad Semanal", ni e-IDAS, ni ticket', async () => {
     http.expectOne('/api/notificaciones').flush([]);
     fixture.detectChanges();

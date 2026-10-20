@@ -5,11 +5,20 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
-import { ApiService } from '../../shared/api';
+import { ApiService, CategoriaNotificacion } from '../../shared/api';
 import { NotificacionesEstado } from '../../shared/notificaciones-estado';
 
+type NotifCategory = 'todas' | CategoriaNotificacion;
 
-type NotifCategory = 'todas' | 'consulta' | 'edicion' | 'version' | 'eliminado' | 'seguridad';
+/** Nombre de cada pestaña. Cuáles se muestran lo decide el servidor (GET /notificaciones/categorias) según el rol. */
+export const ETIQUETA_CATEGORIA: Record<CategoriaNotificacion, string> = {
+  seguridad: 'Alertas de Seguridad',
+  solicitud: 'Solicitudes',
+  consulta: 'Consultas de Documentos',
+  edicion: 'Carpetas y Movimientos',
+  version: 'Nuevas Versiones',
+  eliminado: 'Eliminados / Papelera',
+};
 
 const CADA_MS = 5000;
 const ZONA = 'America/Bogota';
@@ -48,6 +57,8 @@ export class Notificaciones {
   private estado = inject(NotificacionesEstado);
 
   notifications = signal<Notification[]>([]);
+  /** Categorías de este usuario (vacío mientras carga o si falla: solo se ve "Todas"). */
+  categorias = signal<CategoriaNotificacion[]>([]);
 
   /** Reloj para que el "hace X min" avance solo, y última vez que se consultó al servidor. */
   ahora = signal(Date.now());
@@ -58,6 +69,10 @@ export class Notificaciones {
   });
 
   constructor() {
+    this.api.notificacionesCategorias().subscribe({
+      next: (r) => this.categorias.set(r.categorias),
+      error: (err) => console.error('No se pudieron cargar las categorías de notificaciones', err),
+    });
     // "Tiempo real": consulta al servidor cada 5 s (pausa si la pestaña no está visible).
     // exhaustMap evita que se amontonen peticiones si el servidor tarda en responder.
     timer(0, CADA_MS)
@@ -121,16 +136,13 @@ export class Notificaciones {
     return tab === 'todas' ? list : list.filter((n) => n.category === tab);
   });
 
-  counts = computed(() => {
+  /** Pestañas: "Todas" y las categorías de este rol, cada una con su contador. */
+  pestanas = computed<{ id: NotifCategory; etiqueta: string; total: number }[]>(() => {
     const list = this.notifications();
-    return {
-      todas: list.length,
-      consulta: list.filter((n) => n.category === 'consulta').length,
-      edicion: list.filter((n) => n.category === 'edicion').length,
-      version: list.filter((n) => n.category === 'version').length,
-      eliminado: list.filter((n) => n.category === 'eliminado').length,
-      seguridad: list.filter((n) => n.category === 'seguridad').length,
-    };
+    return [
+      { id: 'todas', etiqueta: 'Todas', total: list.length },
+      ...this.categorias().map((c) => ({ id: c, etiqueta: ETIQUETA_CATEGORIA[c], total: list.filter((n) => n.category === c).length })),
+    ];
   });
 
   unreadCount = computed(() => this.notifications().filter((n) => !n.read).length);
