@@ -49,7 +49,6 @@ export class Busqueda {
   // Vacío por defecto: sin búsqueda, se muestran todos los documentos.
   searchText = signal('');
   appliedQuery = signal('');
-  ocrEnabled = signal(true);
   algoritmo = signal<Algoritmo>('semantica');
 
   terminosFrecuentes = signal<string[]>([]);
@@ -65,6 +64,8 @@ export class Busqueda {
   selectedClasificaciones = signal<Set<Clasificacion>>(new Set());
 
   results = signal<SearchResult[]>([]);
+  /** El servidor devuelve como máximo los 50 mejores resultados (no hay más páginas que pedir). */
+  readonly maxResultados = 50;
 
   filteredResults = computed(() => {
     // El texto de búsqueda ya lo filtra el servidor; aquí solo se aplican los filtros laterales
@@ -143,10 +144,6 @@ export class Busqueda {
       queryParams: { q: query || null },
       queryParamsHandling: 'merge',
     });
-  }
-
-  toggleOcr(): void {
-    this.ocrEnabled.set(!this.ocrEnabled());
   }
 
   setAlgoritmo(algoritmo: Algoritmo): void {

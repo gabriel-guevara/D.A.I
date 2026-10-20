@@ -33,7 +33,7 @@ const base = (r) => ({
   docId: String(r.id), title: r.nombre,
   badge: (r.clasif ?? 'Sin clasificar').toUpperCase(), badgeColor: r.badge_clase ?? 'bg-slate-400 text-white',
   // "Cifrado" solo cuando hay archivo real en R2 (R2 cifra en reposo con AES-256); los del seed no tienen archivo.
-  formatLabel: r.ocr_procesado ? `${r.formato.toUpperCase()} con OCR Verificado`
+  formatLabel: r.ocr_procesado ? `${r.formato.toUpperCase()} con texto OCR` // nadie "verificó" el OCR: solo consta que se procesó
     : r.tiene_archivo && r.storage_driver === 'r2' ? 'Cifrado en reposo AES-256 (R2)' : r.formato.toUpperCase(),
   hashLabel: r.tiene_archivo && r.hash_sha256 ? 'SHA-256 del archivo' : r.folio,
   expediente: r.folio, ruta: r.ruta ?? '', actualizado: fechaCorta(r.actualizado_en),

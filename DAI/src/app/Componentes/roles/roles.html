@@ -13,10 +13,12 @@
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-[16px] shrink-0">
-          <button (click)="crearUsuario()" class=" flex justify-center items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white rounded-lg px-3 py-1.5 font-medium">
-            <img width="20" height="20" src="https://img.icons8.com/material-outlined/24/filled-plus-2-math.png" alt="filled-plus-2-math"/>
-            <span>Crear Usuario</span>
-          </button>
+          @if (esSuperAdmin()) {
+            <button (click)="crearUsuario()" class=" flex justify-center items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white rounded-lg px-3 py-1.5 font-medium">
+              <img width="20" height="20" src="https://img.icons8.com/material-outlined/24/filled-plus-2-math.png" alt="filled-plus-2-math"/>
+              <span>Crear Usuario</span>
+            </button>
+          }
         </div>
       </div>
 
@@ -37,7 +39,7 @@
             </span>
             <input
               type="text"
-              placeholder="Filtrar por nombre o folio"
+              placeholder="Filtrar por nombre o correo"
               [ngModel]="searchText()"
               (ngModelChange)="searchText.set($event)"
               class="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -50,10 +52,9 @@
             class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600"
           >
             <option value="todos">Todos los Roles</option>
-            <option value="super-admin">Administrador</option>
-            <option value="compliance">Oficial Cumplimiento</option>
-            <option value="ocr-operator">Operador OCR / Ingesta</option>
-            <option value="read-only">Lector Restringido</option>
+            @for (r of rolesCatalogo(); track r.clave) {
+              <option [value]="r.clave">{{ r.nombre }}</option>
+            }
           </select>
 
 
@@ -116,7 +117,7 @@
               </tr>
             } @empty {
               <tr>
-                <td [attr.colspan]="esSuperAdmin() ? 7 : 6" class="px-4 py-8 text-center text-sm text-slate-400">
+                <td [attr.colspan]="esSuperAdmin() ? 5 : 4" class="px-4 py-8 text-center text-sm text-slate-400">
                   No se encontraron usuarios con ese criterio.
                 </td>
               </tr>
@@ -124,17 +125,8 @@
           </tbody>
         </table>
 
-        <div class="flex items-center justify-between px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
-          <span>Mostrando 1 a {{ filteredUsers().length }} de 45 operadores certificados bajo DAI</span>
-          <div class="flex items-center gap-1">
-            <button class="px-2 py-1 rounded hover:bg-slate-100">‹</button>
-            <button class="w-6 h-6 rounded bg-blue-700 text-white">1</button>
-            <button class="w-6 h-6 rounded hover:bg-slate-100">2</button>
-            <button class="w-6 h-6 rounded hover:bg-slate-100">3</button>
-            <span>...</span>
-            <button class="w-6 h-6 rounded hover:bg-slate-100">9</button>
-            <button class="px-2 py-1 rounded hover:bg-slate-100">›</button>
-          </div>
+        <div class="px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
+          Mostrando {{ filteredUsers().length }} de {{ users().length }} {{ users().length === 1 ? 'usuario' : 'usuarios' }}
         </div>
       </div>
 

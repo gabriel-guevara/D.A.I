@@ -93,6 +93,17 @@ CREATE TABLE intentos_acceso (
   bloqueado_hasta timestamptz
 );
 
+-- ---------- Carpetas (Fase 5): un solo nivel, solo organizan; NO cambian permisos ----------
+CREATE TABLE carpetas (
+  id             bigserial PRIMARY KEY,
+  nombre         text NOT NULL,
+  creado_por     bigint REFERENCES usuarios(id) ON DELETE SET NULL,
+  creado_en      timestamptz NOT NULL DEFAULT now(),
+  actualizado_en timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT carpetas_nombre_check CHECK (char_length(nombre) BETWEEN 2 AND 80)
+);
+CREATE UNIQUE INDEX carpetas_nombre_uq ON carpetas (lower(nombre));   -- único sin distinguir mayúsculas
+
 -- ---------- Documentos ----------
 CREATE TABLE documentos (
   id               bigserial PRIMARY KEY,
@@ -130,6 +141,7 @@ CREATE TABLE documentos (
   purgar_despues_de timestamptz,               -- papelera: desde cuándo se puede purgar automáticamente (NULL = nunca)
   purgado_en       timestamptz,                -- purga definitiva: la fila queda como "lápida" sin archivo ni texto
   purgado_por      bigint REFERENCES usuarios(id) ON DELETE SET NULL,  -- NULL = purga automática por retención
+  carpeta_id       bigint REFERENCES carpetas(id) ON DELETE SET NULL,  -- NULL = "Sin carpeta"
   creado_en        timestamptz NOT NULL DEFAULT now(),
   actualizado_en   timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT documentos_storage_driver_check CHECK (storage_driver IS NULL OR storage_driver IN ('local','r2')),
@@ -141,6 +153,24 @@ CREATE INDEX documentos_estado_idx   ON documentos (estado, actualizado_en DESC)
 CREATE INDEX documentos_papelera_idx ON documentos (purgar_despues_de) WHERE estado = 'papelera';
 CREATE INDEX documentos_nombre_trgm  ON documentos USING gin (nombre gin_trgm_ops);
 CREATE INDEX documentos_folio_trgm   ON documentos USING gin (folio gin_trgm_ops);
+CREATE INDEX documentos_carpeta_idx  ON documentos (carpeta_id) WHERE carpeta_id IS NOT NULL;
+
+-- Solicitudes de movimiento (Fase 5): el Oficial de Cumplimiento pide mover un documento con un motivo;
+-- un Super Administrador u Operador OCR con nivel suficiente la aprueba (y se aplica) o la rechaza.
+CREATE TABLE solicitudes_movimiento (
+  id                 bigserial PRIMARY KEY,
+  documento_id       bigint NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+  carpeta_destino_id bigint REFERENCES carpetas(id) ON DELETE SET NULL,  -- NULL = sacarlo de su carpeta
+  solicitante_id     bigint REFERENCES usuarios(id) ON DELETE SET NULL,
+  motivo             text NOT NULL,
+  estado             text NOT NULL DEFAULT 'pendiente',
+  resuelto_por       bigint REFERENCES usuarios(id) ON DELETE SET NULL,
+  resuelto_en        timestamptz,
+  respuesta          text,
+  creado_en          timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT solicitudes_movimiento_estado_check CHECK (estado IN ('pendiente','aprobada','rechazada'))
+);
+CREATE UNIQUE INDEX solicitudes_movimiento_pendiente_uq ON solicitudes_movimiento (documento_id) WHERE estado = 'pendiente';
 
 CREATE TABLE documento_versiones (
   id           bigserial PRIMARY KEY,
@@ -294,8 +324,13 @@ CREATE TABLE configuracion (
 );
 
 -- ---------- Trigger: actualizado_en ----------
+-- Mover de carpeta no cuenta como modificación: con SET LOCAL dai.conservar_actualizado = 'on' no se toca.
 CREATE FUNCTION set_actualizado_en() RETURNS trigger AS $$
-BEGIN NEW.actualizado_en = now(); RETURN NEW; END $$ LANGUAGE plpgsql;
+BEGIN
+  IF coalesce(current_setting('dai.conservar_actualizado', true), '') = 'on' THEN RETURN NEW; END IF;
+  NEW.actualizado_en = now();
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER documentos_actualizado BEFORE UPDATE ON documentos
   FOR EACH ROW EXECUTE FUNCTION set_actualizado_en();

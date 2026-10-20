@@ -48,8 +48,8 @@
           </button>
         </div>
         @if (!esSuperAdmin()) {
-          <p class="text-[11px] text-slate-400 mt-2">
-            Solo el Administrador puede modificar usuarios. Usted puede crear cuentas de Operador OCR o Lector.
+          <p class="text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+            Solo el Super Administrador puede crear y modificar usuarios.
           </p>
         }
       </div>
@@ -137,6 +137,21 @@
           </div>
 
           <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Nivel de confidencialidad *</label>
+            <select
+              [ngModel]="f.nivel"
+              (ngModelChange)="parche(modo, { nivel: $event })"
+              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700"
+            >
+              <option value="">Seleccione un nivel…</option>
+              @for (n of nivelesDisponibles(); track n.id) {
+                <option [value]="n.nombre">{{ n.nombre }}</option>
+              }
+            </select>
+            <p class="text-[11px] text-slate-400 mt-1">Define qué documentos podrá ver (los de su nivel o inferior).</p>
+          </div>
+
+          <div>
             <label class="block text-xs font-medium text-slate-600 mb-1">Departamento / Área</label>
             <select
               [ngModel]="f.departamento"
@@ -171,7 +186,7 @@
       </ng-template>
 
       <!-- ======================= PESTAÑA: CREAR ======================= -->
-      @if (tab() === 'crear') {
+      @if (tab() === 'crear' && esSuperAdmin()) {
         <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-5 max-w-3xl">
           <h2 class="text-sm font-semibold text-slate-800">Datos del nuevo usuario</h2>
 

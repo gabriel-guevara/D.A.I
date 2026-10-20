@@ -395,7 +395,7 @@ test('eliminar: pasa a la papelera sin borrar nada; desaparece de biblioteca, de
   assert.equal(await objetos(), objetosAntes, 'el archivo NO se borra');
   assert.ok((await filas(`SELECT 1 FROM documento_paginas WHERE documento_id = $1`, [doc.id])).length, 'el texto se conserva para restaurar');
 
-  assert.ok(!(await get('/documentos')).cuerpo.some((x) => x.id === doc.id));
+  assert.ok(!(await get('/documentos')).cuerpo.documentos.some((x) => x.id === doc.id));
   assert.equal((await get(`/documentos/${doc.id}`)).status, 404);
   assert.equal((await bytesDe(`/documentos/${doc.id}/archivo`)).status, 404);
   assert.deepEqual(await buscar('quetzal'), []);

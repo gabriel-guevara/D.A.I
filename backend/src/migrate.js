@@ -188,6 +188,54 @@ export const MIGRACIONES = [
       await c.query(`CREATE INDEX IF NOT EXISTS objetos_por_borrar_cola ON objetos_por_borrar (no_antes_de, id)`);
     },
   },
+  {
+    // Fase 5: carpetas de UN nivel (solo organizan: el nivel de acceso del documento sigue mandando) y solicitudes
+    // de movimiento (el Oficial de Cumplimiento no mueve: pide, y un gestor aprueba o rechaza). Todo ADITIVO.
+    nombre: '006_carpetas',
+    async up(c) {
+      await c.query(`CREATE TABLE IF NOT EXISTS carpetas (
+        id             bigserial PRIMARY KEY,
+        nombre         text NOT NULL,
+        creado_por     bigint REFERENCES usuarios(id) ON DELETE SET NULL,
+        creado_en      timestamptz NOT NULL DEFAULT now(),
+        actualizado_en timestamptz NOT NULL DEFAULT now())`);
+      await c.query(`ALTER TABLE carpetas DROP CONSTRAINT IF EXISTS carpetas_nombre_check`);
+      await c.query(`ALTER TABLE carpetas ADD CONSTRAINT carpetas_nombre_check CHECK (char_length(nombre) BETWEEN 2 AND 80)`);
+      // Único sin distinguir mayúsculas: "Contratos" y "CONTRATOS" serían la misma carpeta para una persona.
+      await c.query(`CREATE UNIQUE INDEX IF NOT EXISTS carpetas_nombre_uq ON carpetas (lower(nombre))`);
+
+      // Columna nueva SIN valor por defecto: no reescribe la tabla y todo lo existente queda "Sin carpeta".
+      await c.query(`ALTER TABLE documentos ADD COLUMN IF NOT EXISTS carpeta_id bigint REFERENCES carpetas(id) ON DELETE SET NULL`);
+      await c.query(`CREATE INDEX IF NOT EXISTS documentos_carpeta_idx ON documentos (carpeta_id) WHERE carpeta_id IS NOT NULL`);
+
+      await c.query(`CREATE TABLE IF NOT EXISTS solicitudes_movimiento (
+        id                 bigserial PRIMARY KEY,
+        documento_id       bigint NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+        carpeta_destino_id bigint REFERENCES carpetas(id) ON DELETE SET NULL,  -- NULL = sacarlo de su carpeta
+        solicitante_id     bigint REFERENCES usuarios(id) ON DELETE SET NULL,
+        motivo             text NOT NULL,
+        estado             text NOT NULL DEFAULT 'pendiente',
+        resuelto_por       bigint REFERENCES usuarios(id) ON DELETE SET NULL,
+        resuelto_en        timestamptz,
+        respuesta          text,
+        creado_en          timestamptz NOT NULL DEFAULT now())`);
+      await c.query(`ALTER TABLE solicitudes_movimiento DROP CONSTRAINT IF EXISTS solicitudes_movimiento_estado_check`);
+      await c.query(`ALTER TABLE solicitudes_movimiento ADD CONSTRAINT solicitudes_movimiento_estado_check
+                     CHECK (estado IN ('pendiente','aprobada','rechazada'))`);
+      // Una sola solicitud PENDIENTE por documento (las resueltas quedan como historial).
+      await c.query(`CREATE UNIQUE INDEX IF NOT EXISTS solicitudes_movimiento_pendiente_uq
+                       ON solicitudes_movimiento (documento_id) WHERE estado = 'pendiente'`);
+
+      // Mover un documento de carpeta es organizar, no modificarlo: "actualizado_en" no debe cambiar. El trigger
+      // respeta un ajuste LOCAL de la transacción (SET LOCAL dai.conservar_actualizado = 'on'); sin él, igual que antes.
+      await c.query(`CREATE OR REPLACE FUNCTION set_actualizado_en() RETURNS trigger AS $$
+        BEGIN
+          IF coalesce(current_setting('dai.conservar_actualizado', true), '') = 'on' THEN RETURN NEW; END IF;
+          NEW.actualizado_en = now();
+          RETURN NEW;
+        END $$ LANGUAGE plpgsql`);
+    },
+  },
 ];
 
 /**

@@ -41,10 +41,10 @@ export class Barraizq {
     { id: 'dashboard', label: 'Dashboard', route: '/dashboard' },
     { id: 'biblioteca', label: 'Biblioteca', route: '/biblioteca' },
     { id: 'busqueda', label: 'Búsqueda Avanzada', route: '/busqueda' },
-    { id: 'ocr', label: 'Digitalización (OCR)', route: '/digitalizacion' },
+    { id: 'ocr', label: 'Digitalización (OCR)', route: '/digitalizacion', roles: ['super-admin', 'ocr-operator'] },
     { id: 'notificaciones', label: 'Notificaciones', route: '/notificaciones' },
     { id: 'papelera', label: 'Papelera', route: '/papelera', roles: ['super-admin', 'compliance'] },
-    { id: 'roles', label: 'Roles y Permisos', route: '/roles' },
+    { id: 'roles', label: 'Roles y Permisos', route: '/roles', roles: ['super-admin', 'compliance'] },
     { id: 'cuenta', label: 'Seguridad de mi cuenta', route: '/cuenta/seguridad' },
   ];
 

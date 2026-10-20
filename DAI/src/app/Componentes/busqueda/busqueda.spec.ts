@@ -66,4 +66,17 @@ describe('Busqueda', () => {
     component.abrirDocumento({ docId: '5', numeroPagina: null });
     expect(navegar).toHaveBeenLastCalledWith(['/documento', '5'], {});
   });
+
+  it('sin maquetas: sin toggle "Texto dentro de OCR" ni paginación falsa; "Previsualizar coincidencia" abre la página', async () => {
+    await responder();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).not.toContain('Texto dentro de OCR');
+    expect([...el.querySelectorAll('button')].some((b) => b.textContent?.trim() === '‹')).toBe(false);
+    expect(el.textContent).toContain('Mostrando los 1 mejores resultados');
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const previsualizar = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('Previsualizar coincidencia'));
+    expect(previsualizar?.textContent).toContain('pág. 4');
+    previsualizar!.click();
+    expect(navegar).toHaveBeenCalledWith(['/documento', '9'], { queryParams: { pagina: 4 } });
+  });
 });

@@ -1,0 +1,2 @@
+# Los scripts de bash deben conservar saltos de línea LF aunque se clonen en Windows (con CRLF, bash falla).
+*.sh text eol=lf

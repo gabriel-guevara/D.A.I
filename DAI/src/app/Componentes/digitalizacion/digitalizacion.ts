@@ -12,19 +12,6 @@ import { UrlPdf, pareceUnPdf } from '../../shared/archivo-pdf';
 /** vacio → listo (archivo elegido) → subiendo → exito | error */
 type EstadoSubida = 'vacio' | 'listo' | 'subiendo' | 'exito' | 'error';
 
-interface QueueItem {
-  id?: string;
-  name: string;
-  meta: string;
-  status: 'en_foco' | 'en_espera';
-}
-
-interface ColaOcr {
-  queue: QueueItem[];
-  processedCount: number;
-  totalInQueue: number;
-}
-
 interface Catalogos {
   departamentos: { id: number; nombre: string }[];
   tiposDocumentales: { id: number; nombre: string }[];
@@ -42,11 +29,6 @@ export class Digitalizacion {
   private api = inject(ApiService);
   private urlPdf = new UrlPdf(inject(DomSanitizer));
   private envio: Subscription | null = null;
-
-  // Cola heredada (solo lectura en esta fase)
-  queue = signal<QueueItem[]>([]);
-  processedCount = signal(0);
-  totalInQueue = signal(0);
 
   // Catálogos para el formulario
   catalogos = signal<Catalogos | null>(null);
@@ -68,7 +50,6 @@ export class Digitalizacion {
   procesandoEnServidor = computed(() => this.estado() === 'subiendo' && this.progreso() >= 100);
 
   constructor() {
-    this.cargarCola();
     this.api.catalogos<Catalogos>().subscribe({
       next: (c) => this.catalogos.set(c),
       error: () => this.mensajeError.set('No se pudieron cargar los catálogos del formulario.'),
@@ -77,17 +58,6 @@ export class Digitalizacion {
     inject(DestroyRef).onDestroy(() => {
       this.envio?.unsubscribe();
       this.urlPdf.revocar();
-    });
-  }
-
-  private cargarCola(): void {
-    this.api.colaOcr<ColaOcr>().subscribe({
-      next: (cola) => {
-        this.queue.set(cola.queue);
-        this.processedCount.set(cola.processedCount);
-        this.totalInQueue.set(cola.totalInQueue);
-      },
-      error: (err) => console.error('No se pudo cargar la cola de digitalización', err),
     });
   }
 
@@ -165,7 +135,6 @@ export class Digitalizacion {
           this.archivo.set(null);
           this.meta.set({ clasificacion: '', folio: '', titulo: '', departamento: '', tipoDocumental: '' });
           this.estado.set('exito');
-          this.cargarCola();
         }
       },
       error: async (err) => {

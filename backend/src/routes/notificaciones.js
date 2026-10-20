@@ -11,15 +11,19 @@ router.get('/', async (req, res) => {
   let filtro = '';
   if (CATEGORIAS.includes(req.query.categoria)) {
     params.push(req.query.categoria);
-    filtro = 'AND categoria = $2';
+    filtro = 'AND n.categoria = $2';
   }
   const { rows } = await query(
-    `SELECT * FROM notificaciones WHERE usuario_id = $1 ${filtro} ORDER BY creado_en DESC LIMIT 200`, params);
+    `SELECT n.*, d.estado AS documento_estado FROM notificaciones n LEFT JOIN documentos d ON d.id = n.documento_id
+      WHERE n.usuario_id = $1 ${filtro} ORDER BY n.creado_en DESC LIMIT 200`, params);
   res.json(rows.map((n) => ({
     id: String(n.id), category: n.categoria, borderColor: n.borde_clase, badge: n.badge, badgeColor: n.badge_clase,
     icon: n.icono ?? '🔔', title: n.titulo, description: n.descripcion, time: haceCuanto(n.creado_en, true),
     fecha: fechaHoraCO(n.creado_en), creadoEn: n.creado_en.toISOString(),
     meta: n.meta, actions: n.acciones, read: n.leida,
+    // El front ofrece "Abrir documento" con él (el detalle vuelve a comprobar el nivel). Solo si sigue ACTIVO:
+    // uno en la papelera o purgado daría 404, así que no se ofrece un botón que no lleva a ninguna parte.
+    documentoId: n.documento_id && n.documento_estado === 'activo' ? String(n.documento_id) : null,
   })));
 });
 

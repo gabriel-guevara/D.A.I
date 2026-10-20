@@ -56,6 +56,10 @@ export class roles {
       next: (r) => this.roleCards.set(r),
       error: (err) => console.error('No se pudieron cargar los roles', err),
     });
+    this.api.catalogos().subscribe({
+      next: (c) => this.rolesCatalogo.set(c.roles),
+      error: () => this.rolesCatalogo.set([]),
+    });
     this.api.usuarios<SecurityUser[]>().subscribe({
       next: (u) => this.users.set(u),
       error: (err) => console.error('No se pudieron cargar los usuarios', err),
@@ -69,6 +73,8 @@ export class roles {
   confirmationMessage = signal<string | null>(null);
 
   roleCards = signal<RoleCard[]>([]);
+  /** Roles del filtro: los reales de la base (GET /catalogos), no una lista escrita a mano. */
+  rolesCatalogo = signal<{ clave: string; nombre: string }[]>([]);
 
   roleLabels: Record<RoleKey, string> = {
     'super-admin': 'Administrador',

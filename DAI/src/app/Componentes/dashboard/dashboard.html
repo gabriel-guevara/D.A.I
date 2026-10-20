@@ -5,20 +5,19 @@
     <app-navbar></app-navbar>
 
     <main class="flex-1 overflow-y-auto p-6 space-y-6">
-      <!-- Banner de bienvenida -->
+      <!-- Banner de bienvenida: datos REALES de la sesión -->
       <div class="rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 text-white p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 class="text-lg font-bold">
-            Bienvenida de nuevo, {{ auth.currentUser()?.name || 'Dra. Elena Ramos' }}
-          </h1>
-          <p class="text-sm text-emerald-50 mt-1">
-            Oficina de Auditoría y Jurisdicción
+          <h1 class="text-2xl font-bold">Hola, {{ auth.currentUser()?.name }}</h1>
+          <p class="text-sm text-cyan-50 mt-1">
+            {{ auth.currentUser()?.role }}@if (auth.currentUser()?.nivel) { · {{ auth.currentUser()?.nivel }} }
           </p>
         </div>
       </div>
 
       <!-- Acciones rápidas -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        @if (puedeSubir()) {
         <button (click)="goToDigitalizacion()" class="bg-white rounded-xl border border-slate-200 p-4 text-left hover:shadow-md transition-shadow">
           <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -28,6 +27,7 @@
           <p class="text-sm font-semibold text-slate-800">Subir Documento</p>
           <p class="text-xs text-slate-400 mt-0.5">Digitalización de archivos físicos</p>
         </button>
+        }
 
         <button (click)="gotoBusqueda()" class="bg-white rounded-xl border border-slate-200 p-4 text-left hover:shadow-md transition-shadow">
           <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
@@ -51,65 +51,118 @@
         </button>
       </div>
 
+      @if (error()) {
+        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5" role="alert">{{ error() }}</div>
+      }
+
+      <!-- Indicadores reales de documentos (según su nivel de acceso) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        @for (s of indicadores(); track s.label) {
+          <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs text-slate-400">{{ s.label }}</p>
+            <p class="text-2xl font-bold mt-1" [ngClass]="s.accent">{{ s.value }}</p>
+            <p class="text-[12px] text-slate-500 mt-0.5">{{ s.sub }}</p>
+          </div>
+        }
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Tabla de documentos -->
+        <!-- Documentos recientes -->
         <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200">
           <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <p class="text-sm font-semibold text-slate-800">Documentos Recientes y Actividad en Vivo</p>
+            <p class="text-[14px] text-slate-900 font-bold">Documentos actualizados recientemente</p>
             <button (click)="goToBiblioteca()" class="text-xs text-blue-600 font-medium hover:underline">Ir a Biblioteca →</button>
           </div>
           <div class="divide-y divide-slate-100">
             @for (doc of documents(); track doc.id) {
-              <button
-                (click)="openDocument(doc)"
-                class="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-slate-50 transition-colors"
-              >
+              <button (click)="openDocument(doc.id)" class="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-slate-50 transition-colors">
                 <div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 text-[10px] font-semibold shrink-0">
-                  {{ doc.name.split('.').pop()?.toUpperCase() }}
+                  {{ doc.formato.toUpperCase() }}
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-slate-700 truncate">{{ doc.name }}</p>
                   <p class="text-xs text-slate-400">{{ doc.user }} · {{ doc.time }}</p>
                 </div>
-                <span class="text-[10px] font-semibold rounded-full px-2 py-0.5 shrink-0" [ngClass]="doc.categoryColor">
-                  {{ doc.category }}
-                </span>
+                <span class="text-[10px] font-semibold rounded-full px-2 py-0.5 shrink-0" [ngClass]="doc.categoryColor">{{ doc.category }}</span>
                 <span class="text-xs text-slate-400 w-16 text-right shrink-0">{{ doc.size }}</span>
               </button>
+            } @empty {
+              <p class="px-5 py-6 text-sm text-slate-400">{{ datos() ? 'No hay documentos visibles para su nivel.' : 'Cargando…' }}</p>
             }
           </div>
         </div>
 
-        <!-- Panel derecho -->
+        <!-- Reparto real por departamento y por formato -->
         <div class="space-y-4">
           <div class="bg-white rounded-xl border border-slate-200 p-5">
-            <p class="text-sm font-semibold text-slate-800 mb-3">Alertas & Biblioteca</p>
-            <div class="space-y-3 text-xs">
-              <div class="flex items-start gap-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5"></span>
-                <p class="text-slate-500">
-                  <span class="font-medium text-slate-700">Renovación:</span>
-                  Nueva versión v3.2 registrada en Contratos Marco.
-                </p>
-              </div>
-              <div class="flex items-start gap-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5"></span>
-                <p class="text-slate-500">
-                  <span class="font-medium text-slate-700">Completado:</span>
-                  120 expedientes actualizados por Auditoría.
-                </p>
-              </div>
-              <div class="flex items-start gap-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5"></span>
-                <p class="text-slate-500">
-                  <span class="font-medium text-slate-700">Firmado:</span>
-                  Formatos actualizados por el Administrador.
-                </p>
-              </div>
-            </div>
+            <p class="text-[14px] text-slate-900 font-bold mb-3">Por departamento</p>
+            <ul class="space-y-2">
+              @for (d of datos()?.porDepartamento ?? []; track d.nombre) {
+                <li class="text-[12px]">
+                  <div class="flex justify-between text-slate-600"><span class="truncate">{{ d.nombre }}</span><span class="font-semibold">{{ d.total }}</span></div>
+                  <div class="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                    <div class="h-full bg-blue-500 rounded-full" [style.width.%]="porcentaje(d.total)"></div>
+                  </div>
+                </li>
+              } @empty {
+                <li class="text-[12px] text-slate-400">Sin datos.</li>
+              }
+            </ul>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 p-5">
+            <p class="text-[14px] text-slate-900 font-bold mb-3">Por formato</p>
+            <ul class="space-y-2">
+              @for (f of datos()?.porFormato ?? []; track f.formato) {
+                <li class="text-[12px]">
+                  <div class="flex justify-between text-slate-600"><span>{{ etiquetaFormato(f.formato) }}</span><span class="font-semibold">{{ f.total }}</span></div>
+                  <div class="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                    <div class="h-full bg-indigo-500 rounded-full" [style.width.%]="porcentaje(f.total)"></div>
+                  </div>
+                </li>
+              } @empty {
+                <li class="text-[12px] text-slate-400">Sin datos.</li>
+              }
+            </ul>
           </div>
         </div>
       </div>
+
+      <!-- Almacenamiento REAL: solo Super Administrador y Oficial de Cumplimiento (el servidor no lo envía a los demás) -->
+      @if (datos()?.almacenamiento; as a) {
+        <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-3" aria-label="Almacenamiento">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-[14px] text-slate-900 font-bold">Almacenamiento de archivos originales</p>
+            <span class="text-[12px] font-medium rounded-full px-2.5 py-1"
+              [ngClass]="a.cifradoEnReposo ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'">
+              {{ a.driver === 'r2' ? 'Cloudflare R2' : 'Disco local (desarrollo)' }}
+            </span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-[12px]">
+            <div>
+              <p class="text-slate-400">Espacio usado</p>
+              <p class="text-2xl font-bold text-slate-800">{{ a.usado }}</p>
+              <p class="text-slate-500">{{ a.cuota ? 'de ' + a.cuota + ' · ' + a.porcentaje + ' %' : 'Sin cuota configurada' }}</p>
+            </div>
+            <div>
+              <p class="text-slate-400">Archivos guardados</p>
+              <p class="text-2xl font-bold text-slate-800">{{ n(a.objetos) }}</p>
+              <p class="text-slate-500">Incluye todas las versiones</p>
+            </div>
+            <div>
+              <p class="text-slate-400">En la papelera</p>
+              <p class="text-2xl font-bold text-slate-800">{{ a.papelera.usado }}</p>
+              <p class="text-slate-500">{{ a.papelera.documentos }} {{ a.papelera.documentos === 1 ? 'documento' : 'documentos' }} (hasta su purga)</p>
+            </div>
+          </div>
+          @if (a.porcentaje !== null) {
+            <div class="h-2 bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-label="Uso de la cuota"
+              [attr.aria-valuenow]="a.porcentaje" aria-valuemin="0" aria-valuemax="100">
+              <div class="h-full bg-indigo-500" [style.width.%]="a.porcentaje"></div>
+            </div>
+          }
+          <p class="text-[12px] text-slate-600">{{ a.cifrado }}</p>
+        </section>
+      }
     </main>
   </div>
 </div>

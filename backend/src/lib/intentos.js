@@ -13,16 +13,14 @@
  *  - contrasena:<sha256 del correo en minúsculas>  → mismo trato exista o no la cuenta (no revela usuarios)
  *  - 2fa:<id de usuario>                            → códigos TOTP o de recuperación
  */
-import crypto from 'node:crypto';
 import { query } from '../db.js';
+import { clave2fa, claveContrasena } from './intentos-claves.js';
+
+export { clave2fa, claveContrasena }; // las rutas las siguen importando desde aquí
 
 export const LIMITE_FALLOS = 5;
 export const VENTANA_MIN = 15;
 export const BLOQUEO_MIN = 15;
-
-export const claveContrasena = (email) =>
-  `contrasena:${crypto.createHash('sha256').update(String(email).trim().toLowerCase()).digest('hex')}`;
-export const clave2fa = (usuarioId) => `2fa:${String(usuarioId)}`;
 
 /** true si la clave está bloqueada ahora mismo. */
 export async function estaBloqueado(clave) {

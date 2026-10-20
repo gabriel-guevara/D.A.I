@@ -7,7 +7,7 @@ import { detalles } from './detalles';
 const base = {
   id: '7', nombre: 'Contrato.pdf', version: 'v1.0', folio: 'EXP-1', departamento: 'Legal', clasificacion: 'Uso Interno General',
   hash: 'a'.repeat(64), autorLinea: 'Ana', fechaCreacion: '16 Oct 2026, 9:00 a. m.', tamano: '4 KB', paginas: 2,
-  etiquetas: [], retencion: null, firmadoPor: null, ultimaVerificacion: null,
+  etiquetas: [], retencion: null, carpeta: null, ultimaVerificacion: null,
 };
 const conArchivo = {
   ...base, tieneArchivo: true, puedeVerificar: true,
@@ -72,6 +72,24 @@ describe('detalles (visor de documento)', () => {
     expect(component.etiquetaCifrado()).toContain('Cloudflare R2');
     fixture.destroy();
     expect(revocarUrl).toHaveBeenCalledWith('blob:prueba');
+  });
+
+  it('sin maquetas: ni "Compartir", ni eIDAS, ni "Equipo TI"; tarjeta Integridad con el SHA-256 y la última verificación', async () => {
+    crear();
+    http.expectOne('/api/documentos/7').flush({
+      ...conArchivo, carpeta: { id: '3', nombre: 'Contratos' },
+      ultimaVerificacion: { resultado: 'integro', fecha: '16 Oct 2026, 10:15 a. m.' },
+    });
+    http.expectOne('/api/documentos/7/archivo').flush(new Blob(['%PDF-1.4']));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const t = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    for (const falso of ['Compartir', 'eIDAS', 'Equipo TI', 'Firmado Digitalmente', 'no-repudio']) expect(t).not.toContain(falso);
+    const tarjeta = (fixture.nativeElement as HTMLElement).querySelector('[aria-label="Integridad"]')?.textContent ?? '';
+    expect(tarjeta).toContain('a'.repeat(64));
+    expect(tarjeta).toContain('Última verificación: íntegro');
+    expect(tarjeta).toContain('16 Oct 2026, 10:15 a. m.');
+    expect(t).toContain('Contratos'); // carpeta en los metadatos
   });
 
   it('objeto inexistente en este entorno: estado "no_disponible"', async () => {
