@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { query } from '../db.js';
 import { escapeLike, fechaCorta } from '../lib/format.js';
+import { rutasDe } from '../lib/carpetas-arbol.js';
 
 const router = Router();
 
 const COLUMNAS = `
   d.id, d.nombre, d.folio, d.formato, d.ruta, d.responsable, d.autor_nombre, d.nota_extra, d.version_actual,
-  d.ocr_procesado, d.tiene_archivo, d.storage_driver, d.hash_sha256, d.actualizado_en,
+  d.ocr_procesado, d.tiene_archivo, d.storage_driver, d.hash_sha256, d.actualizado_en, d.carpeta_id,
   c.nombre AS clasif, c.badge_clase, t.nombre AS tipo`;
 const FROM = `
   FROM documentos d
@@ -38,7 +39,7 @@ const base = (r) => ({
   hashLabel: r.tiene_archivo && r.hash_sha256 ? 'SHA-256 del archivo' : r.folio,
   expediente: r.folio, ruta: r.ruta ?? '', actualizado: fechaCorta(r.actualizado_en),
   responsable: r.responsable ?? r.autor_nombre, extra: r.nota_extra ?? `Versión: ${r.version_actual}`,
-  tipo: r.tipo, clasificacion: r.clasif,
+  tipo: r.tipo, clasificacion: r.clasif, carpetaId: r.carpeta_id ? String(r.carpeta_id) : null,
 });
 
 /** Datos de la página donde está la coincidencia (número para que el visor salte a ella). */
@@ -148,6 +149,12 @@ router.get('/', async (req, res) => {
       ].filter((s) => s.texto),
     }));
   }
+
+  // Fase 6: dónde está cada documento (migas de pan de su carpeta), para mostrarlo y poder ir a ella.
+  const rutas = await rutasDe({ query }, out.map((r) => r.carpetaId));
+  out = out.map(({ carpetaId, ...r }) => ({
+    ...r, carpeta: carpetaId ? { id: carpetaId, nombre: rutas.get(carpetaId)?.at(-1)?.nombre ?? '', ruta: rutas.get(carpetaId) ?? [] } : null,
+  }));
 
   if (q) {
     await query(`INSERT INTO busquedas (usuario_id, termino, algoritmo, resultados) VALUES ($1,$2,$3,$4)`,
