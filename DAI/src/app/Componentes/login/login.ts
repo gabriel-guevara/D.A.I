@@ -78,7 +78,7 @@ export class Login implements OnDestroy {
   onSubmitCredentials(): void {
     this.errorMessage.set('');
     if (!this.username().trim() || !this.password().trim()) {
-      this.errorMessage.set('Ingrese su usuario institucional y su contraseña.');
+      this.errorMessage.set('Ingrese su correo corporativo y su contraseña.');
       return;
     }
 

@@ -31,6 +31,7 @@ import {
 } from '../src/lib/entorno.js';
 import { errorContrasena } from '../src/lib/contrasena.js';
 import { clave2fa, claveContrasena } from '../src/lib/intentos-claves.js';
+import { ALERTAS, insertarAlerta } from '../src/lib/alertas-seguridad.js';
 
 const args = process.argv.slice(2);
 const produccion = args.includes('--produccion');
@@ -193,6 +194,8 @@ try {
       [hash ? 'restablecer_contrasena' : 'desbloquear_cuenta',
         JSON.stringify({ usuarioId: String(u.id), email: u.email, bloqueosQuitados: bloqueos, via: 'script_emergencia', produccion })]);
     await client.query('COMMIT');
+    // Después del COMMIT: el aviso al afectado nunca debe deshacer el cambio.
+    if (hash) await insertarAlerta(client, u.id, ALERTAS.contrasenaRestablecida(), 'script de emergencia del servidor');
 
     console.log(hash
       ? `✔ Contraseña restablecida para ${u.email}. Sus sesiones abiertas se cerraron.`

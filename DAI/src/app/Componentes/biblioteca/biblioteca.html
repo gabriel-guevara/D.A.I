@@ -15,8 +15,9 @@
           </div>
           <div class="flex items-center gap-2 text-1xl shrink-0">
             @if (permisos().gestionar) {
-              <button (click)="abrir('crear')"
-                class="flex items-center gap-2 bg-amber-200 hover:bg-amber-300 border border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-600">
+              <button (click)="abrir('crear')" [disabled]="!puedeCrearAqui()"
+                [title]="puedeCrearAqui() ? 'Crear una carpeta dentro de ' + (migas().at(-1)?.nombre ?? 'Inicio') : 'Esta carpeta ya está en el nivel ' + maxNivel() + ': no admite subcarpetas'"
+                class="flex items-center gap-2 bg-amber-200 hover:bg-amber-300 disabled:opacity-50 disabled:hover:bg-amber-200 border border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-600">
                 <svg class="translate-y-[2px]" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20"
                 viewBox="0 0 100 100">
                 <path fill="#f09215"
@@ -40,7 +41,7 @@
                   d="M13.432,40.179c0,0,0.053,2.901,0.148,8.066c0.055,2.607,0.123,5.785,0.201,9.457c0.055,1.842,0.115,3.811,0.215,5.894	c0.129,2.082,0.157,4.299,0.628,6.481c0.448,2.177,1.333,4.405,3.038,5.962c1.706,1.548,4.137,2.304,6.728,2.42	c5.351,0.165,11.236,0.012,17.35-0.07c6.132-0.107,12.57-0.252,19.239-0.435c3.333-0.097,6.728-0.197,10.158-0.343	c0.854-0.043,1.712-0.086,2.572-0.129l1.281-0.081l1.211-0.127c1.597-0.217,3.148-0.693,4.532-1.442	c0.912-0.477,1.731-1.089,2.421-1.809c0.695-0.714,1.292-1.52,1.709-2.424c0.429-0.894,0.751-1.849,0.901-2.851	c0.181-1.006,0.214-1.985,0.185-3.096c-0.102-4.407-0.334-8.796-0.507-13.048c-0.178-4.262-0.363-8.404-0.436-12.458	c-0.032-2.053,0.054-3.986-0.244-5.741c-0.287-1.742-1.022-3.276-2.242-4.343c-1.184-1.068-2.779-1.539-4.458-1.688	c-1.674-0.149-3.449-0.06-5.158-0.074c-3.411,0.006-6.661,0.012-9.729,0.018c-6.143-0.009-11.555-0.017-16.066-0.023	c-0.114-0.034-0.228-0.067-0.337-0.099c-0.109-0.032-0.232-0.042-0.24-0.157c-0.086-0.201-0.202-0.407-0.309-0.587	c-1.681-4.319-4.706-6.531-6.908-7.375c-0.28-0.103-0.543-0.2-0.79-0.291c-0.252-0.072-0.493-0.119-0.714-0.174	c-0.221-0.052-0.425-0.1-0.611-0.144c-0.189-0.022-0.361-0.041-0.514-0.058c-0.612-0.067-0.927-0.102-0.927-0.102	s0.317,0.016,0.933,0.048c0.155,0.009,0.328,0.019,0.52,0.03c0.19,0.034,0.397,0.071,0.623,0.111	c0.226,0.043,0.473,0.078,0.733,0.137c0.255,0.079,0.528,0.163,0.818,0.252c1.146,0.387,2.527,1.07,3.871,2.258	c0.683,0.579,1.331,1.302,1.952,2.125c0.312,0.412,0.604,0.859,0.887,1.332c0.131,0.243,0.282,0.479,0.403,0.738	c0.124,0.237,0.272,0.56,0.339,0.726c0.05,0.117,0.106,0.256,0.142,0.399c-0.008,0.094,0.083,0.069,0.16,0.065	c0.077-0.004,0.157-0.008,0.237-0.012c4.427-0.178,9.738-0.392,15.766-0.634c3.066-0.112,6.313-0.231,9.721-0.355	c1.708-0.038,3.441-0.19,5.345-0.082c1.867,0.103,4.009,0.613,5.673,2.034c1.663,1.359,2.698,3.452,3.078,5.524	c0.397,2.08,0.334,4.128,0.413,6.088c0.155,3.984,0.414,8.133,0.654,12.385c0.235,4.262,0.516,8.606,0.656,13.125	c0.101,2.291-0.187,4.922-1.325,7.214c-1.098,2.319-3.027,4.283-5.3,5.473c-1.733,0.937-3.609,1.495-5.476,1.744l-1.395,0.143	l-1.324,0.078c-0.875,0.039-1.747,0.079-2.616,0.118c-3.464,0.127-6.866,0.198-10.211,0.257c-6.688,0.106-13.137,0.143-19.282,0.119	c-6.161-0.051-11.951-0.044-17.506-0.382c-2.826-0.208-5.714-1.157-7.726-3.12c-2.008-1.974-2.876-4.564-3.271-6.904	c-0.415-2.386-0.346-4.621-0.392-6.71c-0.015-2.098,0.01-4.073,0.037-5.92c0.062-3.692,0.159-6.87,0.246-9.466	C13.328,43.079,13.432,40.179,13.432,40.179z">
                 </path>
               </svg>
-                <span>Crear Carpeta</span>
+                <span>Nueva carpeta</span>
               </button>
             }
             @if (puedeSubir()) {
@@ -120,8 +121,7 @@
                     <span class="text-slate-400 text-[12px]"> · {{ s.documento.folio }}</span>
                   </p>
                   <p class="text-[12px] text-slate-600">
-                    De {{ s.carpetaActual ? '«' + s.carpetaActual.nombre + '»' : '«Sin carpeta»' }}
-                    a {{ s.carpetaDestino ? '«' + s.carpetaDestino.nombre + '»' : '«Sin carpeta»' }}
+                    De {{ textoCarpeta(s.carpetaActual) }} a {{ textoCarpeta(s.carpetaDestino) }}
                     · {{ s.solicitante }} · {{ s.fecha }}
                   </p>
                   <p class="text-[12px] text-slate-500">Motivo: {{ s.motivo }}</p>
@@ -147,6 +147,62 @@
           </ul>
         </section>
       }
+
+      <!-- Explorador de carpetas (Fase 6): migas de pan y subcarpetas de la carpeta actual (la URL guarda dónde se está) -->
+      <section class="space-y-3" aria-label="Carpetas">
+        <nav aria-label="Ubicación" class="flex flex-wrap items-center gap-1 text-[14px]">
+          @for (m of migas(); track m.id ?? 'inicio'; let ultima = $last) {
+            @if (ultima) {
+              <span class="font-bold text-slate-900" aria-current="page">{{ m.id ? '📁' : '🏠' }} {{ m.nombre }}</span>
+            } @else {
+              <button (click)="irACarpeta(m.id)" class="text-blue-700 hover:underline">{{ m.id ? '📁' : '🏠' }} {{ m.nombre }}</button>
+              <span class="text-slate-400" aria-hidden="true">›</span>
+            }
+          }
+        </nav>
+        @if (errorCarpeta()) {
+          <div class="text-sm rounded-lg px-4 py-2.5 border bg-red-50 border-red-200 text-red-700 flex flex-wrap items-center gap-3" role="alert">
+            {{ errorCarpeta() }}
+            <button (click)="irACarpeta(null)" class="underline font-medium">Ir a Inicio</button>
+          </div>
+        }
+        @if (subcarpetas().length > 0) {
+          <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            @for (c of subcarpetas(); track c.id) {
+              <li class="relative bg-white rounded-xl border border-slate-200 hover:border-blue-300 transition-colors">
+                <button (click)="irACarpeta(c.id)" class="w-full text-left p-3 pr-10 flex items-center gap-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  [attr.aria-label]="'Abrir la carpeta ' + c.nombre">
+                  <img width="36" height="36" src="https://img.icons8.com/color/48/folder-invoices--v1.png" alt="" class="shrink-0" />
+                  <span class="min-w-0">
+                    <span class="block text-[14px] font-bold text-slate-900 truncate">{{ c.nombre }}</span>
+                    <span class="block text-[12px] text-slate-500">
+                      {{ n(c.documentos) }} {{ c.documentos === 1 ? 'documento' : 'documentos' }} ·
+                      {{ n(c.subcarpetas) }} {{ c.subcarpetas === 1 ? 'subcarpeta' : 'subcarpetas' }}
+                    </span>
+                  </span>
+                </button>
+                @if (permisos().gestionar || permisos().eliminar) {
+                  <button (click)="alternarMenu(c)" class="absolute top-2 right-2 w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-100 font-bold"
+                    aria-haspopup="menu" [attr.aria-expanded]="menuAbierto() === c.id" [attr.aria-label]="'Acciones de la carpeta ' + c.nombre">⋯</button>
+                  @if (menuAbierto() === c.id) {
+                    <div class="fixed inset-0 z-10" (click)="menuAbierto.set(null)"></div>
+                    <div role="menu" [attr.aria-label]="'Acciones de ' + c.nombre"
+                      class="absolute right-2 top-10 z-20 w-40 bg-white border border-slate-200 rounded-lg shadow-lg py-1 text-[13px]">
+                      @if (permisos().gestionar) {
+                        <button role="menuitem" (click)="accionCarpeta(c, 'renombrar')" class="w-full text-left px-3 py-1.5 hover:bg-slate-50">Renombrar</button>
+                        <button role="menuitem" (click)="accionCarpeta(c, 'moverCarpeta')" class="w-full text-left px-3 py-1.5 hover:bg-slate-50">Mover a…</button>
+                      }
+                      @if (permisos().eliminar) {
+                        <button role="menuitem" (click)="accionCarpeta(c, 'eliminar')" class="w-full text-left px-3 py-1.5 text-red-700 hover:bg-red-50">Eliminar</button>
+                      }
+                    </div>
+                  }
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
 
       <!-- Filtros (se aplican en el servidor y quedan en la URL) -->
       <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
@@ -183,14 +239,6 @@
               <option [value]="d">{{ d }}</option>
             }
           </select>
-          <select aria-label="Carpeta" [ngModel]="filtros().carpeta" (ngModelChange)="aplicar({ carpeta: $event })"
-            class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600 max-w-[220px]">
-            <option value="">Carpeta: Todas</option>
-            <option value="sin">Sin carpeta ({{ carpetasInfo()?.sinCarpeta ?? 0 }})</option>
-            @for (c of carpetas(); track c.id) {
-              <option [value]="c.id">{{ c.nombre }} ({{ c.documentos }})</option>
-            }
-          </select>
           <select aria-label="Orden" [ngModel]="filtros().orden" (ngModelChange)="aplicar({ orden: $event })"
             class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600">
             <option value="reciente">{{ etiquetaOrden.reciente }}</option>
@@ -198,21 +246,12 @@
             <option value="tamano">{{ etiquetaOrden.tamano }}</option>
             <option value="nombre">{{ etiquetaOrden.nombre }}</option>
           </select>
+          <label class="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 rounded-lg px-3 py-2 bg-white cursor-pointer"
+            title="Muestra también los documentos de todas las subcarpetas de la carpeta actual">
+            <input type="checkbox" class="rounded" [checked]="filtros().subcarpetas" (change)="aplicar({ subcarpetas: !filtros().subcarpetas })" />
+            Incluir subcarpetas
+          </label>
         </div>
-
-        @if (carpetaFiltrada(); as c) {
-          @if (permisos().gestionar || permisos().eliminar) {
-            <div class="flex flex-wrap items-center gap-2 text-[12px] text-slate-600">
-              <span>Carpeta «{{ c.nombre }}»:</span>
-              @if (permisos().gestionar) {
-                <button (click)="abrir('renombrar')" class="border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50">Renombrar</button>
-              }
-              @if (permisos().eliminar) {
-                <button (click)="abrir('eliminar')" class="border border-red-200 text-red-700 rounded-lg px-2.5 py-1 hover:bg-red-50">Eliminar</button>
-              }
-            </div>
-          }
-        }
 
         @if (chips().length > 0) {
           <div class="flex flex-wrap items-center gap-2 text-xs">
@@ -295,7 +334,7 @@
                   <span class="text-[11px] font-medium rounded-full px-2 py-0.5" [ngClass]="doc.departamentoColor">
                     ● {{ doc.departamento }}
                   </span>
-                  <p class="text-[10px] text-slate-400 mt-1">📁 {{ doc.carpeta?.nombre ?? 'Sin carpeta' }}</p>
+                  <p class="text-[10px] text-slate-400 mt-1 truncate max-w-[220px]" [title]="ubicacion(doc.carpeta)">📁 {{ ubicacion(doc.carpeta) }}</p>
                 </td>
                 <td class="px-2 py-3">
                   <p class="text-xs font-medium text-slate-600">{{ doc.autor }}</p>
@@ -315,6 +354,8 @@
                     Cargando documentos…
                   } @else if (errorCarga()) {
                     <span class="text-red-600">{{ errorCarga() }}</span>
+                  } @else if (chips().length === 0) {
+                    No hay documentos directamente en {{ textoCarpeta(contenido()?.carpeta) }}.
                   } @else {
                     No se encontraron documentos con ese criterio.
                   }
@@ -366,12 +407,12 @@
   @if (dialogo(); as d) {
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-slate-900/40" (click)="cerrarDialogo()"></div>
-      <div class="relative w-full max-w-md bg-white rounded-xl shadow-xl p-5 space-y-4" role="dialog" aria-modal="true"
-        [attr.aria-label]="d === 'crear' ? 'Crear carpeta' : d === 'renombrar' ? 'Renombrar carpeta' : d === 'eliminar' ? 'Eliminar carpeta' : d === 'mover' ? 'Mover documentos' : 'Solicitar movimiento'">
+      <div class="relative w-full max-w-lg bg-white rounded-xl shadow-xl p-5 space-y-4 focus:outline-none" role="dialog" aria-modal="true"
+        tabindex="-1" [attr.aria-label]="tituloDialogo(d)">
         @switch (d) {
           @case ('crear') {
-            <h2 class="text-[14px] text-slate-900 font-bold">Crear carpeta</h2>
-            <p class="text-[12px] text-slate-500">Las carpetas solo organizan: no cambian quién puede ver cada documento.</p>
+            <h2 class="text-[14px] text-slate-900 font-bold">Nueva carpeta en {{ textoCarpeta(contenido()?.carpeta) }}</h2>
+            <p class="text-[12px] text-slate-500">Las carpetas solo organizan: no cambian quién puede ver cada documento. Máximo {{ maxNivel() }} niveles.</p>
             <label class="block">
               <span class="text-[14px] text-slate-900 font-bold">Nombre</span>
               <input type="text" maxlength="80" [ngModel]="nombreCarpeta()" (ngModelChange)="nombreCarpeta.set($event)" (keydown.enter)="crearCarpeta()"
@@ -379,7 +420,7 @@
             </label>
           }
           @case ('renombrar') {
-            <h2 class="text-[14px] text-slate-900 font-bold">Renombrar carpeta</h2>
+            <h2 class="text-[14px] text-slate-900 font-bold">Renombrar la carpeta «{{ carpetaObjetivo()?.nombre }}»</h2>
             <label class="block">
               <span class="text-[14px] text-slate-900 font-bold">Nuevo nombre</span>
               <input type="text" maxlength="80" [ngModel]="nombreCarpeta()" (ngModelChange)="nombreCarpeta.set($event)" (keydown.enter)="renombrarCarpeta()"
@@ -387,8 +428,12 @@
             </label>
           }
           @case ('eliminar') {
-            <h2 class="text-[14px] text-slate-900 font-bold">Eliminar carpeta «{{ carpetaFiltrada()?.nombre }}»</h2>
-            <p class="text-[12px] text-slate-600">Solo se puede eliminar si está vacía (también se cuentan los documentos que estén en la papelera).</p>
+            <h2 class="text-[14px] text-slate-900 font-bold">Eliminar la carpeta «{{ carpetaObjetivo()?.nombre }}»</h2>
+            <p class="text-[12px] text-slate-600">Solo se puede eliminar si está vacía: sin subcarpetas, sin documentos (también se cuentan los que estén en la papelera) y sin solicitudes de movimiento pendientes hacia ella.</p>
+          }
+          @case ('moverCarpeta') {
+            <h2 class="text-[14px] text-slate-900 font-bold">Mover la carpeta «{{ carpetaObjetivo()?.nombre }}»</h2>
+            <p class="text-[12px] text-slate-500">Se mueve con sus subcarpetas y documentos. Nadie gana ni pierde acceso. Queda en la auditoría.</p>
           }
           @case ('mover') {
             <h2 class="text-[14px] text-slate-900 font-bold">Mover {{ selectedCount() }} {{ selectedCount() === 1 ? 'documento' : 'documentos' }}</h2>
@@ -399,17 +444,18 @@
             <p class="text-[12px] text-slate-500">Un Super Administrador u Operador OCR revisará la solicitud y la aprobará o rechazará.</p>
           }
         }
-        @if (d === 'mover' || d === 'solicitar') {
-          <label class="block">
-            <span class="text-[14px] text-slate-900 font-bold">Carpeta de destino</span>
-            <select [ngModel]="destino()" (ngModelChange)="destino.set($event)" class="mt-1 w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm">
-              <option value="">— Elija —</option>
-              <option value="sin">Sin carpeta</option>
-              @for (c of carpetas(); track c.id) {
-                <option [value]="c.id">{{ c.nombre }}</option>
-              }
-            </select>
-          </label>
+        @if (d === 'mover' || d === 'solicitar' || d === 'moverCarpeta') {
+          <div>
+            <p class="text-[14px] text-slate-900 font-bold mb-1">Carpeta de destino</p>
+            @if (arbol(); as a) {
+              <app-arbol-destino [carpetas]="a.carpetas" [maxNivel]="a.maxNivel"
+                [movida]="d === 'moverCarpeta' ? carpetaObjetivo()?.id ?? null : null"
+                [actual]="d === 'moverCarpeta' ? (carpetaId() || null) : ubicacionSeleccion()"
+                [seleccion]="destino()" (seleccionChange)="destino.set($event)" />
+            } @else if (!errorDialogo()) {
+              <p class="text-[12px] text-slate-500" aria-live="polite">Cargando carpetas…</p>
+            }
+          </div>
         }
         @if (d === 'solicitar') {
           <label class="block">
@@ -434,11 +480,14 @@
             @case ('eliminar') {
               <button (click)="eliminarCarpeta()" [disabled]="trabajando()" class="text-sm bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Eliminar</button>
             }
+            @case ('moverCarpeta') {
+              <button (click)="moverCarpeta()" [disabled]="trabajando() || !arbol()" class="text-sm bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Mover carpeta</button>
+            }
             @case ('mover') {
-              <button (click)="moverSeleccion()" [disabled]="trabajando()" class="text-sm bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Mover</button>
+              <button (click)="moverSeleccion()" [disabled]="trabajando() || !arbol()" class="text-sm bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Mover</button>
             }
             @case ('solicitar') {
-              <button (click)="solicitarSeleccion()" [disabled]="trabajando()" class="text-sm bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Enviar solicitud</button>
+              <button (click)="solicitarSeleccion()" [disabled]="trabajando() || !arbol()" class="text-sm bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white rounded-lg px-4 py-2 font-medium">Enviar solicitud</button>
             }
           }
         </div>

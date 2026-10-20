@@ -194,10 +194,12 @@ test('carpetas: crear (Admin y Operador), duplicado sin distinguir mayúsculas �
   carpetas.contratos = r.cuerpo.id;
   const [a] = await auditorias('crear_carpeta');
   assert.deepEqual([a.email, a.detalle.nombre], ['operador@prueba.test', 'Contratos vigentes']);
-  assert.equal((await notifsPara('cumplimiento', 'Carpeta creada: Contratos vigentes')).length, 1);
+  // Avisos de organización: solo a quienes pueden mover (Admin y Operador); Cumplimiento ya no los recibe.
+  assert.equal((await notifsPara('admin', 'Carpeta creada: Contratos vigentes')).length, 1);
+  assert.equal((await notifsPara('cumplimiento', 'Carpeta creada: Contratos vigentes')).length, 0);
 
   r = await post('/carpetas', 'admin', { nombre: 'CONTRATOS VIGENTES' });
-  assert.deepEqual([r.status, r.cuerpo.error], [409, 'Ya existe una carpeta con ese nombre (no se distinguen mayúsculas).']);
+  assert.deepEqual([r.status, r.cuerpo.error], [409, 'Ya existe una carpeta con ese nombre en esa ubicación (no se distinguen mayúsculas).']);
   for (const nombre of ['a', 'x'.repeat(81), '', null, 'Sin carpeta', 'sin CARPETA'])
     assert.equal((await post('/carpetas', 'admin', { nombre })).status, 400, String(nombre));
   for (const quien of ['cumplimiento', 'lector2']) assert.equal((await post('/carpetas', quien, { nombre: 'Prohibida' })).status, 403);
@@ -232,8 +234,9 @@ test('carpetas: renombrar (409 duplicado, 404 inexistente) y listado con nº de 
   assert.deepEqual(nombres(await biblioteca({ carpeta: carpetas.contratos }, 'lector2')), ['Acta junta.pdf']);
   assert.ok(!nombres(await biblioteca({ carpeta: 'sin', porPagina: '100' })).includes('Acta junta.pdf'));
   const detalle = (await biblioteca({ q: 'Acta junta' })).cuerpo.documentos[0];
-  assert.deepEqual(detalle.carpeta, { id: carpetas.contratos, nombre: 'Contratos vigentes' });
-  assert.deepEqual((await get(`/documentos/${docs.A}`)).cuerpo.carpeta, { id: carpetas.contratos, nombre: 'Contratos vigentes' });
+  const enContratos = { id: carpetas.contratos, nombre: 'Contratos vigentes', ruta: [{ id: carpetas.contratos, nombre: 'Contratos vigentes' }] };
+  assert.deepEqual(detalle.carpeta, enContratos);
+  assert.deepEqual((await get(`/documentos/${docs.A}`)).cuerpo.carpeta, enContratos);
 });
 
 test('carpetas: eliminar solo vacía (409 si tiene documentos, incluso en la papelera) y solo Super Administrador', async () => {
@@ -417,7 +420,8 @@ test('notificaciones: documentoId solo si el documento sigue activo; la de papel
   const n = lista.find((x) => x.title === 'Solicitud aprobada: Expediente RH.tiff');
   assert.equal(n.documentoId, docs.E);
   assert.deepEqual(n.actions, []);
-  assert.equal(lista.find((x) => x.title.startsWith('Carpeta creada')).documentoId, null);
+  assert.equal(n.category, 'solicitud', 'las solicitudes tienen su propia categoría');
+  assert.equal((await get('/notificaciones', 'admin')).cuerpo.find((x) => x.title.startsWith('Carpeta creada')).documentoId, null);
   await base.pool.query(`UPDATE documentos SET estado = 'activo' WHERE id = $1`, [docs.F]);
   assert.equal((await del(`/documentos/${docs.F}`, 'admin')).status, 204);
   const p = (await get('/notificaciones', 'admin')).cuerpo.find((x) => x.title === 'Documento enviado a la Papelera: Fuera.pdf');

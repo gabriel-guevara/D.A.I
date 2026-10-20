@@ -77,7 +77,7 @@ describe('detalles (visor de documento)', () => {
   it('sin maquetas: ni "Compartir", ni eIDAS, ni "Equipo TI"; tarjeta Integridad con el SHA-256 y la última verificación', async () => {
     crear();
     http.expectOne('/api/documentos/7').flush({
-      ...conArchivo, carpeta: { id: '3', nombre: 'Contratos' },
+      ...conArchivo, carpeta: { id: '3', nombre: 'Contratos', ruta: [{ id: '2', nombre: 'Legal' }, { id: '3', nombre: 'Contratos' }] },
       ultimaVerificacion: { resultado: 'integro', fecha: '16 Oct 2026, 10:15 a. m.' },
     });
     http.expectOne('/api/documentos/7/archivo').flush(new Blob(['%PDF-1.4']));
@@ -89,7 +89,7 @@ describe('detalles (visor de documento)', () => {
     expect(tarjeta).toContain('a'.repeat(64));
     expect(tarjeta).toContain('Última verificación: íntegro');
     expect(tarjeta).toContain('16 Oct 2026, 10:15 a. m.');
-    expect(t).toContain('Contratos'); // carpeta en los metadatos
+    expect(t).toContain('Inicio › Legal › Contratos'); // carpeta con su ruta en los metadatos
   });
 
   it('objeto inexistente en este entorno: estado "no_disponible"', async () => {

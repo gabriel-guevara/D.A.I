@@ -1,10 +1,11 @@
 import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
-import { ApiService, EstadoIndexacion, EstadoTexto, ResultadoIntegridad, leerErrorApi } from '../../shared/api';
+import { ApiService, CarpetaConRuta, EstadoIndexacion, EstadoTexto, ResultadoIntegridad, leerErrorApi } from '../../shared/api';
+import { ubicacion } from '../biblioteca/arbol-carpetas';
 import { UrlPdf, guardarComo, paginaDeConsulta } from '../../shared/archivo-pdf';
 import { VersionParaVer, VersionesDocumento } from './versiones-documento';
 
@@ -41,7 +42,8 @@ interface DocDetalle {
   paginas: number;
   etiquetas: string[];
   retencion: string | null;
-  carpeta?: { id: string; nombre: string } | null;
+  /** Carpeta con su ruta desde la raíz (null = Inicio). */
+  carpeta?: CarpetaConRuta | null;
   tieneArchivo: boolean;
   archivo: ArchivoInfo | null;
   puedeVerificar: boolean;
@@ -103,10 +105,11 @@ const ETIQUETAS_ACCION: Record<string, string> = {
 @Component({
   selector: 'app-document-detail',
   standalone: true,
-  imports: [CommonModule, Barraizq, Navbar, VersionesDocumento],
+  imports: [CommonModule, RouterLink, Barraizq, Navbar, VersionesDocumento],
   templateUrl: './detalles.html',
 })
 export class detalles {
+  readonly ubicacion = ubicacion;
   documentId = signal<string | null>(null);
   doc = signal<DocDetalle | null>(null);
   error = signal('');

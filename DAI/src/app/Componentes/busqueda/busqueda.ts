@@ -3,10 +3,11 @@ import { Subscription } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
-import { ApiService, SegmentoFragmento } from '../../shared/api';
+import { ApiService, CarpetaConRuta, SegmentoFragmento } from '../../shared/api';
+import { ubicacion } from '../biblioteca/arbol-carpetas';
 
 type TipoDocumental = 'Contratos y Convenios' | 'Actas de Directorio' | 'Anexos Técnicos & GDPR' | 'Facturas y Comprobantes' | 'Informes de Auditoría';
 type Clasificacion = 'Secreto Corporativo' | 'Confidencial Nivel 2' | 'Uso Interno General';
@@ -21,6 +22,8 @@ interface SearchResult {
   hashLabel: string;
   expediente: string;
   ruta: string;
+  /** Carpeta real del documento con sus migas (null = Inicio). */
+  carpeta?: CarpetaConRuta | null;
   actualizado: string;
   /** "Página 3 · Sección"; vacío si no hay texto. */
   pagina: string;
@@ -42,10 +45,11 @@ interface SearchResult {
 @Component({
   selector: 'app-busqueda',
   standalone: true,
-  imports: [CommonModule, FormsModule,Barraizq , Navbar],
+  imports: [CommonModule, FormsModule, RouterLink, Barraizq, Navbar],
   templateUrl: './busqueda.html',
 })
 export class Busqueda {
+  readonly ubicacion = ubicacion;
   // Vacío por defecto: sin búsqueda, se muestran todos los documentos.
   searchText = signal('');
   appliedQuery = signal('');

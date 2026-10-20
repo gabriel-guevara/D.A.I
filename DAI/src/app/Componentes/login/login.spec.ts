@@ -40,6 +40,14 @@ describe('Login', () => {
     http.expectOne('/api/auth/login').flush(respuesta);
   };
 
+  it('pide el correo CORPORATIVO (no "institucional")', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Correo corporativo');
+    expect(el.querySelector('input[name="username"]')?.getAttribute('placeholder')).toBe('Su correo corporativo');
+    expect(el.textContent?.toLowerCase()).not.toContain('institucional');
+  });
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });

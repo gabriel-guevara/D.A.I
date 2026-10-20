@@ -12,6 +12,8 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
 import { registrarAuditoria } from '../lib/audit.js';
+import { alertarSeguridad } from '../lib/notify.js';
+import { ALERTAS } from '../lib/alertas-seguridad.js';
 import { fechaHoraCO } from '../lib/format.js';
 import { errorContrasena, MAX_BYTES_CONTRASENA, MIN_CONTRASENA } from '../lib/contrasena.js';
 import { EMISOR } from '../lib/totp.js';
@@ -35,7 +37,10 @@ async function cargarYo(req) {
 async function fallo(req, clave, accion, detalle) {
   const f = await registrarFallo(clave);
   await registrarAuditoria(req, accion, null, detalle);
-  if (f.recienBloqueado) await registrarAuditoria(req, 'bloqueo_temporal', null, { motivo: detalle.tipo, minutos: BLOQUEO_MIN });
+  if (f.recienBloqueado) {
+    await registrarAuditoria(req, 'bloqueo_temporal', null, { motivo: detalle.tipo, minutos: BLOQUEO_MIN });
+    await alertarSeguridad(req, req.user.id, ALERTAS.bloqueo(BLOQUEO_MIN));
+  }
 }
 
 /**
@@ -104,6 +109,7 @@ router.post('/password', limitadorIp, async (req, res) => {
     `UPDATE usuarios SET password_hash = $2, sesion_version = sesion_version + 1, password_cambiado_en = now()
       WHERE id = $1 RETURNING sesion_version`, [u.id, hash]);
   await registrarAuditoria(req, 'cambiar_contrasena', null, { segundoFactor: factor.tipo });
+  await alertarSeguridad(req, u.id, ALERTAS.contrasenaCambiada());
   res.json({ ok: true, token: tokenDeAcceso({ ...u, sesion_version: r.sesion_version }) });
 });
 
@@ -139,6 +145,7 @@ router.post('/2fa/reconfigurar/confirmar', limitadorIp, async (req, res) => {
   }
   await limpiarFallos(clave);
   await registrarAuditoria(req, '2fa_reconfigurado');
+  await alertarSeguridad(req, req.user.id, ALERTAS.dosPasosReconfigurado());
   res.json({ ok: true });
 });
 
@@ -154,6 +161,7 @@ router.post('/2fa/codigos-recuperacion', limitadorIp, async (req, res) => {
 
   const codigos = await withTransaction((c) => generarCodigosRecuperacion(u.id, c));
   await registrarAuditoria(req, '2fa_codigos_regenerados', null, { cantidad: codigos.length });
+  await alertarSeguridad(req, u.id, ALERTAS.codigosRegenerados());
   res.json({ codigosRecuperacion: codigos });
 });
 

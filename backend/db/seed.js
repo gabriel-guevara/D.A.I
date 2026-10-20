@@ -4,6 +4,7 @@
 // Fase 5: nada de cifras, garantías ni acciones inventadas (sin "1,420 documentos verificados", sin botones que no hacen nada).
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
+import { rolesCon } from '../src/lib/categorias-notificaciones.js';
 
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const ago = (min) => new Date(Date.now() - min * 60_000);
@@ -34,13 +35,18 @@ export async function seed(db) {
   }
   const elena = uid['e.ramos@dai.corp'];
 
-  // ---------------- Carpetas (Fase 5): un nivel, solo organizan ----------------
+  // ---------------- Carpetas y subcarpetas (Fases 5 y 6): solo organizan, no cambian permisos ----------------
+  // [nombre, carpeta padre (null = raíz)]. Los padres van antes que sus hijas.
   const carpeta = {};
-  for (const nombre of ['Contratos vigentes', 'Auditorías 2024', 'Expedientes de personal'])
-    carpeta[nombre] = (await db.query(`INSERT INTO carpetas (nombre, creado_por) VALUES ($1, $2) RETURNING id`, [nombre, elena])).rows[0].id;
+  for (const [nombre, padre] of [
+    ['Contratos vigentes', null], ['Auditorías 2024', null], ['Expedientes de personal', null],
+    ['Proveedores cloud', 'Contratos vigentes'], ['Tercer trimestre', 'Auditorías 2024'],
+  ])
+    carpeta[nombre] = (await db.query(`INSERT INTO carpetas (nombre, padre_id, creado_por) VALUES ($1, $2, $3) RETURNING id`,
+      [nombre, padre ? carpeta[padre] : null, elena])).rows[0].id;
   const carpetaDe = {
-    'Contrato_Marco_Servicios_2025.pdf': 'Contratos vigentes', 'Contrato_Prestacion_Servicios_Tecnologicos_2024.pdf': 'Contratos vigentes',
-    'Auditoria_Financiera_Consolidada_Q3.xlsx': 'Auditorías 2024', 'Expediente_Laboral_Personal_Clave.pdf': 'Expedientes de personal',
+    'Contrato_Marco_Servicios_2025.pdf': 'Proveedores cloud', 'Contrato_Prestacion_Servicios_Tecnologicos_2024.pdf': 'Contratos vigentes',
+    'Auditoria_Financiera_Consolidada_Q3.xlsx': 'Tercer trimestre', 'Expediente_Laboral_Personal_Clave.pdf': 'Expedientes de personal',
   };
 
   // ---------------- Documentos ----------------
@@ -160,12 +166,13 @@ export async function seed(db) {
   // Una solicitud de movimiento pendiente del Oficial de Cumplimiento (la resuelve el administrador o el operador).
   await db.query(`INSERT INTO solicitudes_movimiento (documento_id, carpeta_destino_id, solicitante_id, motivo, creado_en)
                   VALUES ($1, $2, $3, $4, $5)`,
-    [docId['Dictamen_Auditoria_Q3_Tributaria.docx'], carpeta['Auditorías 2024'], uid['m.valdes@dai.corp'],
+    [docId['Dictamen_Auditoria_Q3_Tributaria.docx'], carpeta['Tercer trimestre'], uid['m.valdes@dai.corp'],
      'Pertenece al cierre de auditoría del tercer trimestre; conviene tenerlo junto al informe financiero.', ago(25)]);
 
   // ---------------- Notificaciones ----------------
-  // Solo hechos que reflejan los datos de demostración, sin acciones (botones) y solo para quien alcanza el nivel
-  // del documento: una notificación no debe revelar el nombre de un documento que esa persona no puede ver.
+  // Solo hechos que reflejan los datos de demostración, sin acciones (botones), solo para los roles que reciben esa
+  // categoría (src/lib/categorias-notificaciones.js) y solo para quien alcanza el nivel del documento: una notificación
+  // no debe revelar el nombre de un documento que esa persona no puede ver.
   const notifs = [
     ['version', 'border-l-blue-500', 'Versiones', 'bg-blue-50 text-blue-700', '📄',
       'Nueva versión v3.2 publicada en Contrato_Marco_Servicios_2025.pdf',
@@ -185,9 +192,10 @@ export async function seed(db) {
     const r = await db.query(
       `INSERT INTO notificaciones (usuario_id,categoria,borde_clase,badge,badge_clase,icono,titulo,descripcion,meta,acciones,documento_id,creado_en)
        SELECT u.id, $1, $2, $3, $4, $5, $6, $7, $8::jsonb, '[]'::jsonb, d.id, $10
-         FROM usuarios u JOIN niveles_acceso n ON n.id = u.nivel_id, documentos d JOIN clasificaciones c ON c.id = d.clasificacion_id
-        WHERE d.id = $9 AND n.rango >= c.nivel_minimo`,
-      [cat, borde, badge, badgeCl, icono, titulo, desc, JSON.stringify(meta), docId[doc], ago(min)]);
+         FROM usuarios u JOIN roles r ON r.id = u.rol_id JOIN niveles_acceso n ON n.id = u.nivel_id,
+              documentos d JOIN clasificaciones c ON c.id = d.clasificacion_id
+        WHERE d.id = $9 AND n.rango >= c.nivel_minimo AND r.clave = ANY($11::text[])`,
+      [cat, borde, badge, badgeCl, icono, titulo, desc, JSON.stringify(meta), docId[doc], ago(min), rolesCon(cat)]);
     totalNotifs += r.rowCount;
   }
 

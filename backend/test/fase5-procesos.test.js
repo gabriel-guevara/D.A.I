@@ -45,7 +45,8 @@ test('humo: node src/server.js real — migración 006, carpetas, mover, bibliot
   await base.pool.query(`ALTER TABLE ${base.esquema}.documentos DROP COLUMN carpeta_id`);
   await base.pool.query(`DROP TABLE ${base.esquema}.carpetas`);
   await (await import('../src/migrate.js')).aplicarMigraciones(base.pool, {
-    migraciones: (await import('../src/migrate.js')).MIGRACIONES.filter((m) => m.nombre !== '006_carpetas'), log: () => {},
+    // La 007 (subcarpetas) depende de la tabla de la 006: tampoco se aplica aquí; el servidor aplica las dos al arrancar.
+    migraciones: (await import('../src/migrate.js')).MIGRACIONES.filter((m) => !['006_carpetas', '007_subcarpetas'].includes(m.nombre)), log: () => {},
   });
   const password = 'Humo-Fase5-2026';
   const { rows: [u] } = await base.pool.query(
@@ -75,6 +76,7 @@ test('humo: node src/server.js real — migración 006, carpetas, mover, bibliot
       hijo.once('exit', (c) => { clearTimeout(t); mal(new Error(`la API terminó (${c}):\n${salida}`)); });
     });
     assert.match(salida, /Migración aplicada: 006_carpetas/);
+    assert.match(salida, /Migración aplicada: 007_subcarpetas/);
 
     const api = `http://127.0.0.1:${puerto}/api`;
     const enviar = (metodo, ruta, { token, cuerpo, form } = {}) => fetch(`${api}${ruta}`, {

@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { Login } from './Componentes/login/login';
 import { Dashboard } from './Componentes/dashboard/dashboard';
-import { Biblioteca } from './Componentes/biblioteca/biblioteca';
 import { Digitalizacion } from './Componentes/digitalizacion/digitalizacion';
 import { Busqueda } from './Componentes/busqueda/busqueda';
 import { Notificaciones } from './Componentes/notificaciones/notificaciones';
@@ -12,7 +11,13 @@ export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'login', component: Login },
   { path: 'dashboard', component: Dashboard, canActivate: [authGuard] },
-  { path: 'biblioteca', component: Biblioteca, canActivate: [authGuard] },
+  // Biblioteca: carga diferida desde la Fase 6 (el explorador de carpetas y su árbol de destino pasaron el paquete
+  // inicial de los 500 kB del presupuesto).
+  {
+    path: 'biblioteca',
+    loadComponent: () => import('./Componentes/biblioteca/biblioteca').then((m) => m.Biblioteca),
+    canActivate: [authGuard],
+  },
   { path: 'digitalizacion', component: Digitalizacion, canActivate: [authGuard] },
   { path: 'busqueda', component: Busqueda, canActivate: [authGuard] },
   { path: 'notificaciones', component: Notificaciones, canActivate: [authGuard] },

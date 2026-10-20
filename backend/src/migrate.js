@@ -236,6 +236,37 @@ export const MIGRACIONES = [
         END $$ LANGUAGE plpgsql`);
     },
   },
+  {
+    // Fase 6: subcarpetas (hasta 5 niveles; siguen sin cambiar permisos). Una columna nueva SIN valor por defecto:
+    // las carpetas de la Fase 5 quedan en la raíz (padre_id NULL) sin reescribir la tabla. El nombre pasa a ser
+    // único DENTRO de cada carpeta (Legal/2024 y Finanzas/2024 pueden convivir). La profundidad y los ciclos los
+    // valida la API (routes/carpetas.js); la base impide al menos que una carpeta sea su propio padre.
+    nombre: '007_subcarpetas',
+    async up(c) {
+      await c.query(`ALTER TABLE carpetas ADD COLUMN IF NOT EXISTS padre_id bigint REFERENCES carpetas(id) ON DELETE RESTRICT`);
+      await c.query(`CREATE INDEX IF NOT EXISTS carpetas_padre_idx ON carpetas (padre_id)`);
+      await c.query(`ALTER TABLE carpetas DROP CONSTRAINT IF EXISTS carpetas_padre_check`);
+      await c.query(`ALTER TABLE carpetas ADD CONSTRAINT carpetas_padre_check CHECK (padre_id IS NULL OR padre_id <> id)`);
+      // Primero el índice nuevo (más permisivo que el anterior: todo lo que era único sigue siéndolo) y luego se
+      // quita el antiguo. coalesce(padre_id, 0): en un índice único dos NULL no chocan; con 0 la raíz es una más.
+      await c.query(`CREATE UNIQUE INDEX IF NOT EXISTS carpetas_nombre_padre_uq ON carpetas (coalesce(padre_id, 0), lower(nombre))`);
+      await c.query(`DROP INDEX IF EXISTS carpetas_nombre_uq`);
+    },
+  },
+  {
+    // Fase 6 (ajustes): categoría propia para las solicitudes de movimiento ("Solicitudes"), que antes iban dentro de
+    // "edicion" (carpetas). El CHECK se amplía (acepta lo de antes y 'solicitud') y las ya existentes se reclasifican:
+    // solo cambia su pestaña, no su contenido. Quién ve cada categoría lo decide la API (lib/notify.js).
+    nombre: '008_notificaciones_solicitud',
+    async up(c) {
+      await c.query(`ALTER TABLE notificaciones DROP CONSTRAINT IF EXISTS notificaciones_categoria_check`);
+      await c.query(`ALTER TABLE notificaciones ADD CONSTRAINT notificaciones_categoria_check
+                     CHECK (categoria IN ('edicion','version','eliminado','seguridad','consulta','solicitud'))`);
+      await c.query(`UPDATE notificaciones SET categoria = 'solicitud', badge = 'Solicitudes', badge_clase = 'bg-indigo-50 text-indigo-700',
+                            borde_clase = 'border-l-indigo-500', icono = '📨'
+                      WHERE categoria = 'edicion' AND titulo ~ '^Solicitud (de movimiento|aprobada|rechazada):'`);
+    },
+  },
 ];
 
 /**

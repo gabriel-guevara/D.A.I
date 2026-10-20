@@ -192,7 +192,7 @@ export class UsuariosGestion {
   private validar(f: FormUsuario, crear: boolean): string | null {
     const nombre = f.nombre.trim();
     if (nombre.length < 2 || nombre.length > 120) return 'El nombre debe tener entre 2 y 120 caracteres.';
-    if (!EMAIL_RE.test(f.email.trim())) return 'Ingrese un correo institucional válido.';
+    if (!EMAIL_RE.test(f.email.trim())) return 'Ingrese un correo corporativo válido.';
     if (crear || f.password) {
       // Mismas reglas básicas que el servidor (lib/contrasena.js), que además rechaza contraseñas comunes
       if (f.password.length < 10 || new TextEncoder().encode(f.password).length > 72) return 'La contraseña debe tener entre 10 y 72 caracteres.';

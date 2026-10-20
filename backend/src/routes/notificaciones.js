@@ -1,21 +1,33 @@
 import { Router } from 'express';
 import { query } from '../db.js';
 import { fechaHoraCO, haceCuanto, idValido } from '../lib/format.js';
+import { categoriasDe } from '../lib/notify.js';
 
 const router = Router();
-const CATEGORIAS = ['edicion', 'version', 'eliminado', 'seguridad', 'consulta'];
+
+/**
+ * Cada rol solo ve sus categorías (matriz de lib/notify.js). Lo que se recibió antes de un cambio de rol o de la
+ * matriz queda oculto (no se borra): $2 son las categorías permitidas.
+ */
+const PERMITIDAS = `n.categoria = ANY($2::text[])`;
+
+/** Las categorías de este usuario, en el orden de las pestañas. */
+router.get('/categorias', (req, res) => {
+  res.json({ categorias: categoriasDe(req.user.rol) });
+});
 
 /** Lista del usuario autenticado (misma forma que Notification del front). */
 router.get('/', async (req, res) => {
-  const params = [req.user.id];
+  const permitidas = categoriasDe(req.user.rol);
+  const params = [req.user.id, permitidas];
   let filtro = '';
-  if (CATEGORIAS.includes(req.query.categoria)) {
+  if (typeof req.query.categoria === 'string' && permitidas.includes(req.query.categoria)) {
     params.push(req.query.categoria);
-    filtro = 'AND n.categoria = $2';
+    filtro = 'AND n.categoria = $3';
   }
   const { rows } = await query(
     `SELECT n.*, d.estado AS documento_estado FROM notificaciones n LEFT JOIN documentos d ON d.id = n.documento_id
-      WHERE n.usuario_id = $1 ${filtro} ORDER BY n.creado_en DESC LIMIT 200`, params);
+      WHERE n.usuario_id = $1 AND ${PERMITIDAS} ${filtro} ORDER BY n.creado_en DESC LIMIT 200`, params);
   res.json(rows.map((n) => ({
     id: String(n.id), category: n.categoria, borderColor: n.borde_clase, badge: n.badge, badgeColor: n.badge_clase,
     icon: n.icono ?? '🔔', title: n.titulo, description: n.descripcion, time: haceCuanto(n.creado_en, true),
@@ -29,12 +41,15 @@ router.get('/', async (req, res) => {
 
 /** Para el contador de la barra lateral. */
 router.get('/resumen', async (req, res) => {
-  const { rows: [r] } = await query(`SELECT count(*)::int AS no_leidas FROM notificaciones WHERE usuario_id = $1 AND NOT leida`, [req.user.id]);
+  const { rows: [r] } = await query(
+    `SELECT count(*)::int AS no_leidas FROM notificaciones n WHERE n.usuario_id = $1 AND ${PERMITIDAS} AND NOT n.leida`,
+    [req.user.id, categoriasDe(req.user.rol)]);
   res.json({ noLeidas: r.no_leidas });
 });
 
 router.post('/leer-todas', async (req, res) => {
-  await query(`UPDATE notificaciones SET leida = true WHERE usuario_id = $1 AND NOT leida`, [req.user.id]);
+  await query(`UPDATE notificaciones n SET leida = true WHERE n.usuario_id = $1 AND ${PERMITIDAS} AND NOT n.leida`,
+    [req.user.id, categoriasDe(req.user.rol)]);
   res.status(204).end();
 });
 

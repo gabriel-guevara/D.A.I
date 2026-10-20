@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { query, withTransaction } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
-import { notificarConsulta } from '../lib/notify.js';
+import { notificarConsulta, rolesCon } from '../lib/notify.js';
 import { escapeLike, fechaHoraCO, formatBytes, hashCorto, haceCuanto, idValido } from '../lib/format.js';
 import { almacenamiento, ErrorObjetoNoEncontrado } from '../lib/storage.js';
 import { sha256DeStream } from '../lib/archivo-http.js';
@@ -10,6 +10,7 @@ import { enviarPdf, NO_DISPONIBLE } from '../lib/enviar-archivo.js';
 import { diasRetencionPapelera, despertarMantenimiento } from '../lib/papelera.js';
 import versiones, { ROLES_VERSIONES } from './versiones.js';
 import { COLUMNAS_INDEXACION, despertarIndexador, presentarIndexacion, solicitarIndexacion } from '../lib/indexador.js';
+import { rutasDe, sqlConDescendientes } from '../lib/carpetas-arbol.js';
 
 const router = Router();
 
@@ -52,7 +53,7 @@ const MAX_PAGINA = 100_000;
 
 /** Valida los parámetros de la biblioteca. Devuelve { error } o los valores normalizados (con sus valores por defecto). */
 export function validarFiltrosBiblioteca(qs) {
-  const CLAVES = ['q', 'departamento', 'formato', 'dias', 'carpeta', 'orden', 'pagina', 'porPagina'];
+  const CLAVES = ['q', 'departamento', 'formato', 'dias', 'carpeta', 'subcarpetas', 'orden', 'pagina', 'porPagina'];
   // ?orden=a&orden=b (o ?orden[x]=1) no es un valor: se rechaza en vez de adivinar cuál quiso decir.
   if (CLAVES.some((k) => qs[k] !== undefined && typeof qs[k] !== 'string')) return { error: 'Hay un parámetro repetido o mal formado.' };
   const texto = (v) => (typeof v === 'string' ? v.trim() : '');
@@ -68,6 +69,10 @@ export function validarFiltrosBiblioteca(qs) {
   f.dias = DIAS[dias];
   f.carpeta = texto(qs.carpeta);
   if (f.carpeta && f.carpeta !== 'sin' && !idValido(f.carpeta)) return { error: 'Carpeta no válida.' };
+  // Fase 6: con subcarpetas=1 también entran los documentos de TODAS las subcarpetas (en la raíz: toda la biblioteca).
+  const sub = texto(qs.subcarpetas);
+  if (sub && sub !== '1') return { error: 'subcarpetas solo admite el valor 1.' };
+  f.subcarpetas = sub === '1';
   f.orden = texto(qs.orden) || 'reciente';
   if (!(f.orden in ORDENES)) return { error: 'Orden no válido. Use reciente, antiguo, tamano o nombre.' };
   const pagina = texto(qs.pagina) || '1';
@@ -95,8 +100,10 @@ router.get('/', async (req, res) => {
   if (f.departamento) agregar(f.departamento, (p) => `dep.nombre = ${p}`);
   if (f.formato) agregar(f.formato, (p) => `d.formato = ${p}`);
   if (f.dias) agregar(f.dias, (p) => `d.actualizado_en >= now() - make_interval(days => ${p}::int)`);
-  if (f.carpeta === 'sin') where.push('d.carpeta_id IS NULL');
-  else if (f.carpeta) agregar(f.carpeta, (p) => `d.carpeta_id = ${p}`);
+  // carpeta: '' = toda la biblioteca · 'sin' = solo los de la raíz (Inicio) · id = solo los que están directamente en ella.
+  if (f.carpeta === 'sin' && !f.subcarpetas) where.push('d.carpeta_id IS NULL');
+  else if (f.carpeta && f.carpeta !== 'sin')
+    agregar(f.carpeta, (p) => (f.subcarpetas ? `d.carpeta_id IN (${sqlConDescendientes(p)})` : `d.carpeta_id = ${p}`));
   const condicion = where.join(' AND ');
 
   const [lista, cuenta, resumen] = await Promise.all([
@@ -112,6 +119,7 @@ router.get('/', async (req, res) => {
       `SELECT count(*)::int AS total, count(*) FILTER (WHERE d.actualizado_en >= now() - interval '30 days')::int AS actualizados30
        ${FROM} WHERE d.estado = 'activo' AND ${ACCESO}`, [req.user.rango]),
   ]);
+  const rutas = await rutasDe({ query }, lista.rows.map((r) => r.carpeta_id));
 
   res.json({
     documentos: lista.rows.map((r) => ({
@@ -121,7 +129,8 @@ router.get('/', async (req, res) => {
       folio: r.folio, departamento: r.departamento ?? 'Sin departamento',
       departamentoColor: r.dep_color ?? 'bg-slate-100 text-slate-600',
       autor: r.autor_nombre, autorEmail: r.autor_email ?? '', tamano: formatBytes(r.tamano_bytes),
-      carpeta: r.carpeta_id ? { id: String(r.carpeta_id), nombre: r.carpeta_nombre } : null,
+      // ruta: de la raíz a la carpeta (migas de pan "Legal › 2024"); las carpetas no cambian quién ve el documento.
+      carpeta: r.carpeta_id ? { id: String(r.carpeta_id), nombre: r.carpeta_nombre, ruta: rutas.get(String(r.carpeta_id)) ?? [] } : null,
       tieneArchivo: r.tiene_archivo, nombreOriginal: r.tiene_archivo ? r.nombre_original : null,
       actualizado: fechaHoraCO(r.actualizado_en),
     })),
@@ -148,6 +157,7 @@ router.get('/:id', async (req, res) => {
     `SELECT detalle, creado_en FROM auditoria WHERE documento_id = $1 AND accion = 'verificar_integridad'
       ORDER BY creado_en DESC, id DESC LIMIT 1`, [r.id]);
   const indexacion = r.tiene_archivo ? await leerIndexacion(r.id) : null;
+  const ruta = r.carpeta_id ? (await rutasDe({ query }, [r.carpeta_id])).get(String(r.carpeta_id)) ?? [] : [];
   await registrarAuditoria(req, 'ver_documento', r.id);
   await notificarConsulta(req, { id: r.id, nombre: r.nombre, folio: r.folio });
 
@@ -158,7 +168,7 @@ router.get('/:id', async (req, res) => {
     autor: r.autor_nombre, autorLinea: `${r.autor_nombre}${r.departamento ? ` — ${r.departamento}` : ''}`,
     fechaCreacion: fechaHoraCO(r.creado_en), tamano: formatBytes(r.tamano_bytes), paginas: r.paginas,
     etiquetas: tags.rows.map((x) => x.nombre),
-    carpeta: r.carpeta_id ? { id: String(r.carpeta_id), nombre: r.carpeta_nombre } : null,
+    carpeta: r.carpeta_id ? { id: String(r.carpeta_id), nombre: r.carpeta_nombre, ruta } : null,
     tieneArchivo: r.tiene_archivo,
     archivo: r.tiene_archivo ? {
       nombreOriginal: r.nombre_original, tamanoBytes: Number(r.tamano_bytes), almacenamiento: r.storage_driver,
@@ -313,9 +323,11 @@ router.delete('/:id', requireRole(...ROLES_PAPELERA), async (req, res) => {
        SELECT u.id, 'eliminado', 'border-l-red-500', 'Papelera', 'bg-red-50 text-red-700', '🗑️',
               $2, 'El expediente queda en la Papelera con su archivo y versiones intactos; se puede restaurar hasta su purga.', $3::jsonb,
               '[]'::jsonb, $1
-         FROM usuarios u JOIN roles r ON r.id = u.rol_id
-        WHERE r.clave IN ('super-admin','compliance') AND u.activo`,
-      [doc.id, `Documento enviado a la Papelera: ${doc.nombre}`, JSON.stringify([`Folio: ${doc.folio}`, purga, `IP de Origen: ${req.ip}`])]);
+         FROM usuarios u JOIN roles r ON r.id = u.rol_id JOIN niveles_acceso n ON n.id = u.nivel_id
+        WHERE r.clave = ANY($4::text[]) AND u.activo
+          AND n.rango >= (SELECT coalesce(c.nivel_minimo, 1) FROM documentos d LEFT JOIN clasificaciones c ON c.id = d.clasificacion_id WHERE d.id = $1)`,
+      // Roles de la matriz de notificaciones (lib/notify.js) y solo quien alcanza el nivel: el aviso lleva el nombre.
+      [doc.id, `Documento enviado a la Papelera: ${doc.nombre}`, JSON.stringify([`Folio: ${doc.folio}`, purga, `IP de Origen: ${req.ip}`]), rolesCon('eliminado')]);
     return doc;
   });
   if (!d) return res.status(404).json({ error: 'Documento no encontrado' });

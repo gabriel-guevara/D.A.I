@@ -93,16 +93,20 @@ CREATE TABLE intentos_acceso (
   bloqueado_hasta timestamptz
 );
 
--- ---------- Carpetas (Fase 5): un solo nivel, solo organizan; NO cambian permisos ----------
+-- ---------- Carpetas (Fases 5 y 6): carpetas y subcarpetas (hasta 5 niveles), solo organizan; NO cambian permisos ----------
 CREATE TABLE carpetas (
   id             bigserial PRIMARY KEY,
   nombre         text NOT NULL,
+  padre_id       bigint REFERENCES carpetas(id) ON DELETE RESTRICT,   -- NULL = en la raíz ("Inicio")
   creado_por     bigint REFERENCES usuarios(id) ON DELETE SET NULL,
   creado_en      timestamptz NOT NULL DEFAULT now(),
   actualizado_en timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT carpetas_nombre_check CHECK (char_length(nombre) BETWEEN 2 AND 80)
+  CONSTRAINT carpetas_nombre_check CHECK (char_length(nombre) BETWEEN 2 AND 80),
+  CONSTRAINT carpetas_padre_check CHECK (padre_id IS NULL OR padre_id <> id)
 );
-CREATE UNIQUE INDEX carpetas_nombre_uq ON carpetas (lower(nombre));   -- único sin distinguir mayúsculas
+CREATE INDEX carpetas_padre_idx ON carpetas (padre_id);
+-- Único DENTRO de cada carpeta y sin distinguir mayúsculas (0 = la raíz: dos NULL no chocarían en un índice único).
+CREATE UNIQUE INDEX carpetas_nombre_padre_uq ON carpetas (coalesce(padre_id, 0), lower(nombre));
 
 -- ---------- Documentos ----------
 CREATE TABLE documentos (
@@ -261,7 +265,7 @@ CREATE TABLE documento_etiquetas (
 CREATE TABLE notificaciones (
   id           bigserial PRIMARY KEY,
   usuario_id   bigint NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  categoria    text NOT NULL CHECK (categoria IN ('edicion','version','eliminado','seguridad','consulta')),
+  categoria    text NOT NULL CHECK (categoria IN ('edicion','version','eliminado','seguridad','consulta','solicitud')),
   borde_clase  text NOT NULL,
   badge        text NOT NULL,
   badge_clase  text NOT NULL,
