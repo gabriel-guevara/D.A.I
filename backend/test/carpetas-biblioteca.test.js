@@ -197,7 +197,7 @@ test('carpetas: crear (Admin y Operador), duplicado sin distinguir mayúsculas �
   assert.equal((await notifsPara('cumplimiento', 'Carpeta creada: Contratos vigentes')).length, 1);
 
   r = await post('/carpetas', 'admin', { nombre: 'CONTRATOS VIGENTES' });
-  assert.deepEqual([r.status, r.cuerpo.error], [409, 'Ya existe una carpeta con ese nombre (no se distinguen mayúsculas).']);
+  assert.deepEqual([r.status, r.cuerpo.error], [409, 'Ya existe una carpeta con ese nombre en esa ubicación (no se distinguen mayúsculas).']);
   for (const nombre of ['a', 'x'.repeat(81), '', null, 'Sin carpeta', 'sin CARPETA'])
     assert.equal((await post('/carpetas', 'admin', { nombre })).status, 400, String(nombre));
   for (const quien of ['cumplimiento', 'lector2']) assert.equal((await post('/carpetas', quien, { nombre: 'Prohibida' })).status, 403);
@@ -232,8 +232,9 @@ test('carpetas: renombrar (409 duplicado, 404 inexistente) y listado con nº de 
   assert.deepEqual(nombres(await biblioteca({ carpeta: carpetas.contratos }, 'lector2')), ['Acta junta.pdf']);
   assert.ok(!nombres(await biblioteca({ carpeta: 'sin', porPagina: '100' })).includes('Acta junta.pdf'));
   const detalle = (await biblioteca({ q: 'Acta junta' })).cuerpo.documentos[0];
-  assert.deepEqual(detalle.carpeta, { id: carpetas.contratos, nombre: 'Contratos vigentes' });
-  assert.deepEqual((await get(`/documentos/${docs.A}`)).cuerpo.carpeta, { id: carpetas.contratos, nombre: 'Contratos vigentes' });
+  const enContratos = { id: carpetas.contratos, nombre: 'Contratos vigentes', ruta: [{ id: carpetas.contratos, nombre: 'Contratos vigentes' }] };
+  assert.deepEqual(detalle.carpeta, enContratos);
+  assert.deepEqual((await get(`/documentos/${docs.A}`)).cuerpo.carpeta, enContratos);
 });
 
 test('carpetas: eliminar solo vacía (409 si tiene documentos, incluso en la papelera) y solo Super Administrador', async () => {
