@@ -207,7 +207,7 @@ export interface ResultadoVaciado {
   restantes: number;
 }
 
-// ---------------------------------------------------------------------------- Biblioteca y carpetas (Fase 5)
+// ---------------------------------------------------------------------------- Biblioteca y carpetas (Fases 5 y 6)
 
 export type FormatoDoc = 'pdf' | 'xlsx' | 'docx' | 'tiff';
 export type OrdenBiblioteca = 'reciente' | 'antiguo' | 'tamano' | 'nombre';
@@ -219,8 +219,10 @@ export interface FiltrosBiblioteca {
   departamento: string;
   formato: FormatoDoc | '';
   dias: DiasBiblioteca;
-  /** '' = todas; 'sin' = sin carpeta; o el id de una carpeta. */
+  /** Carpeta que se explora: '' = la raíz (Inicio) o el id de una carpeta. */
   carpeta: string;
+  /** true = también los documentos de todas sus subcarpetas (en la raíz: toda la biblioteca). */
+  subcarpetas: boolean;
   orden: OrdenBiblioteca;
   pagina: number;
   porPagina: 25 | 50 | 100;
@@ -229,6 +231,11 @@ export interface FiltrosBiblioteca {
 export interface CarpetaRef {
   id: string;
   nombre: string;
+}
+
+/** Carpeta con su ruta desde la raíz (migas de pan): [Legal, 2024] = Inicio › Legal › 2024. */
+export interface CarpetaConRuta extends CarpetaRef {
+  ruta: CarpetaRef[];
 }
 
 export interface DocumentoBiblioteca {
@@ -243,7 +250,8 @@ export interface DocumentoBiblioteca {
   autor: string;
   autorEmail: string;
   tamano: string;
-  carpeta: CarpetaRef | null;
+  /** null = en la raíz (Inicio). */
+  carpeta: CarpetaConRuta | null;
   /** false = solo metadatos (no hay PDF que descargar). */
   tieneArchivo: boolean;
   nombreOriginal: string | null;
@@ -261,16 +269,39 @@ export interface RespuestaBiblioteca {
   resumen: { total: number; actualizados30: number };
 }
 
+/** Subcarpeta en el explorador (una tarjeta). */
 export interface Carpeta extends CarpetaRef {
-  /** Documentos de la carpeta que ESTE usuario puede ver. */
+  /** Documentos que están DIRECTAMENTE en la carpeta y que ESTE usuario puede ver. */
   documentos: number;
+  subcarpetas: number;
 }
 
-export interface ListaCarpetas {
+export interface PermisosCarpetas {
+  gestionar: boolean;
+  eliminar: boolean;
+  solicitar: boolean;
+  resolver: boolean;
+}
+
+/** GET /carpetas?padre=: el contenido de una carpeta (o de la raíz) para el explorador. */
+export interface ContenidoCarpeta {
+  /** null = la raíz (Inicio). */
+  carpeta: (CarpetaConRuta & { nivel: number }) | null;
   carpetas: Carpeta[];
-  sinCarpeta: number;
+  documentosAqui: number;
+  maxNivel: number;
   /** Lo que el usuario puede hacer (el servidor lo vuelve a comprobar en cada acción). */
-  permisos: { gestionar: boolean; eliminar: boolean; solicitar: boolean; resolver: boolean };
+  permisos: PermisosCarpetas;
+}
+
+/** Una carpeta de GET /carpetas/arbol (lista plana: el front arma el árbol). padreId null = en la raíz. */
+export interface CarpetaPlana extends CarpetaRef {
+  padreId: string | null;
+}
+
+export interface ArbolCarpetas {
+  carpetas: CarpetaPlana[];
+  maxNivel: number;
 }
 
 export interface ResultadoMover {
@@ -284,9 +315,9 @@ export type EstadoSolicitud = 'pendiente' | 'aprobada' | 'rechazada';
 export interface SolicitudMovimiento {
   id: string;
   documento: { id: string; nombre: string; folio: string };
-  carpetaActual: CarpetaRef | null;
-  /** null = sacarlo de su carpeta. */
-  carpetaDestino: CarpetaRef | null;
+  carpetaActual: CarpetaConRuta | null;
+  /** null = llevarlo a la raíz (Inicio). */
+  carpetaDestino: CarpetaConRuta | null;
   solicitante: string;
   motivo: string;
   estado: EstadoSolicitud;
@@ -348,22 +379,35 @@ export class ApiService {
 
   // Biblioteca / documentos: filtros, orden y paginación en el servidor
   biblioteca(filtros: FiltrosBiblioteca): Observable<RespuestaBiblioteca> {
-    return this.get<RespuestaBiblioteca>('/documentos', { ...filtros });
+    // La raíz del explorador son los documentos sin carpeta ('sin' en la API); con subcarpetas, todo lo de dentro.
+    return this.get<RespuestaBiblioteca>('/documentos', {
+      ...filtros, carpeta: filtros.carpeta || 'sin', subcarpetas: filtros.subcarpetas ? '1' : null,
+    });
   }
 
-  // Carpetas (Fase 5)
-  carpetas(): Observable<ListaCarpetas> { return this.get<ListaCarpetas>('/carpetas'); }
-  crearCarpeta(nombre: string): Observable<Carpeta> {
-    return this.http.post<Carpeta>(`${API_URL}/carpetas`, { nombre });
+  // Carpetas y subcarpetas (Fases 5 y 6). padreId null = la raíz (Inicio).
+  contenidoCarpeta(padreId: string | null): Observable<ContenidoCarpeta> {
+    return this.get<ContenidoCarpeta>('/carpetas', { padre: padreId ?? 'raiz' });
+  }
+  arbolCarpetas(): Observable<ArbolCarpetas> { return this.get<ArbolCarpetas>('/carpetas/arbol'); }
+  rutaCarpeta(id: string): Observable<{ ruta: CarpetaRef[] }> {
+    return this.get<{ ruta: CarpetaRef[] }>(`/carpetas/${encodeURIComponent(id)}/ruta`);
+  }
+  crearCarpeta(nombre: string, padreId: string | null = null): Observable<Carpeta & { padreId: string | null }> {
+    return this.http.post<Carpeta & { padreId: string | null }>(`${API_URL}/carpetas`, { nombre, padreId });
   }
   renombrarCarpeta(id: string, nombre: string): Observable<CarpetaRef> {
     return this.http.patch<CarpetaRef>(`${API_URL}/carpetas/${encodeURIComponent(id)}`, { nombre });
+  }
+  /** Mueve la carpeta (con sus subcarpetas y documentos) dentro de otra, o a la raíz con null. */
+  moverCarpeta(id: string, padreId: string | null): Observable<CarpetaRef & { padreId: string | null }> {
+    return this.http.patch<CarpetaRef & { padreId: string | null }>(`${API_URL}/carpetas/${encodeURIComponent(id)}`, { padreId });
   }
   /** Solo si está vacía (si no, 409 con el motivo). */
   eliminarCarpeta(id: string): Observable<void> {
     return this.http.delete<void>(`${API_URL}/carpetas/${encodeURIComponent(id)}`);
   }
-  /** Mueve hasta 100 documentos; carpetaId null = sacarlos de su carpeta. */
+  /** Mueve hasta 100 documentos; carpetaId null = llevarlos a la raíz (Inicio). */
   moverDocumentos(ids: string[], carpetaId: string | null): Observable<ResultadoMover> {
     return this.http.post<ResultadoMover>(`${API_URL}/carpetas/mover`, { ids, carpetaId });
   }
