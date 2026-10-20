@@ -34,13 +34,18 @@ export async function seed(db) {
   }
   const elena = uid['e.ramos@dai.corp'];
 
-  // ---------------- Carpetas (Fase 5): un nivel, solo organizan ----------------
+  // ---------------- Carpetas y subcarpetas (Fases 5 y 6): solo organizan, no cambian permisos ----------------
+  // [nombre, carpeta padre (null = raíz)]. Los padres van antes que sus hijas.
   const carpeta = {};
-  for (const nombre of ['Contratos vigentes', 'Auditorías 2024', 'Expedientes de personal'])
-    carpeta[nombre] = (await db.query(`INSERT INTO carpetas (nombre, creado_por) VALUES ($1, $2) RETURNING id`, [nombre, elena])).rows[0].id;
+  for (const [nombre, padre] of [
+    ['Contratos vigentes', null], ['Auditorías 2024', null], ['Expedientes de personal', null],
+    ['Proveedores cloud', 'Contratos vigentes'], ['Tercer trimestre', 'Auditorías 2024'],
+  ])
+    carpeta[nombre] = (await db.query(`INSERT INTO carpetas (nombre, padre_id, creado_por) VALUES ($1, $2, $3) RETURNING id`,
+      [nombre, padre ? carpeta[padre] : null, elena])).rows[0].id;
   const carpetaDe = {
-    'Contrato_Marco_Servicios_2025.pdf': 'Contratos vigentes', 'Contrato_Prestacion_Servicios_Tecnologicos_2024.pdf': 'Contratos vigentes',
-    'Auditoria_Financiera_Consolidada_Q3.xlsx': 'Auditorías 2024', 'Expediente_Laboral_Personal_Clave.pdf': 'Expedientes de personal',
+    'Contrato_Marco_Servicios_2025.pdf': 'Proveedores cloud', 'Contrato_Prestacion_Servicios_Tecnologicos_2024.pdf': 'Contratos vigentes',
+    'Auditoria_Financiera_Consolidada_Q3.xlsx': 'Tercer trimestre', 'Expediente_Laboral_Personal_Clave.pdf': 'Expedientes de personal',
   };
 
   // ---------------- Documentos ----------------
@@ -160,7 +165,7 @@ export async function seed(db) {
   // Una solicitud de movimiento pendiente del Oficial de Cumplimiento (la resuelve el administrador o el operador).
   await db.query(`INSERT INTO solicitudes_movimiento (documento_id, carpeta_destino_id, solicitante_id, motivo, creado_en)
                   VALUES ($1, $2, $3, $4, $5)`,
-    [docId['Dictamen_Auditoria_Q3_Tributaria.docx'], carpeta['Auditorías 2024'], uid['m.valdes@dai.corp'],
+    [docId['Dictamen_Auditoria_Q3_Tributaria.docx'], carpeta['Tercer trimestre'], uid['m.valdes@dai.corp'],
      'Pertenece al cierre de auditoría del tercer trimestre; conviene tenerlo junto al informe financiero.', ago(25)]);
 
   // ---------------- Notificaciones ----------------

@@ -107,7 +107,11 @@ test('seed: los documentos de demostración no tienen archivo ni clave ficticia'
             (SELECT count(*)::int FROM notificaciones n JOIN usuarios u ON u.id = n.usuario_id JOIN niveles_acceso na ON na.id = u.nivel_id
                JOIN documentos d ON d.id = n.documento_id JOIN clasificaciones c ON c.id = d.clasificacion_id
               WHERE c.nivel_minimo > na.rango) AS filtradas`);
-  assert.deepEqual(f5, { carpetas: 3, en_carpeta: 4, pendientes: 1, cola: 0, con_acciones: 0, mfa_inventado: 0, filtradas: 0 });
+  assert.deepEqual(f5, { carpetas: 5, en_carpeta: 4, pendientes: 1, cola: 0, con_acciones: 0, mfa_inventado: 0, filtradas: 0 });
+  // Fase 6: dos subcarpetas de demostración (Contratos vigentes › Proveedores cloud y Auditorías 2024 › Tercer trimestre).
+  const { rows: sub } = await base.pool.query(
+    `SELECT p.nombre AS padre, h.nombre FROM carpetas h JOIN carpetas p ON p.id = h.padre_id ORDER BY h.nombre`);
+  assert.deepEqual(sub, [{ padre: 'Contratos vigentes', nombre: 'Proveedores cloud' }, { padre: 'Auditorías 2024', nombre: 'Tercer trimestre' }]);
 });
 
 test('003: base de producción sin la tabla de indexación ni el origen del texto; aditiva e idempotente', async () => {
@@ -325,5 +329,62 @@ test('006: base como producción (documentos existentes); aditiva, idempotente y
   await base.pool.query(`DELETE FROM carpetas WHERE id = $1`, [ca.id]);
   assert.equal((await fila()).carpeta_id, null, 'borrar una carpeta deja el documento "Sin carpeta" (ON DELETE SET NULL)');
   await base.pool.query(`DELETE FROM documentos WHERE id = $1`, [doc.id]);
+  await base.pool.query(`DELETE FROM usuarios WHERE id = $1`, [u.id]);
+});
+
+/** Deja la base como producción tras la Fase 5 (carpetas de un nivel, nombre único global; 007 sin aplicar). */
+async function baseAntesDeFase6() {
+  await base.pool.query(`DROP INDEX IF EXISTS ${base.esquema}.carpetas_nombre_padre_uq`);
+  await base.pool.query(`DROP INDEX IF EXISTS ${base.esquema}.carpetas_padre_idx`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.carpetas DROP CONSTRAINT IF EXISTS carpetas_padre_check, DROP COLUMN IF EXISTS padre_id`);
+  await base.pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS carpetas_nombre_uq ON ${base.esquema}.carpetas (lower(nombre))`);
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '007_subcarpetas'`);
+}
+
+test('007: base como producción (carpetas de la Fase 5 con documentos y solicitudes); quedan en la raíz; aditiva e idempotente', async () => {
+  await baseAntesDeFase6();
+  const { rows: [u] } = await base.pool.query(`INSERT INTO usuarios (nombre, email, rol_id, nivel_id) VALUES ('S', 's-007@ejemplo.test', 2, 2) RETURNING id`);
+  const { rows: [ca] } = await base.pool.query(`INSERT INTO carpetas (nombre) VALUES ('Contratos F5') RETURNING id, actualizado_en`);
+  const { rows: [otra] } = await base.pool.query(`INSERT INTO carpetas (nombre) VALUES ('Auditorías F5') RETURNING id`);
+  const { rows: [doc] } = await base.pool.query(
+    `INSERT INTO documentos (nombre, folio, formato, clasificacion_id, autor_nombre, carpeta_id)
+     VALUES ('Prod.pdf', 'EXP-007-PROD', 'pdf', 1, 'X', $1) RETURNING id, actualizado_en`, [ca.id]);
+  await base.pool.query(`INSERT INTO solicitudes_movimiento (documento_id, carpeta_destino_id, solicitante_id, motivo)
+                         VALUES ($1, $2, $3, 'motivo de prueba')`, [doc.id, otra.id, u.id]);
+  const contar = async () => (await base.pool.query(
+    `SELECT (SELECT count(*)::int FROM carpetas) AS carpetas, (SELECT count(*)::int FROM documentos) AS documentos,
+            (SELECT count(*)::int FROM solicitudes_movimiento) AS solicitudes`)).rows[0];
+  const antes = await contar();
+
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['007_subcarpetas']);
+  const f = (await base.pool.query(`SELECT padre_id, actualizado_en FROM carpetas WHERE id = $1`, [ca.id])).rows[0];
+  assert.equal(f.padre_id, null, 'las carpetas de la Fase 5 quedan en la raíz');
+  assert.equal(f.actualizado_en.getTime(), ca.actualizado_en.getTime(), 'la migración no toca fechas');
+  const d = (await base.pool.query(`SELECT carpeta_id, actualizado_en FROM documentos WHERE id = $1`, [doc.id])).rows[0];
+  assert.deepEqual([String(d.carpeta_id), d.actualizado_en.getTime()], [String(ca.id), doc.actualizado_en.getTime()], 'el documento sigue en su carpeta');
+  assert.deepEqual(await contar(), antes, 'no borra nada');
+  const indice = async (nombre) => (await base.pool.query(`SELECT to_regclass('${base.esquema}.${nombre}') AS i`)).rows[0].i;
+  assert.equal(await indice('carpetas_nombre_uq'), null, 'el índice único global ya no existe');
+  assert.notEqual(await indice('carpetas_nombre_padre_uq'), null);
+
+  // Reglas nuevas: único por padre (sin distinguir mayúsculas), no ser su propio padre, no borrar una carpeta con hijas.
+  const crear = (nombre, padre) => base.pool.query(`INSERT INTO carpetas (nombre, padre_id) VALUES ($1, $2) RETURNING id`, [nombre, padre]);
+  const { rows: [h1] } = await crear('2024', ca.id);
+  await crear('2024', otra.id); // mismo nombre en otro padre: permitido
+  await assert.rejects(crear('2024'.toUpperCase(), ca.id), /carpetas_nombre_padre_uq/);
+  await assert.rejects(crear('contratos f5', null), /carpetas_nombre_padre_uq/, 'en la raíz sigue siendo único');
+  await assert.rejects(base.pool.query(`UPDATE carpetas SET padre_id = id WHERE id = $1`, [h1.id]), /carpetas_padre_check/);
+  await assert.rejects(base.pool.query(`DELETE FROM carpetas WHERE id = $1`, [ca.id]), /carpetas_padre_id_fkey/);
+
+  // Idempotente: aplicarla otra vez (sin registro de control) no falla ni pierde la jerarquía.
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '007_subcarpetas'`);
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['007_subcarpetas']);
+  assert.equal(String((await base.pool.query(`SELECT padre_id FROM carpetas WHERE id = $1`, [h1.id])).rows[0].padre_id), String(ca.id));
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), []);
+
+  await base.pool.query(`DELETE FROM solicitudes_movimiento`);
+  await base.pool.query(`DELETE FROM documentos WHERE id = $1`, [doc.id]);
+  await base.pool.query(`DELETE FROM carpetas WHERE padre_id IS NOT NULL`);
+  await base.pool.query(`DELETE FROM carpetas WHERE id IN ($1, $2)`, [ca.id, otra.id]);
   await base.pool.query(`DELETE FROM usuarios WHERE id = $1`, [u.id]);
 });
