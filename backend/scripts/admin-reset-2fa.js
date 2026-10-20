@@ -22,6 +22,7 @@ import {
   conexionProduccionDesdeComando, confirmacionHostValida, ErrorEntorno, exigirEntornoDesarrollo,
 } from '../src/lib/entorno.js';
 import { quitar2fa } from '../src/lib/mfa-quitar.js';
+import { ALERTAS, insertarAlerta } from '../src/lib/alertas-seguridad.js';
 
 const args = process.argv.slice(2);
 const produccion = args.includes('--produccion');
@@ -75,6 +76,8 @@ try {
     `INSERT INTO auditoria (usuario_id, accion, ip, detalle) VALUES (NULL, 'restablecer_2fa', 'script', $1)`,
     [JSON.stringify({ usuarioId: String(u.id), email: u.email, teniaActivo: u.tenia, via: 'script_emergencia', produccion })]);
   await client.query('COMMIT');
+  // Después del COMMIT: el aviso al afectado nunca debe deshacer el restablecimiento.
+  await insertarAlerta(client, u.id, ALERTAS.dosPasosRestablecido(), 'script de emergencia del servidor');
   console.log(`✔ 2FA restablecido para ${u.email}. En su próximo ingreso deberá configurar un autenticador nuevo.`);
 } catch (e) {
   await client.query('ROLLBACK').catch(() => {});

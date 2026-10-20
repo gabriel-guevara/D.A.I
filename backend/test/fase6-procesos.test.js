@@ -46,7 +46,8 @@ test('humo: node src/server.js real — migración 007, subcarpetas, mover y bib
   await base.pool.query(`ALTER TABLE ${base.esquema}.carpetas DROP CONSTRAINT carpetas_padre_check, DROP COLUMN padre_id`);
   await base.pool.query(`CREATE UNIQUE INDEX carpetas_nombre_uq ON ${base.esquema}.carpetas (lower(nombre))`);
   await (await import('../src/migrate.js')).aplicarMigraciones(base.pool, {
-    migraciones: (await import('../src/migrate.js')).MIGRACIONES.filter((m) => m.nombre !== '007_subcarpetas'), log: () => {},
+    migraciones: (await import('../src/migrate.js')).MIGRACIONES.filter((m) => !['007_subcarpetas', '008_notificaciones_solicitud'].includes(m.nombre)),
+    log: () => {},
   });
   const { rows: [f5] } = await base.pool.query(`INSERT INTO carpetas (nombre) VALUES ('Legal F5') RETURNING id`);
   await base.pool.query(`SELECT setval(pg_get_serial_sequence('documentos', 'id'), $1)`, [INICIO_IDS]);
@@ -80,7 +81,8 @@ test('humo: node src/server.js real — migración 007, subcarpetas, mover y bib
       hijo.once('exit', (c) => { clearTimeout(t); mal(new Error(`la API terminó (${c}):\n${salida}`)); });
     });
     assert.match(salida, /Migración aplicada: 007_subcarpetas/);
-    assert.doesNotMatch(salida, /Migración aplicada: 00[1-6]/, 'solo la nueva');
+    assert.match(salida, /Migración aplicada: 008_notificaciones_solicitud/);
+    assert.doesNotMatch(salida, /Migración aplicada: 00[1-6]/, 'solo las nuevas');
 
     const api = `http://127.0.0.1:${puerto}/api`;
     const enviar = (metodo, ruta, { token, cuerpo, form } = {}) => fetch(`${api}${ruta}`, {
@@ -93,6 +95,9 @@ test('humo: node src/server.js real — migración 007, subcarpetas, mover y bib
     const v = await enviar('POST', '/auth/verify-2fa', { cuerpo: { mfaToken: l.cuerpo.mfaToken, code: codigoPara(SECRETO, Date.now() - 30_000) } });
     assert.equal(v.status, 200, JSON.stringify(v.cuerpo));
     const token = v.cuerpo.token;
+    // El ingreso real deja una alerta de seguridad para la propia persona.
+    const alertas = (await enviar('GET', '/notificaciones', { token })).cuerpo.filter((n) => n.category === 'seguridad');
+    assert.deepEqual(alertas.map((n) => n.title), ['Nuevo inicio de sesión en tu cuenta']);
 
     // La carpeta de la Fase 5 aparece en la raíz con su documento.
     const raiz = await enviar('GET', '/carpetas', { token });

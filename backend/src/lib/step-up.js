@@ -9,6 +9,8 @@
  */
 import { query } from '../db.js';
 import { registrarAuditoria } from './audit.js';
+import { alertarSeguridad } from './notify.js';
+import { ALERTAS } from './alertas-seguridad.js';
 import { leerSegundoFactor, verificarSegundoFactor } from './mfa.js';
 import { BLOQUEO_MIN, clave2fa, estaBloqueado, limpiarFallos, MENSAJE_BLOQUEO, registrarFallo } from './intentos.js';
 
@@ -36,7 +38,10 @@ export async function exigirSegundoFactor(req, res, accion) {
   if (!(await verificarSegundoFactor(req.user.id, factor))) {
     const f = await registrarFallo(clave);
     await registrarAuditoria(req, '2fa_fallido', null, { tipo: factor.tipo, accion });
-    if (f.recienBloqueado) await registrarAuditoria(req, 'bloqueo_temporal', null, { motivo: factor.tipo, minutos: BLOQUEO_MIN });
+    if (f.recienBloqueado) {
+      await registrarAuditoria(req, 'bloqueo_temporal', null, { motivo: factor.tipo, minutos: BLOQUEO_MIN });
+      await alertarSeguridad(req, req.user.id, ALERTAS.bloqueo(BLOQUEO_MIN));
+    }
     res.status(403).json({
       error: factor.tipo === 'recuperacion'
         ? 'Código de recuperación incorrecto o ya usado.'

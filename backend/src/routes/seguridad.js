@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
+import { alertarSeguridad } from '../lib/notify.js';
+import { ALERTAS } from '../lib/alertas-seguridad.js';
 import { errorContrasena } from '../lib/contrasena.js';
 import { leerSegundoFactor, quitar2fa, verificarSegundoFactor } from '../lib/mfa.js';
 import { BLOQUEO_MIN, clave2fa, estaBloqueado, limpiarFallos, MENSAJE_BLOQUEO, registrarFallo } from '../lib/intentos.js';
@@ -64,7 +66,7 @@ function validarUsuario(b, crear) {
     d.nombre = b.nombre.trim();
   }
   if (crear || b.email !== undefined) {
-    if (typeof b.email !== 'string' || !EMAIL_RE.test(b.email.trim()) || b.email.trim().length > 160) return err('Ingrese un correo institucional válido.');
+    if (typeof b.email !== 'string' || !EMAIL_RE.test(b.email.trim()) || b.email.trim().length > 160) return err('Ingrese un correo corporativo válido.');
     d.email = b.email.trim();
   }
   if (crear || (typeof b.password === 'string' && b.password !== '')) {
@@ -188,6 +190,9 @@ router.patch('/usuarios/:id', requireRole('super-admin'), async (req, res) => {
     if (resultado.status !== 200) return res.status(resultado.status).json({ error: resultado.error });
     const campos = Object.keys(d).map((k) => (k === 'password' ? 'contraseña restablecida' : k));
     await registrarAuditoria(req, 'modificar_usuario', null, { usuarioId: req.params.id, campos });
+    // Al afectado (no a quien la cambia): si no lo pidió, se entera.
+    if (d.password !== undefined && String(req.params.id) !== String(req.user.id))
+      await alertarSeguridad(req, req.params.id, ALERTAS.contrasenaRestablecida());
     res.json({ ok: true });
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ error: 'Ya existe un usuario con ese correo.' });
@@ -212,7 +217,10 @@ router.post('/usuarios/:id/restablecer-2fa', requireRole('super-admin'), async (
   if (!(await verificarSegundoFactor(req.user.id, factor))) {
     const f = await registrarFallo(clave);
     await registrarAuditoria(req, '2fa_fallido', null, { tipo: factor.tipo, accion: 'restablecer_2fa' });
-    if (f.recienBloqueado) await registrarAuditoria(req, 'bloqueo_temporal', null, { motivo: factor.tipo, minutos: BLOQUEO_MIN });
+    if (f.recienBloqueado) {
+      await registrarAuditoria(req, 'bloqueo_temporal', null, { motivo: factor.tipo, minutos: BLOQUEO_MIN });
+      await alertarSeguridad(req, req.user.id, ALERTAS.bloqueo(BLOQUEO_MIN));
+    }
     return res.status(403).json({ error: 'Su código de verificación no es correcto.' }); // 403: la sesión sigue siendo válida
   }
   await limpiarFallos(clave);
@@ -225,6 +233,7 @@ router.post('/usuarios/:id/restablecer-2fa', requireRole('super-admin'), async (
   });
   if (!resultado) return res.status(404).json({ error: 'Usuario no encontrado.' });
   await registrarAuditoria(req, 'restablecer_2fa', null, { usuarioId: String(resultado.id), email: resultado.email, teniaActivo: resultado.tenia });
+  await alertarSeguridad(req, resultado.id, ALERTAS.dosPasosRestablecido());
   res.json({ ok: true });
 });
 

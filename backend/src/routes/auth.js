@@ -5,6 +5,8 @@ import { config } from '../config.js';
 import { query } from '../db.js';
 import { firmarToken, verificarToken, requireAuth, versionVigente } from '../middleware/auth.js';
 import { registrarAuditoriaDe } from '../lib/audit.js';
+import { alertarSeguridad } from '../lib/notify.js';
+import { ALERTAS } from '../lib/alertas-seguridad.js';
 import { EMISOR } from '../lib/totp.js';
 import {
   codigosRestantes, confirmarAlta, generarCodigosRecuperacion, iniciarAlta, leerSegundoFactor,
@@ -55,8 +57,10 @@ async function fallo(req, usuarioId, clave, accion, detalle) {
   const f = await registrarFallo(clave);
   if (usuarioId) {
     await registrarAuditoriaDe(req, usuarioId, accion, detalle);
-    if (f.recienBloqueado)
+    if (f.recienBloqueado) {
       await registrarAuditoriaDe(req, usuarioId, 'bloqueo_temporal', { motivo: detalle.tipo ?? accion, minutos: BLOQUEO_MIN });
+      await alertarSeguridad(req, usuarioId, ALERTAS.bloqueo(BLOQUEO_MIN));
+    }
   }
   return f;
 }
@@ -82,6 +86,7 @@ const REINICIAR = { error: 'La verificación expiró. Vuelva a ingresar usuario 
 async function abrirSesion(req, res, u, detalle, extra = {}) {
   await query(`UPDATE usuarios SET ultimo_acceso = now() WHERE id = $1`, [u.id]);
   await registrarAuditoriaDe(req, u.id, 'login', detalle);
+  await alertarSeguridad(req, u.id, ALERTAS.ingreso(detalle.metodo));
   res.json({ token: tokenDeAcceso(u), user: usuarioPublico(u), ...extra });
 }
 
@@ -94,7 +99,7 @@ async function abrirSesion(req, res, u, detalle, extra = {}) {
 router.post('/login', limitadorIp, async (req, res) => {
   const { username, password } = req.body ?? {};
   if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
-    return res.status(400).json({ error: 'Ingrese su usuario institucional y su contraseña.' });
+    return res.status(400).json({ error: 'Ingrese su correo corporativo y su contraseña.' });
   }
   const clave = claveContrasena(username);
   if (await estaBloqueado(clave)) return res.status(429).json({ error: MENSAJE_BLOQUEO });
@@ -133,6 +138,7 @@ router.post('/verify-2fa', limitadorIp, async (req, res) => {
   if (factor.tipo === 'recuperacion') {
     const restantes = await codigosRestantes(u.id);
     await registrarAuditoriaDe(req, u.id, '2fa_codigo_recuperacion_usado', { restantes });
+    await alertarSeguridad(req, u.id, ALERTAS.codigoRecuperacion(restantes));
     return abrirSesion(req, res, u, { metodo: 'recuperacion' }, { codigosRestantes: restantes });
   }
   await abrirSesion(req, res, u, { metodo: 'totp' });
@@ -173,6 +179,7 @@ router.post('/2fa/enrolar/confirmar', limitadorIp, async (req, res) => {
   await limpiarFallos(clave);
   const codigos = await generarCodigosRecuperacion(u.id);
   await registrarAuditoriaDe(req, u.id, '2fa_activado', { via: 'login', cantidadCodigos: codigos.length });
+  await alertarSeguridad(req, u.id, ALERTAS.dosPasosActivado());
   await abrirSesion(req, res, u, { metodo: 'alta_2fa' }, { codigosRecuperacion: codigos });
 });
 
