@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { query, withTransaction } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
-import { notificarConsulta } from '../lib/notify.js';
+import { notificarConsulta, rolesCon } from '../lib/notify.js';
 import { escapeLike, fechaHoraCO, formatBytes, hashCorto, haceCuanto, idValido } from '../lib/format.js';
 import { almacenamiento, ErrorObjetoNoEncontrado } from '../lib/storage.js';
 import { sha256DeStream } from '../lib/archivo-http.js';
@@ -323,9 +323,11 @@ router.delete('/:id', requireRole(...ROLES_PAPELERA), async (req, res) => {
        SELECT u.id, 'eliminado', 'border-l-red-500', 'Papelera', 'bg-red-50 text-red-700', '🗑️',
               $2, 'El expediente queda en la Papelera con su archivo y versiones intactos; se puede restaurar hasta su purga.', $3::jsonb,
               '[]'::jsonb, $1
-         FROM usuarios u JOIN roles r ON r.id = u.rol_id
-        WHERE r.clave IN ('super-admin','compliance') AND u.activo`,
-      [doc.id, `Documento enviado a la Papelera: ${doc.nombre}`, JSON.stringify([`Folio: ${doc.folio}`, purga, `IP de Origen: ${req.ip}`])]);
+         FROM usuarios u JOIN roles r ON r.id = u.rol_id JOIN niveles_acceso n ON n.id = u.nivel_id
+        WHERE r.clave = ANY($4::text[]) AND u.activo
+          AND n.rango >= (SELECT coalesce(c.nivel_minimo, 1) FROM documentos d LEFT JOIN clasificaciones c ON c.id = d.clasificacion_id WHERE d.id = $1)`,
+      // Roles de la matriz de notificaciones (lib/notify.js) y solo quien alcanza el nivel: el aviso lleva el nombre.
+      [doc.id, `Documento enviado a la Papelera: ${doc.nombre}`, JSON.stringify([`Folio: ${doc.folio}`, purga, `IP de Origen: ${req.ip}`]), rolesCon('eliminado')]);
     return doc;
   });
   if (!d) return res.status(404).json({ error: 'Documento no encontrado' });

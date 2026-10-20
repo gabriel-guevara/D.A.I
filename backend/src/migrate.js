@@ -253,6 +253,20 @@ export const MIGRACIONES = [
       await c.query(`DROP INDEX IF EXISTS carpetas_nombre_uq`);
     },
   },
+  {
+    // Fase 6 (ajustes): categoría propia para las solicitudes de movimiento ("Solicitudes"), que antes iban dentro de
+    // "edicion" (carpetas). El CHECK se amplía (acepta lo de antes y 'solicitud') y las ya existentes se reclasifican:
+    // solo cambia su pestaña, no su contenido. Quién ve cada categoría lo decide la API (lib/notify.js).
+    nombre: '008_notificaciones_solicitud',
+    async up(c) {
+      await c.query(`ALTER TABLE notificaciones DROP CONSTRAINT IF EXISTS notificaciones_categoria_check`);
+      await c.query(`ALTER TABLE notificaciones ADD CONSTRAINT notificaciones_categoria_check
+                     CHECK (categoria IN ('edicion','version','eliminado','seguridad','consulta','solicitud'))`);
+      await c.query(`UPDATE notificaciones SET categoria = 'solicitud', badge = 'Solicitudes', badge_clase = 'bg-indigo-50 text-indigo-700',
+                            borde_clase = 'border-l-indigo-500', icono = '📨'
+                      WHERE categoria = 'edicion' AND titulo ~ '^Solicitud (de movimiento|aprobada|rechazada):'`);
+    },
+  },
 ];
 
 /**

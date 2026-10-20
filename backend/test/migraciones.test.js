@@ -108,6 +108,11 @@ test('seed: los documentos de demostración no tienen archivo ni clave ficticia'
                JOIN documentos d ON d.id = n.documento_id JOIN clasificaciones c ON c.id = d.clasificacion_id
               WHERE c.nivel_minimo > na.rango) AS filtradas`);
   assert.deepEqual(f5, { carpetas: 5, en_carpeta: 4, pendientes: 1, cola: 0, con_acciones: 0, mfa_inventado: 0, filtradas: 0 });
+  // Ajustes de la Fase 6: cada notificación demo solo a un rol que recibe esa categoría (la de carpetas, solo a quien mueve).
+  const { rows: fueraDeMatriz } = await base.pool.query(
+    `SELECT n.categoria, r.clave FROM notificaciones n JOIN usuarios u ON u.id = n.usuario_id JOIN roles r ON r.id = u.rol_id`);
+  const { categoriasDe } = await import('../src/lib/categorias-notificaciones.js');
+  assert.deepEqual(fueraDeMatriz.filter((x) => !categoriasDe(x.clave).includes(x.categoria)), []);
   // Fase 6: dos subcarpetas de demostración (Contratos vigentes › Proveedores cloud y Auditorías 2024 › Tercer trimestre).
   const { rows: sub } = await base.pool.query(
     `SELECT p.nombre AS padre, h.nombre FROM carpetas h JOIN carpetas p ON p.id = h.padre_id ORDER BY h.nombre`);
@@ -386,5 +391,33 @@ test('007: base como producción (carpetas de la Fase 5 con documentos y solicit
   await base.pool.query(`DELETE FROM documentos WHERE id = $1`, [doc.id]);
   await base.pool.query(`DELETE FROM carpetas WHERE padre_id IS NOT NULL`);
   await base.pool.query(`DELETE FROM carpetas WHERE id IN ($1, $2)`, [ca.id, otra.id]);
+  await base.pool.query(`DELETE FROM usuarios WHERE id = $1`, [u.id]);
+});
+
+test('008: base como producción (solicitudes dentro de "edicion"); las reclasifica a "solicitud" sin tocar el resto; idempotente', async () => {
+  // Antes de la 008: el CHECK no admite 'solicitud' y las solicitudes iban en la pestaña de carpetas.
+  await base.pool.query(`ALTER TABLE ${base.esquema}.notificaciones DROP CONSTRAINT notificaciones_categoria_check`);
+  await base.pool.query(`ALTER TABLE ${base.esquema}.notificaciones ADD CONSTRAINT notificaciones_categoria_check
+                         CHECK (categoria IN ('edicion','version','eliminado','seguridad','consulta'))`);
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '008_notificaciones_solicitud'`);
+  const { rows: [u] } = await base.pool.query(`INSERT INTO usuarios (nombre, email, rol_id, nivel_id) VALUES ('N', 'n-008@ejemplo.test', 1, 1) RETURNING id`);
+  const insertar = (titulo) => base.pool.query(
+    `INSERT INTO notificaciones (usuario_id, categoria, borde_clase, badge, badge_clase, titulo, descripcion, creado_en)
+     VALUES ($1, 'edicion', 'border-l-amber-500', 'Carpetas', 'bg-amber-50 text-amber-700', $2, 'd', '2026-01-01T00:00:00Z') RETURNING id`, [u.id, titulo]);
+  const sol = (await insertar('Solicitud de movimiento: Acta.pdf')).rows[0].id;
+  const apr = (await insertar('Solicitud aprobada: Acta.pdf')).rows[0].id;
+  const rec = (await insertar('Solicitud rechazada: Acta.pdf')).rows[0].id;
+  const car = (await insertar('Carpeta creada: Solicitudes 2026')).rows[0].id; // una carpeta que se llama así NO es una solicitud
+  await assert.rejects(base.pool.query(`UPDATE notificaciones SET categoria = 'solicitud' WHERE id = $1`, [car]), /notificaciones_categoria_check/);
+
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['008_notificaciones_solicitud']);
+  const cat = async (id) => (await base.pool.query(`SELECT categoria, badge, creado_en FROM notificaciones WHERE id = $1`, [id])).rows[0];
+  for (const id of [sol, apr, rec]) assert.deepEqual([(await cat(id)).categoria, (await cat(id)).badge], ['solicitud', 'Solicitudes']);
+  assert.equal((await cat(car)).categoria, 'edicion');
+  assert.equal((await cat(sol)).creado_en.toISOString(), '2026-01-01T00:00:00.000Z', 'no cambia la fecha');
+
+  await base.pool.query(`DELETE FROM migraciones_aplicadas WHERE nombre = '008_notificaciones_solicitud'`);
+  assert.deepEqual(await aplicarMigraciones(base.pool, { log: silencio }), ['008_notificaciones_solicitud']);
+  assert.equal((await base.pool.query(`SELECT count(*)::int AS n FROM notificaciones WHERE usuario_id = $1`, [u.id])).rows[0].n, 4, 'no borra nada');
   await base.pool.query(`DELETE FROM usuarios WHERE id = $1`, [u.id]);
 });

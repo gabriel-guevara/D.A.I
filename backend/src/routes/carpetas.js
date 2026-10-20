@@ -6,13 +6,14 @@
  *  - Eliminar (solo si está vacía: sin subcarpetas, documentos ni solicitudes pendientes): Super Administrador.
  *  - El Oficial de Cumplimiento NO mueve: envía una solicitud con motivo, que aprueba o rechaza un Super
  *    Administrador u Operador OCR que alcance el nivel del documento. Quien solicita nunca resuelve.
- * Todo queda auditado y notificado (los avisos de carpetas nunca llevan nombres de documentos).
+ * Todo queda auditado y notificado: los avisos de organización solo a quienes pueden mover (lib/notify.js) y nunca
+ * con nombres de documentos; las solicitudes, en su propia categoría ("Solicitudes").
  */
 import { Router } from 'express';
 import { query, withTransaction } from '../db.js';
 import { requireRole } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/audit.js';
-import { notificarUsuarios } from '../lib/notify.js';
+import { notificarMovimiento, notificarUsuarios } from '../lib/notify.js';
 import { fechaHoraCO, idValido, textoLimpio } from '../lib/format.js';
 import { CANDADO_ARBOL, MAX_NIVEL, alturaSubarbol, rutaDe, nombresRuta, rutasDe, textoRuta } from '../lib/carpetas-arbol.js';
 
@@ -21,8 +22,8 @@ const router = Router();
 export const ROLES_CARPETAS = ['super-admin', 'ocr-operator'];   // crear, renombrar, mover y resolver solicitudes
 export const ROLES_ELIMINAR_CARPETA = ['super-admin'];
 export const ROLES_SOLICITAR = ['compliance'];
-// Quienes reciben los avisos de carpetas (los mismos que gestionan o supervisan la organización).
-const ROLES_AVISO = ['super-admin', 'compliance', 'ocr-operator'];
+// Quienes reciben los avisos de organización (crear, renombrar, mover, eliminar): solo quienes pueden mover.
+const ROLES_AVISO = ROLES_CARPETAS;
 const MAX_MOVER = 100;
 
 // $1 = rango del usuario. Mismo criterio de acceso que la biblioteca: activo y de su nivel o inferior.
@@ -296,7 +297,7 @@ router.post('/mover', requireRole(...ROLES_CARPETAS), async (req, res) => {
       if (!carpeta) return { status: 404, error: 'La carpeta de destino no existe.' };
     }
     const { rows: docs } = await c.query(
-      `SELECT d.id, d.nombre, d.folio, d.carpeta_id, ca.nombre AS carpeta_nombre
+      `SELECT d.id, d.nombre, d.folio, d.carpeta_id, ca.nombre AS carpeta_nombre, coalesce(c.nivel_minimo, 1) AS nivel
          FROM documentos d LEFT JOIN clasificaciones c ON c.id = d.clasificacion_id LEFT JOIN carpetas ca ON ca.id = d.carpeta_id
         WHERE d.id = ANY($2::bigint[]) AND ${VISIBLE}
         ORDER BY d.id FOR UPDATE OF d`, [req.user.rango, pedidos]);
@@ -316,12 +317,10 @@ router.post('/mover', requireRole(...ROLES_CARPETAS), async (req, res) => {
       a: destino.id, aNombre: r.carpeta?.nombre ?? null, aRuta: nombreDestino(r.carpeta),
     });
   if (r.aMover.length) {
-    // Un solo aviso por operación y SIN nombres de documentos: así no revela nada a quien no alcanza su nivel.
-    await notificarUsuarios({
-      roles: ROLES_AVISO,
-      titulo: r.aMover.length === 1 ? `Documento movido a ${nombreDestino(r.carpeta)}` : `${r.aMover.length} documentos movidos a ${nombreDestino(r.carpeta)}`,
+    // Un aviso por operación y SIN nombres de documentos; cada destinatario solo cuenta y ve los folios de su nivel.
+    await notificarMovimiento({
+      roles: ROLES_AVISO, docs: r.aMover.map((d) => ({ folio: d.folio, nivel: d.nivel })), destino: nombreDestino(r.carpeta),
       descripcion: 'Organización de la biblioteca. Mover un documento no cambia quién puede verlo.',
-      meta: [`Folios: ${r.aMover.slice(0, 5).map((d) => d.folio).join(', ')}${r.aMover.length > 5 ? '…' : ''}`],
     });
   }
   res.json({ movidos: r.aMover.length, sinCambios: r.sinCambios, omitidos: r.omitidos });
@@ -397,7 +396,7 @@ router.post('/solicitudes', requireRole(...ROLES_SOLICITAR), async (req, res) =>
   await registrarAuditoria(req, 'solicitar_movimiento', r.doc.id, { solicitudId: String(r.id), a: destino.id, aNombre: r.carpeta?.nombre ?? null, aRuta: nombreDestino(r.carpeta), motivo });
   // A quienes pueden resolverla Y alcanzan el nivel del documento.
   await notificarUsuarios({
-    roles: ROLES_CARPETAS, nivelMinimo: r.doc.nivel, documentoId: r.doc.id,
+    categoria: 'solicitud', roles: ROLES_CARPETAS, nivelMinimo: r.doc.nivel, documentoId: r.doc.id,
     titulo: `Solicitud de movimiento: ${r.doc.nombre}`,
     descripcion: `Se pide moverlo a ${nombreDestino(r.carpeta)}. Motivo: ${motivo}`,
     meta: [`Folio: ${r.doc.folio}`, 'Apruébela o recházela desde la Biblioteca'],
@@ -471,7 +470,7 @@ const resolver = (aprobar) => async (req, res) => {
     });
   if (s.solicitante_id)
     await notificarUsuarios({
-      usuarioIds: [s.solicitante_id], nivelMinimo: s.nivel, documentoId: s.documento_id,
+      categoria: 'solicitud', usuarioIds: [s.solicitante_id], nivelMinimo: s.nivel, documentoId: s.documento_id,
       titulo: `${aprobar ? 'Solicitud aprobada' : 'Solicitud rechazada'}: ${s.documento_nombre}`,
       descripcion: aprobar
         ? `El documento se movió a ${nombreDestino(carpeta)}.${respuesta ? ` Comentario: ${respuesta}` : ''}`

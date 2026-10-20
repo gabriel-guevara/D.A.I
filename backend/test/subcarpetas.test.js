@@ -112,7 +112,8 @@ test('crear anidadas hasta 5 niveles; la 6.ª → 400 (profundidad); padre inexi
 
   const [a] = (await auditorias('crear_carpeta')).filter((x) => x.detalle.carpetaId === c.l2024);
   assert.deepEqual([a.email, a.detalle.padreId, a.detalle.ruta], ['operador@prueba.test', c.legal, '«Legal › 2024»']);
-  assert.equal((await notifsPara('cumplimiento', 'Carpeta creada: Legal › 2024')).length, 1);
+  assert.equal((await notifsPara('admin', 'Carpeta creada: Legal › 2024')).length, 1);
+  assert.equal((await notifsPara('cumplimiento', 'Carpeta creada: Legal › 2024')).length, 0, 'Cumplimiento no mueve: no recibe avisos de carpetas');
   assert.equal((await notifsPara('lector2', 'Carpeta creada:%')).length, 0, 'el lector no recibe avisos de carpetas');
 });
 
@@ -245,7 +246,8 @@ test('mover carpeta: con su contenido, sin tocar los documentos; duplicado en el
   const [a] = await auditorias('mover_carpeta');
   assert.deepEqual([a.email, a.detalle.carpetaId, a.detalle.de, a.detalle.deRuta, a.detalle.a, a.detalle.aRuta],
     ['operador@prueba.test', c.n4, c.n3, '«Legal › 2024 › Contratos»', c.f2024, '«Finanzas › 2024»']);
-  const [n] = await notifsPara('cumplimiento', 'Carpeta movida: Proveedores%');
+  assert.equal((await notifsPara('cumplimiento', 'Carpeta movida:%')).length, 0);
+  const [n] = await notifsPara('admin', 'Carpeta movida: Proveedores%');
   assert.equal(n.titulo, 'Carpeta movida: Proveedores → «Finanzas › 2024»');
   assert.match(n.descripcion, /Antes estaba en «Legal › 2024 › Contratos»/);
   assert.ok(!/Contrato cloud/.test(n.titulo + n.descripcion), 'el aviso no nombra documentos');

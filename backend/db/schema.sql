@@ -265,7 +265,7 @@ CREATE TABLE documento_etiquetas (
 CREATE TABLE notificaciones (
   id           bigserial PRIMARY KEY,
   usuario_id   bigint NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  categoria    text NOT NULL CHECK (categoria IN ('edicion','version','eliminado','seguridad','consulta')),
+  categoria    text NOT NULL CHECK (categoria IN ('edicion','version','eliminado','seguridad','consulta','solicitud')),
   borde_clase  text NOT NULL,
   badge        text NOT NULL,
   badge_clase  text NOT NULL,

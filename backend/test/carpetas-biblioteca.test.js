@@ -194,7 +194,9 @@ test('carpetas: crear (Admin y Operador), duplicado sin distinguir mayúsculas �
   carpetas.contratos = r.cuerpo.id;
   const [a] = await auditorias('crear_carpeta');
   assert.deepEqual([a.email, a.detalle.nombre], ['operador@prueba.test', 'Contratos vigentes']);
-  assert.equal((await notifsPara('cumplimiento', 'Carpeta creada: Contratos vigentes')).length, 1);
+  // Avisos de organización: solo a quienes pueden mover (Admin y Operador); Cumplimiento ya no los recibe.
+  assert.equal((await notifsPara('admin', 'Carpeta creada: Contratos vigentes')).length, 1);
+  assert.equal((await notifsPara('cumplimiento', 'Carpeta creada: Contratos vigentes')).length, 0);
 
   r = await post('/carpetas', 'admin', { nombre: 'CONTRATOS VIGENTES' });
   assert.deepEqual([r.status, r.cuerpo.error], [409, 'Ya existe una carpeta con ese nombre en esa ubicación (no se distinguen mayúsculas).']);
@@ -418,7 +420,8 @@ test('notificaciones: documentoId solo si el documento sigue activo; la de papel
   const n = lista.find((x) => x.title === 'Solicitud aprobada: Expediente RH.tiff');
   assert.equal(n.documentoId, docs.E);
   assert.deepEqual(n.actions, []);
-  assert.equal(lista.find((x) => x.title.startsWith('Carpeta creada')).documentoId, null);
+  assert.equal(n.category, 'solicitud', 'las solicitudes tienen su propia categoría');
+  assert.equal((await get('/notificaciones', 'admin')).cuerpo.find((x) => x.title.startsWith('Carpeta creada')).documentoId, null);
   await base.pool.query(`UPDATE documentos SET estado = 'activo' WHERE id = $1`, [docs.F]);
   assert.equal((await del(`/documentos/${docs.F}`, 'admin')).status, 204);
   const p = (await get('/notificaciones', 'admin')).cuerpo.find((x) => x.title === 'Documento enviado a la Papelera: Fuera.pdf');
