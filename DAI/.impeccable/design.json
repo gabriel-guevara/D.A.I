@@ -1,0 +1,679 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T20:40:57.240Z",
+  "title": "Design System: DAI · Gestión Documental",
+  "extensions": {
+    "colorMeta": {
+      "brand": {
+        "role": "primary",
+        "displayName": "Marino Institucional",
+        "canonical": "#004583",
+        "oklch": "oklch(39.1% 0.120 253.0)",
+        "tonalRamp": [
+          "#000b20",
+          "#012449",
+          "#064077",
+          "#235f9f",
+          "#4783c6",
+          "#6ca8ee",
+          "#a6cefd",
+          "#e4f0fe"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Celeste de Acción",
+        "canonical": "#0077b6",
+        "oklch": "oklch(54.6% 0.131 242.7)",
+        "tonalRamp": [
+          "#000c1b",
+          "#002740",
+          "#044469",
+          "#156394",
+          "#2387c8",
+          "#50adf0",
+          "#99d2ff",
+          "#e1f1fe"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Celeste Presionado",
+        "canonical": "#00629a",
+        "oklch": "oklch(47.8% 0.118 244.0)",
+        "tonalRamp": [
+          "#000c1b",
+          "#012640",
+          "#084369",
+          "#01639b",
+          "#3787c1",
+          "#5eace9",
+          "#a0d1fa",
+          "#e1f1fe"
+        ]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Celeste Suave",
+        "canonical": "#e6f2fa",
+        "oklch": "oklch(95.5% 0.017 236.7)",
+        "tonalRamp": [
+          "#050c11",
+          "#1c252b",
+          "#384148",
+          "#555f66",
+          "#778289",
+          "#9ba6ae",
+          "#c1ccd4",
+          "#e5f0f8"
+        ]
+      },
+      "accent-ink": {
+        "role": "primary",
+        "displayName": "Tinta Celeste",
+        "canonical": "#005a8c",
+        "oklch": "oklch(44.9% 0.109 243.1)",
+        "tonalRamp": [
+          "#000c1b",
+          "#002640",
+          "#02446a",
+          "#126396",
+          "#3e87bc",
+          "#64ace3",
+          "#9ed1fb",
+          "#e1f1fe"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Lienzo",
+        "canonical": "#f5f7fa",
+        "oklch": "oklch(97.5% 0.005 258.3)",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232426",
+          "#3e4042",
+          "#5c5e60",
+          "#7e8083",
+          "#a3a5a7",
+          "#c9cbcd",
+          "#edeff1"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Hoja",
+        "canonical": "#ffffff",
+        "oklch": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a4a4a4",
+          "#cacaca",
+          "#eeeeee"
+        ]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Bandeja",
+        "canonical": "#eef2f6",
+        "oklch": "oklch(95.9% 0.007 247.9)",
+        "tonalRamp": [
+          "#090b0e",
+          "#212427",
+          "#3d4043",
+          "#5b5e61",
+          "#7d8184",
+          "#a1a5a9",
+          "#c7cbcf",
+          "#ebeff3"
+        ]
+      },
+      "sunken": {
+        "role": "neutral",
+        "displayName": "Hundido",
+        "canonical": "#f3f6f9",
+        "oklch": "oklch(97.2% 0.005 247.9)",
+        "tonalRamp": [
+          "#090b0d",
+          "#222426",
+          "#3e4042",
+          "#5b5e60",
+          "#7e8083",
+          "#a2a5a8",
+          "#c8cbce",
+          "#eceff2"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "#14213d",
+        "oklch": "oklch(25.2% 0.056 264.0)",
+        "tonalRamp": [
+          "#020922",
+          "#16233f",
+          "#303f5e",
+          "#4d5d7e",
+          "#6f80a3",
+          "#93a5c9",
+          "#b8cbf0",
+          "#e7effe"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Tinta Secundaria",
+        "canonical": "#3a4a63",
+        "oklch": "oklch(40.6% 0.047 259.2)",
+        "tonalRamp": [
+          "#020a1e",
+          "#16243b",
+          "#314059",
+          "#4e5e78",
+          "#70819d",
+          "#93a6c3",
+          "#b9ccea",
+          "#e6effe"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Tinta de Ayuda",
+        "canonical": "#5b6b82",
+        "oklch": "oklch(52.3% 0.041 257.4)",
+        "tonalRamp": [
+          "#020b1c",
+          "#172438",
+          "#324156",
+          "#4f5f75",
+          "#718199",
+          "#95a6bf",
+          "#bacce6",
+          "#e5effe"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Renglón",
+        "canonical": "#dde3ea",
+        "oklch": "oklch(91.3% 0.012 252.1)",
+        "tonalRamp": [
+          "#080c10",
+          "#20242a",
+          "#3b4046",
+          "#595e64",
+          "#7b8187",
+          "#a0a5ac",
+          "#c5cbd2",
+          "#e9eff6"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Renglón Fuerte",
+        "canonical": "#c3ccd8",
+        "oklch": "oklch(84.2% 0.019 255.5)",
+        "tonalRamp": [
+          "#060b13",
+          "#1e252d",
+          "#39404a",
+          "#565e69",
+          "#79818c",
+          "#9da5b1",
+          "#c2cbd7",
+          "#e6effc"
+        ]
+      },
+      "ok": {
+        "role": "state",
+        "displayName": "Correcto",
+        "canonical": "#15803d",
+        "oklch": "oklch(52.7% 0.137 150.1)",
+        "tonalRamp": [
+          "#001002",
+          "#002d0f",
+          "#034e21",
+          "#147035",
+          "#349652",
+          "#5dbc75",
+          "#84e49a",
+          "#c8ffd2"
+        ]
+      },
+      "warn": {
+        "role": "state",
+        "displayName": "Advertencia",
+        "canonical": "#b45309",
+        "oklch": "oklch(55.5% 0.146 49.0)",
+        "tonalRamp": [
+          "#1a0500",
+          "#3e1700",
+          "#662d04",
+          "#914513",
+          "#c36120",
+          "#ec864a",
+          "#feb893",
+          "#ffeadf"
+        ]
+      },
+      "danger": {
+        "role": "state",
+        "displayName": "Peligro",
+        "canonical": "#b91c1c",
+        "oklch": "oklch(50.5% 0.190 27.5)",
+        "tonalRamp": [
+          "#200000",
+          "#4a0304",
+          "#790f0f",
+          "#b00c13",
+          "#db423a",
+          "#fe7366",
+          "#fcb7ad",
+          "#fee9e6"
+        ]
+      },
+      "info": {
+        "role": "state",
+        "displayName": "Información",
+        "canonical": "#0077b6",
+        "oklch": "oklch(54.6% 0.131 242.7)",
+        "tonalRamp": [
+          "#000c1b",
+          "#002740",
+          "#044469",
+          "#156394",
+          "#2387c8",
+          "#50adf0",
+          "#99d2ff",
+          "#e1f1fe"
+        ]
+      },
+      "canvas-oscuro": {
+        "role": "neutral",
+        "displayName": "Lienzo Nocturno",
+        "canonical": "#0b1220",
+        "oklch": "oklch(18.3% 0.031 263.4)",
+        "tonalRamp": [
+          "#050b18",
+          "#1c2433",
+          "#374050",
+          "#555e70",
+          "#778193",
+          "#9ba5b9",
+          "#c0cbdf",
+          "#e7effe"
+        ]
+      },
+      "surface-oscuro": {
+        "role": "neutral",
+        "displayName": "Hoja Nocturna",
+        "canonical": "#121b2c",
+        "oklch": "oklch(22.3% 0.036 262.5)",
+        "tonalRamp": [
+          "#040b1a",
+          "#1b2436",
+          "#354053",
+          "#535e72",
+          "#758196",
+          "#99a5bc",
+          "#becbe3",
+          "#e6efff"
+        ]
+      },
+      "ink-oscuro": {
+        "role": "neutral",
+        "displayName": "Tinta Nocturna",
+        "canonical": "#e6ecf3",
+        "oklch": "oklch(94.1% 0.011 252.1)",
+        "tonalRamp": [
+          "#080c10",
+          "#20242a",
+          "#3b4046",
+          "#595e64",
+          "#7b8187",
+          "#a0a5ac",
+          "#c5cbd2",
+          "#e9eff6"
+        ]
+      },
+      "brand-ink-oscuro": {
+        "role": "primary",
+        "displayName": "Celeste de Firma Nocturno",
+        "canonical": "#7cc4f0",
+        "oklch": "oklch(78.9% 0.096 236.6)",
+        "tonalRamp": [
+          "#000d19",
+          "#00273c",
+          "#054563",
+          "#16658c",
+          "#4089b2",
+          "#66aed9",
+          "#93d4fc",
+          "#def2ff"
+        ]
+      },
+      "accent-oscuro": {
+        "role": "primary",
+        "displayName": "Celeste de Acción Nocturno",
+        "canonical": "#38b6f0",
+        "oklch": "oklch(73.4% 0.135 233.4)",
+        "tonalRamp": [
+          "#000d17",
+          "#012839",
+          "#0a4560",
+          "#03668c",
+          "#0e8bbd",
+          "#32b2eb",
+          "#8fd5fc",
+          "#ddf2ff"
+        ]
+      },
+      "logo-celeste-referencia": {
+        "role": "reference",
+        "displayName": "Celeste del Logo (solo referencia)",
+        "canonical": "#009ddd",
+        "note": "Color del logo; no es token de interfaz porque no cumple AA con texto blanco. La interfaz usa accent.",
+        "tonalRamp": [
+          "#000d18",
+          "#01273b",
+          "#084562",
+          "#006590",
+          "#078ac2",
+          "#2fb1f2",
+          "#95d4fb",
+          "#dff2fe"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Saludo del inicio, título de acceso y cifras de indicadores."
+      },
+      "headline": {
+        "displayName": "Título de página",
+        "purpose": "page-title en cada pantalla de trabajo."
+      },
+      "title-lg": {
+        "displayName": "Título de diálogo",
+        "purpose": "Diálogos y paneles laterales."
+      },
+      "title": {
+        "displayName": "Título de panel",
+        "purpose": "panel-title."
+      },
+      "body": {
+        "displayName": "Cuerpo",
+        "purpose": "Texto base, celdas, campos y botones."
+      },
+      "body-sm": {
+        "displayName": "Cuerpo pequeño",
+        "purpose": "Metadatos de filas y ayudas secundarias."
+      },
+      "label": {
+        "displayName": "Etiqueta",
+        "purpose": "Etiquetas de formulario, chips, pestañas."
+      },
+      "caption": {
+        "displayName": "Leyenda",
+        "purpose": "Insignias, cabeceras de tabla, texto de ayuda. Mínimo 12 px."
+      },
+      "mono": {
+        "displayName": "Mono de datos",
+        "purpose": "Folios, hashes, códigos 2FA y de recuperación."
+      }
+    },
+    "shadows": [
+      {
+        "name": "float",
+        "value": "0 8px 24px -6px rgb(20 33 61 / 0.18), 0 2px 6px -2px rgb(20 33 61 / 0.1)",
+        "valueDark": "0 12px 32px -8px rgb(0 0 0 / 0.6), 0 2px 8px -2px rgb(0 0 0 / 0.4)",
+        "purpose": "Menús, diálogos, paneles laterales y capas flotantes."
+      },
+      {
+        "name": "tab-raised",
+        "value": "0 1px 2px rgb(0 0 0 / 0.08)",
+        "purpose": "Pestaña seleccionada en su riel (0.06 en el ítem activo de la barra lateral)."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 3px var(--accent-soft)",
+        "purpose": "Foco de campos de formulario, junto al borde celeste."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-quint",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Curva única de transiciones."
+      },
+      {
+        "name": "state",
+        "value": "150ms",
+        "purpose": "Hover/foco de botones, campos y pestañas (120ms en filas de tabla)."
+      },
+      {
+        "name": "dialog-enter",
+        "value": "180ms; translateY(6px) scale(0.985) → none",
+        "purpose": "Entrada de diálogos (200ms en el panel de auditoría)."
+      },
+      {
+        "name": "meter",
+        "value": "400ms width",
+        "purpose": "Avance de barras de progreso."
+      },
+      {
+        "name": "skeleton",
+        "value": "1.4s ease-in-out infinite",
+        "purpose": "Barrido de esqueletos."
+      },
+      {
+        "name": "spinner",
+        "value": "700ms linear infinite",
+        "purpose": "Giro del indicador de carga."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "Con prefers-reduced-motion se anulan transiciones y animaciones."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "note": "Barra lateral pasa de 64 px (iconos) a 256 px; aparece el panel de marca del acceso."
+      },
+      {
+        "name": "xl",
+        "value": "1280px",
+        "note": "Rejilla de paneles de 3 columnas en el inicio."
+      },
+      {
+        "name": "content-max",
+        "value": "1440px"
+      }
+    ],
+    "theme": {
+      "mechanism": "clase .dark en <html>",
+      "storageKey": "dai-tema",
+      "values": [
+        "claro",
+        "oscuro"
+      ],
+      "fallback": "prefers-color-scheme",
+      "noFlash": "script en línea en src/index.html",
+      "service": "src/app/Componentes/ui/tema.ts"
+    },
+    "icons": {
+      "component": "<app-icono nombre=\"…\" [tamano] etiqueta>",
+      "grid": 24,
+      "stroke": 1.75,
+      "caps": "round",
+      "defaultSize": 18,
+      "source": "src/app/Componentes/ui/icono.ts"
+    }
+  },
+  "components": [
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal de trabajo en una zona (Subir, Descargar, Nuevo Documento).",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><path d=\"m17 8-5-5-5 5\"/><path d=\"M12 3v12\"/></svg>Subir Documento</button>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 14px;border-radius:6px;border:1px solid transparent;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;font-size:14px;font-weight:500;line-height:1;white-space:nowrap;cursor:pointer;transition:background-color 150ms var(--ease),color 150ms var(--ease),border-color 150ms var(--ease);background:var(--accent);color:var(--on-accent)} .ds-btn-primary:hover{background:var(--accent-hover)} .ds-btn-primary:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-btn-primary:active{transform:translateY(0.5px)}"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acciones de apoyo junto a la principal; icono en celeste.",
+      "html": "<button class=\"ds-btn-secondary\"><span class=\"ds-ic\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0\"/><path d=\"m21 21-4.3-4.3\"/></svg></span>Búsqueda Inteligente</button>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 14px;border-radius:6px;border:1px solid transparent;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;font-size:14px;font-weight:500;line-height:1;white-space:nowrap;cursor:pointer;transition:background-color 150ms var(--ease),color 150ms var(--ease),border-color 150ms var(--ease);background:var(--surface);color:var(--ink);border-color:var(--line-strong)} .ds-btn-secondary .ds-ic{display:inline-flex;color:var(--accent)} .ds-btn-secondary:hover{background:var(--sunken);border-color:var(--ink-3)} .ds-btn-secondary:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-btn-secondary:active{transform:translateY(0.5px)}"
+    },
+    {
+      "name": "Botón de marca",
+      "kind": "button",
+      "refersTo": "button-brand",
+      "description": "Marino institucional; solo en el flujo de acceso, ancho completo.",
+      "html": "<button class=\"ds-btn-brand\">Continuar</button>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-btn-brand{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 14px;border-radius:6px;border:1px solid transparent;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;font-size:14px;font-weight:500;line-height:1;white-space:nowrap;cursor:pointer;transition:background-color 150ms var(--ease),color 150ms var(--ease),border-color 150ms var(--ease);min-height:44px;width:280px;background:var(--brand);color:var(--on-brand)} .ds-btn-brand:hover{filter:brightness(1.12)} .ds-btn-brand:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-btn-brand:active{transform:translateY(0.5px)}"
+    },
+    {
+      "name": "Botón fantasma de peligro",
+      "kind": "button",
+      "refersTo": "button-danger-ghost",
+      "description": "Inicia una acción destructiva que luego se confirma.",
+      "html": "<button class=\"ds-btn-danger-ghost\">Enviar a papelera</button>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-btn-danger-ghost{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 14px;border-radius:6px;border:1px solid transparent;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;font-size:14px;font-weight:500;line-height:1;white-space:nowrap;cursor:pointer;transition:background-color 150ms var(--ease),color 150ms var(--ease),border-color 150ms var(--ease);background:transparent;color:var(--danger)} .ds-btn-danger-ghost:hover{background:var(--danger-soft)} .ds-btn-danger-ghost:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-btn-danger-ghost:active{transform:translateY(0.5px)}"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Etiqueta encima, borde fuerte, foco con borde celeste y halo suave.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-label\">Correo corporativo</span><input class=\"ds-input\" placeholder=\"Su correo corporativo\"><span class=\"ds-hint\">Use su cuenta de la organización.</span></label>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-field{display:block;width:300px;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;} .ds-label{display:block;margin-bottom:6px;font-size:13px;font-weight:500;color:var(--ink-2)} .ds-input{box-sizing:border-box;width:100%;min-height:36px;padding:7px 12px;border-radius:6px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:inherit;font-size:14px;transition:border-color 150ms var(--ease),box-shadow 150ms var(--ease)} .ds-input::placeholder{color:var(--ink-3)} .ds-input:hover{border-color:var(--ink-3)} .ds-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)} .ds-hint{display:block;margin-top:6px;font-size:12px;color:var(--ink-3)}"
+    },
+    {
+      "name": "Barra lateral",
+      "kind": "nav",
+      "refersTo": "sidebar",
+      "description": "Navegación principal: bandeja con ítems de 40 px; activo en hoja con anillo e icono celeste.",
+      "html": "<nav class=\"ds-side\"><a class=\"ds-item is-active\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 3h5a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z\"/><path d=\"M15 3h5a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z\"/><path d=\"M15 12h5a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z\"/><path d=\"M4 16h5a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z\"/></svg><span>Dashboard</span></a><a class=\"ds-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m16 6 4 14\"/><path d=\"M12 6v14\"/><path d=\"M8 8v12\"/><path d=\"M4 4v16\"/></svg><span>Biblioteca</span></a><a class=\"ds-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0\"/><path d=\"m21 21-4.3-4.3\"/></svg><span>Búsqueda</span><span class=\"ds-count\">3</span></a></nav>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-side{width:232px;padding:12px;background:var(--surface-2);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;} .ds-item{display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border-radius:6px;font-size:14px;color:var(--ink-2);text-decoration:none;transition:background-color 150ms var(--ease),color 150ms var(--ease)} .ds-item svg{color:var(--ink-3);width:18px;height:18px} .ds-item span:first-of-type{flex:1} .ds-item:hover{background:var(--sunken);color:var(--ink)} .ds-item:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-item.is-active{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgb(0 0 0/0.06),0 0 0 1px var(--line)} .ds-item.is-active svg{color:var(--accent)} .ds-count{min-width:20px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:12px;font-weight:600;line-height:1.1rem;text-align:center;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Insignias de estado",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Píldoras de 12 px: neutra o trío semántico (suave + tinta).",
+      "html": "<div class=\"ds-row\"><span class=\"ds-badge\">Versión 3 (Actual)</span><span class=\"ds-badge ds-accent\">Cambia en 24 s</span><span class=\"ds-badge ds-ok\">Cifrado en reposo</span><span class=\"ds-badge ds-warn\">Pendiente</span><span class=\"ds-badge ds-danger\">Vencido</span></div>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-row{display:flex;flex-wrap:wrap;gap:8px;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;} .ds-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:500;line-height:1.1rem;white-space:nowrap;background:var(--sunken);color:var(--ink-2);border:1px solid var(--line)} .ds-accent{background:var(--accent-soft);color:var(--accent-ink);border-color:transparent} .ds-ok{background:var(--ok-soft);color:var(--ok-ink);border-color:transparent} .ds-warn{background:var(--warn-soft);color:var(--warn-ink);border-color:transparent} .ds-danger{background:var(--danger-soft);color:var(--danger-ink);border-color:transparent}"
+    },
+    {
+      "name": "Chip de filtro",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Filtro conmutable; activo en celeste suave.",
+      "html": "<div class=\"ds-row\"><button class=\"ds-chip\" aria-pressed=\"true\">PDF</button><button class=\"ds-chip\" aria-pressed=\"false\">Contratos</button></div>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-row{display:flex;gap:8px;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;} .ds-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;font-weight:500;cursor:pointer} .ds-chip:hover{border-color:var(--ink-3);color:var(--ink)} .ds-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-chip[aria-pressed=\"true\"]{background:var(--accent-soft);border-color:transparent;color:var(--accent-ink)}"
+    },
+    {
+      "name": "Panel con lista",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Contenedor plano de 10 px con cabecera y filas a sangre separadas por renglones.",
+      "html": "<section class=\"ds-panel\"><div class=\"ds-ph\"><h2>Documentos recientes</h2><a href=\"#\">Ir a Biblioteca</a></div><ul><li><span class=\"ds-tile\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M10 9H8\"/><path d=\"M16 13H8\"/><path d=\"M16 17H8\"/></svg></span><span class=\"ds-t\"><b>Contrato de arrendamiento 2026</b><small>M. Gómez · hace 2 h</small></span><code>PDF</code></li><li><span class=\"ds-tile\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M10 9H8\"/><path d=\"M16 13H8\"/><path d=\"M16 17H8\"/></svg></span><span class=\"ds-t\"><b>Acta de comité 14</b><small>L. Ruiz · ayer</small></span><code>PDF</code></li></ul></section>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-panel{width:440px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;} .ds-ph{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)} .ds-ph h2{margin:0;font-size:16px;font-weight:600;color:var(--ink)} .ds-ph a{font-size:13px;font-weight:500;color:var(--accent-ink);text-decoration:none} .ds-ph a:hover{text-decoration:underline} .ds-panel ul{list-style:none;margin:0;padding:0} .ds-panel li{display:flex;align-items:center;gap:12px;padding:12px 20px;border-top:1px solid var(--line);transition:background-color 120ms var(--ease)} .ds-panel li:first-child{border-top:0} .ds-panel li:hover{background:var(--sunken)} .ds-tile{width:40px;height:40px;display:grid;place-items:center;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-3)} .ds-panel li:hover .ds-tile{color:var(--accent)} .ds-t{flex:1;min-width:0;display:flex;flex-direction:column} .ds-t b{font-size:14px;font-weight:500;color:var(--ink)} .ds-t small{font-size:13px;color:var(--ink-3)} .ds-panel code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--ink-3)}"
+    },
+    {
+      "name": "Aviso de peligro",
+      "kind": "custom",
+      "refersTo": "alert-danger",
+      "description": "Aviso en trío semántico con icono arriba a la izquierda.",
+      "html": "<div class=\"ds-alert\" role=\"alert\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg><span>No fue posible verificar la integridad del archivo.</span></div>",
+      "css": ":host{--canvas:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--sunken:#f3f6f9;--ink:#14213d;--ink-2:#3a4a63;--ink-3:#5b6b82;--line:#dde3ea;--line-strong:#c3ccd8;--brand:#004583;--on-brand:#fff;--accent:#0077b6;--accent-hover:#00629a;--on-accent:#fff;--accent-soft:#e6f2fa;--accent-ink:#005a8c;--ok-soft:#e8f5ec;--ok-ink:#166534;--warn-soft:#fdf3e4;--warn-ink:#92400e;--danger:#b91c1c;--danger-hover:#991b1b;--danger-soft:#fdecec;--danger-ink:#991b1b;--ease:cubic-bezier(0.22,1,0.36,1)} .ds-alert{display:flex;align-items:flex-start;gap:10px;width:380px;padding:10px 14px;border-radius:6px;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;font-size:14px;background:var(--danger-soft);color:var(--danger-ink);border:1px solid color-mix(in srgb,var(--danger) 25%,transparent)} .ds-alert svg{flex:none;margin-top:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "El Archivo en Orden",
+    "overview": "DAI es una herramienta institucional que se usa todo el día, en escritorio, por personal administrativo que digitaliza, busca, versiona y audita expedientes. El sistema visual parte de ahí: un archivo bien llevado, donde cada cosa está en su sitio, con su folio y su estado a la vista. El azul marino del logo pone la firma institucional y el celeste marca la acción; todo lo demás es papel, tinta y renglón. La herramienta desaparece en la tarea: la consistencia pesa más que la sorpresa.\n\nLa densidad es de aplicación de trabajo, no de sitio de marketing. El cuerpo es de 14 px, las filas de tabla son compactas, los paneles son planos y bordeados, y la jerarquía viene del peso tipográfico y de la tinta (tres tonos de texto) antes que del color. Los datos llevan su contexto real: cifras tabulares, folios y hashes en monoespaciada, estados en insignias semánticas. Hay dos temas completos, claro y oscuro, que comparten las mismas variables semánticas; ninguna pantalla decide colores por su cuenta.\n\nEl único gesto expresivo de marca vive en la pantalla de acceso: un panel marino con renglones de archivo y dos láminas translúcidas giradas, como hojas apiladas. Dentro de la aplicación ese gesto no se repite; ahí manda la tarea.",
+    "keyCharacteristics": [
+      "Marino institucional para la firma (marca, avatar, acceso); celeste para la acción, el foco y el estado activo.",
+      "Superficies planas con borde de 1 px; la sombra queda solo para lo que flota (menús, diálogos, paneles laterales).",
+      "Escala tipográfica fija (ratio ~1,2) en IBM Plex Sans, nada por debajo de 12 px; IBM Plex Mono para folios, códigos y hashes.",
+      "Una sola familia de iconos de trazo (rejilla de 24, trazo 1,75, puntas redondeadas).",
+      "Modo claro y oscuro con las mismas variables semánticas, sin parpadeo al cargar."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic-Only Rule",
+        "body": "Las pantallas usan solo los colores semánticos (`bg-surface`, `text-ink-3`, `border-line`, `bg-accent`…). Nunca la paleta cruda de Tailwind ni hex sueltos. La única excepción son las clases que la base de datos entrega para etiquetas y avatares; esas se listan en `@source inline` y tienen su reasignación oscura en `styles.css`.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Blues Rule",
+        "body": "El marino firma, el celeste actúa. Un botón que ejecuta una tarea dentro de la aplicación es celeste; el marino queda para la identidad (acceso, avatar) y no compite con la acción.",
+        "section": "colors"
+      },
+      {
+        "name": "The Trio Rule",
+        "body": "Todo estado se expresa con su trío: sólido para la señal (icono, contador, barra), suave para el fondo, tinta para el texto. Nunca texto sólido sobre fondo suave del mismo color.",
+        "section": "colors"
+      },
+      {
+        "name": "The 12px Floor Rule",
+        "body": "Nada se compone por debajo de 12 px. La escala es fija (12 / 13 / 14 / 16 / 18 / 22 / 28); no hay tamaños fluidos ni intermedios.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Toda cifra que se compara (tablas, indicadores, contadores, tamaños) usa números tabulares.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono Means Data Rule",
+        "body": "La monoespaciada solo aparece en identificadores y códigos que el usuario lee, copia o teclea. No es una voz decorativa.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "Paneles, tablas, tarjetas de fila e indicadores no llevan sombra. Si algo necesita destacarse en reposo, se usa tinta, peso o un borde, nunca una sombra.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** usar solo los colores semánticos expuestos por `@theme inline`; así cada pantalla funciona en claro y oscuro sin código extra.",
+      "**Do** abrir cada pantalla de trabajo con el armazón barra lateral + barra superior + `main` a 1440 px y un `header` con título de página (22 px) y subtítulo en `ink-3`.",
+      "**Do** agrupar el contenido en paneles planos de 10 px con borde de 1 px y cabecera de 16 px semibold.",
+      "**Do** expresar los estados con su trío sólido / suave / tinta, en insignias y avisos.",
+      "**Do** escribir folios, formatos, hashes y códigos en IBM Plex Mono y las cifras con números tabulares.",
+      "**Do** usar iconos de `<app-icono>` y nada más; etiquetar los que van solos.",
+      "**Do** confirmar en línea o en diálogo toda acción destructiva, con el botón rojo sólido solo en la confirmación.",
+      "**Do** mantener el foco visible (2 px celeste) y respetar `prefers-reduced-motion`."
+    ],
+    "donts": [
+      "**Don't** usar la paleta cruda de Tailwind (`bg-blue-600`, `text-slate-500`) ni hex en plantillas; la única excepción son las clases que llegan de la base de datos.",
+      "**Don't** poner sombra a paneles, tablas o filas en reposo; `shadow-float` es solo para capas flotantes.",
+      "**Don't** componer texto por debajo de 12 px ni inventar tamaños fuera de la escala.",
+      "**Don't** usar el marino para acciones de trabajo dentro de la aplicación; el botón primario es celeste.",
+      "**Don't** usar el celeste del logo (`#009ddd`) como color de texto o de botón con texto blanco: no cumple AA. Se usa `accent`.",
+      "**Don't** mezclar otras familias de iconos, emojis o glifos de texto como iconos.",
+      "**Don't** llevar los renglones y láminas del panel de acceso a las pantallas de trabajo.",
+      "**Don't** mostrar cifras, gráficos o indicadores sin dato real detrás."
+    ]
+  }
+}

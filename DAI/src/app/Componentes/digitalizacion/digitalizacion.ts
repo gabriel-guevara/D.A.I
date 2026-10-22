@@ -6,6 +6,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { Icono } from '../ui/icono';
 import { ApiService, DocumentoSubido, MetadatosSubida, leerErrorApi } from '../../shared/api';
 import { UrlPdf, pareceUnPdf } from '../../shared/archivo-pdf';
 
@@ -22,7 +23,7 @@ interface Catalogos {
 @Component({
   selector: 'app-digitalizacion',
   standalone: true,
-  imports: [CommonModule, RouterLink, Barraizq, Navbar],
+  imports: [CommonModule, RouterLink, Barraizq, Navbar, Icono],
   templateUrl: './digitalizacion.html',
 })
 export class Digitalizacion {

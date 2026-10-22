@@ -7,6 +7,8 @@ import { AuthService } from '../../shared/auth';
 import { AltaDosPasos, ApiService, SegundoFactor } from '../../shared/api';
 import { Alta2fa } from '../../shared/alta-2fa';
 import { CodigosRecuperacion } from '../../shared/codigos-recuperacion';
+import { Icono } from '../ui/icono';
+import { Tema } from '../ui/tema';
 
 /**
  * Login en dos pasos con 2FA TOTP real:
@@ -23,10 +25,12 @@ const DIGITOS_VACIOS = ['', '', '', '', '', ''];
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, Alta2fa, CodigosRecuperacion],
+  imports: [CommonModule, FormsModule, Alta2fa, CodigosRecuperacion, Icono],
   templateUrl: './login.html',
+  styleUrl: './login.css',
 })
 export class Login implements OnDestroy {
+  tema = inject(Tema);
   private router = inject(Router);
   private auth = inject(AuthService);
   private api = inject(ApiService);

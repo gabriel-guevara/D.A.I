@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { Icono } from '../ui/icono';
 import { ApiService, CarpetaConRuta, SegmentoFragmento } from '../../shared/api';
 import { ubicacion } from '../biblioteca/arbol-carpetas';
 
@@ -45,7 +46,7 @@ interface SearchResult {
 @Component({
   selector: 'app-busqueda',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, Barraizq, Navbar],
+  imports: [CommonModule, FormsModule, RouterLink, Barraizq, Navbar, Icono],
   templateUrl: './busqueda.html',
 })
 export class Busqueda {
@@ -182,6 +183,6 @@ export class Busqueda {
 
   /** Clases del distintivo de origen: el texto de demostración se distingue a simple vista del real. */
   claseOrigen(origen: SearchResult['origenTexto']): string {
-    return origen === 'pdf' ? 'bg-emerald-50 text-emerald-700' : origen === 'manual' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600';
+    return origen === 'pdf' ? 'badge-ok' : origen === 'manual' ? 'badge-accent' : '';
   }
 }

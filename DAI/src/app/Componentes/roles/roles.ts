@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { Icono } from '../ui/icono';
 import { ApiService } from '../../shared/api';
 import { AuthService } from '../../shared/auth';
 
@@ -39,7 +40,7 @@ interface SecurityUser {
 @Component({
   selector: 'app-roles',
   standalone: true,
-  imports: [CommonModule, FormsModule, Barraizq, Navbar],
+  imports: [CommonModule, FormsModule, Barraizq, Navbar, Icono],
   templateUrl: './roles.html',
 })
 export class roles {

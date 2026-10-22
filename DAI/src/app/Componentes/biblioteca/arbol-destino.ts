@@ -1,6 +1,7 @@
 import { Component, computed, input, model, signal } from '@angular/core';
 import type { CarpetaPlana } from '../../shared/api';
 import { FilaArbol, filasArbol } from './arbol-carpetas';
+import { Icono } from '../ui/icono';
 
 let siguienteId = 0;
 
@@ -14,29 +15,31 @@ let siguienteId = 0;
 @Component({
   selector: 'app-arbol-destino',
   standalone: true,
+  imports: [Icono],
   template: `
-    <div class="border border-slate-200 rounded-lg max-h-72 overflow-y-auto py-1" role="radiogroup" [attr.aria-label]="etiqueta()">
+    <div class="border border-line rounded-lg bg-surface max-h-72 overflow-y-auto p-1" role="radiogroup" [attr.aria-label]="etiqueta()">
       @for (f of filas(); track f.id ?? 'raiz') {
-        <div class="flex items-center gap-1 pr-2 py-0.5" [style.padding-left.px]="8 + f.nivel * 18"
-          [class.bg-blue-50]="seleccion() === f.id">
+        <div class="flex items-center gap-1 pr-2 rounded-md transition-colors" [style.padding-left.px]="4 + f.nivel * 18"
+          [class]="seleccion() === f.id ? 'bg-accent-soft' : 'hover:bg-sunken'">
           @if (f.tieneHijas && f.id) {
-            <button type="button" (click)="plegar(f.id)" class="w-5 h-5 shrink-0 rounded text-[12px] text-slate-500 hover:bg-slate-100"
+            <button type="button" (click)="plegar(f.id)" class="w-6 h-6 shrink-0 grid place-items-center rounded text-ink-3 hover:bg-surface-2 hover:text-ink"
               [attr.aria-expanded]="!f.plegada" [attr.aria-label]="(f.plegada ? 'Mostrar' : 'Ocultar') + ' las subcarpetas de ' + f.nombre">
-              {{ f.plegada ? '▸' : '▾' }}
+              <app-icono [nombre]="f.plegada ? 'chevron-derecha' : 'chevron-abajo'" [tamano]="14" />
             </button>
           } @else {
-            <span class="w-5 shrink-0"></span>
+            <span class="w-6 shrink-0"></span>
           }
-          <label class="flex-1 min-w-0 flex items-center gap-2 text-[13px] py-1"
-            [class]="f.deshabilitada ? 'text-slate-400 cursor-not-allowed' : 'text-slate-700 cursor-pointer'">
+          <label class="flex-1 min-w-0 flex items-center gap-2 text-base py-1.5"
+            [class]="f.deshabilitada ? 'text-ink-3 opacity-70 cursor-not-allowed' : 'text-ink cursor-pointer'">
             <input type="radio" [name]="nombreGrupo" class="shrink-0" [checked]="seleccion() === f.id" [disabled]="f.deshabilitada"
               (change)="seleccion.set(f.id)" [attr.aria-describedby]="f.motivo ? nombreGrupo + '-' + (f.id ?? 'raiz') : null" />
-            <span class="truncate">{{ f.id ? '📁' : '🏠' }} {{ f.nombre }}</span>
+            <app-icono [nombre]="f.id ? 'carpeta' : 'casa'" [tamano]="16" [class]="f.deshabilitada ? '' : 'text-accent'" />
+            <span class="truncate">{{ f.nombre }}</span>
             @if (f.id === actual()) {
-              <span class="text-[12px] text-slate-400 shrink-0">(ubicación actual)</span>
+              <span class="text-xs text-ink-3 shrink-0">(ubicación actual)</span>
             }
             @if (f.motivo) {
-              <span class="text-[12px] text-slate-400 shrink-0" [id]="nombreGrupo + '-' + (f.id ?? 'raiz')">— {{ f.motivo }}</span>
+              <span class="text-xs text-ink-3 shrink-0" [id]="nombreGrupo + '-' + (f.id ?? 'raiz')">— {{ f.motivo }}</span>
             }
           </label>
         </div>

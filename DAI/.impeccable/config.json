@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/styles.css"
+        ],
+        "createdAt": "2026-10-22T20:01:38.480Z",
+        "reason": "Claude: L16 is the @source inline safelist of DB-provided classes, not rendered styling"
+      }
+    ]
+  }
+}

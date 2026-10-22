@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { Icono, NombreIcono } from '../ui/icono';
 import { ApiService, CategoriaNotificacion } from '../../shared/api';
 import { NotificacionesEstado } from '../../shared/notificaciones-estado';
 
@@ -18,6 +19,16 @@ export const ETIQUETA_CATEGORIA: Record<CategoriaNotificacion, string> = {
   edicion: 'Carpetas y Movimientos',
   version: 'Nuevas Versiones',
   eliminado: 'Eliminados / Papelera',
+};
+
+/** Icono de cada categoría (solo presentación). */
+export const ICONO_CATEGORIA: Record<CategoriaNotificacion, NombreIcono> = {
+  seguridad: 'escudo',
+  solicitud: 'mover',
+  consulta: 'ojo',
+  edicion: 'carpeta',
+  version: 'versiones',
+  eliminado: 'papelera',
 };
 
 const CADA_MS = 5000;
@@ -46,11 +57,12 @@ interface Notification {
 @Component({
   selector: 'app-notificaciones',
   standalone: true,
-  imports: [CommonModule, Barraizq, Navbar],
+  imports: [CommonModule, Barraizq, Navbar, Icono],
   templateUrl: './notificaciones.html',
 })
 export class Notificaciones {
   activeTab = signal<NotifCategory>('todas');
+  readonly iconoCategoria = ICONO_CATEGORIA;
 
   private api = inject(ApiService);
   private router = inject(Router);

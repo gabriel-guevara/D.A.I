@@ -13,12 +13,12 @@ type ModuloQr = typeof import('./qr');
   template: `
     @if (qr(); as q) {
       <svg [attr.viewBox]="'0 0 ' + q.lado + ' ' + q.lado" [attr.width]="tamano()" [attr.height]="tamano()"
-        shape-rendering="crispEdges" role="img" [attr.aria-label]="etiqueta()" class="bg-white rounded-lg border border-slate-200">
+        shape-rendering="crispEdges" role="img" [attr.aria-label]="etiqueta()" class="bg-white rounded-lg border border-line">
         <rect [attr.width]="q.lado" [attr.height]="q.lado" fill="#ffffff"></rect>
         <path [attr.d]="q.d" fill="#0f172a"></path>
       </svg>
     } @else {
-      <div class="flex items-center justify-center text-[12px] text-slate-400 bg-slate-50 rounded-lg border border-slate-200"
+      <div class="skeleton flex items-center justify-center text-xs text-ink-3 border border-line"
         [style.width.px]="tamano()" [style.height.px]="tamano()">Generando QR…</div>
     }
   `,

@@ -1,168 +1,191 @@
-<div class="min-h-screen bg-slate-50 flex">
+<div class="min-h-screen bg-canvas flex">
   <app-barraizq active="dashboard"></app-barraizq>
 
   <div class="flex-1 flex flex-col min-w-0">
     <app-navbar></app-navbar>
 
-    <main class="flex-1 overflow-y-auto p-6 space-y-6">
-      <!-- Banner de bienvenida: datos REALES de la sesión -->
-      <div class="rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 text-white p-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 class="text-2xl font-bold">Hola, {{ auth.currentUser()?.name }}</h1>
-          <p class="text-sm text-cyan-50 mt-1">
-            {{ auth.currentUser()?.role }}@if (auth.currentUser()?.nivel) { · {{ auth.currentUser()?.nivel }} }
-          </p>
-        </div>
-      </div>
+    <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div class="mx-auto max-w-[1440px] space-y-6">
 
-      <!-- Acciones rápidas -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        @if (puedeSubir()) {
-        <button (click)="goToDigitalizacion()" class="bg-white rounded-xl border border-slate-200 p-4 text-left hover:shadow-md transition-shadow">
-          <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 8.25 12 3.75 7.5 8.25M12 3.75v12" />
-            </svg>
+        <!-- Encabezado: datos REALES de la sesión -->
+        <header class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-semibold text-ink">Hola, {{ auth.currentUser()?.name }}</h1>
+            <p class="text-base text-ink-3 mt-1">
+              {{ auth.currentUser()?.role }}@if (auth.currentUser()?.nivel) { · {{ auth.currentUser()?.nivel }} }
+            </p>
+            <p class="text-sm text-ink-3 mt-0.5 flex items-center gap-1.5">
+              <app-icono nombre="calendario" [tamano]="14" />
+              <span class="first-letter:uppercase">{{ hoy }}</span>
+            </p>
           </div>
-          <p class="text-sm font-semibold text-slate-800">Subir Documento</p>
-          <p class="text-xs text-slate-400 mt-0.5">Digitalización de archivos físicos</p>
-        </button>
-        }
 
-        <button (click)="gotoBusqueda()" class="bg-white rounded-xl border border-slate-200 p-4 text-left hover:shadow-md transition-shadow">
-          <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.34-4.34M18 10.5a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
-            </svg>
-          </div>
-          <p class="text-sm font-semibold text-slate-800">Búsqueda Inteligente</p>
-          <p class="text-xs text-slate-400 mt-0.5">Busqueda de documentos, folios y metadatos</p>
-        </button>
-
-
-        <button (click)="goToNotificaciones()" class="bg-white rounded-xl border border-slate-200 p-4 text-left hover:shadow-md transition-shadow">
-          <div class="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-            </svg>
-          </div>
-          <p class="text-sm font-semibold text-slate-800">Notificaciones</p>
-          <p class="text-xs text-slate-400 mt-0.5">Notificaciones importantes</p>
-        </button>
-      </div>
-
-      @if (error()) {
-        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5" role="alert">{{ error() }}</div>
-      }
-
-      <!-- Indicadores reales de documentos (según su nivel de acceso) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        @for (s of indicadores(); track s.label) {
-          <div class="bg-white rounded-xl border border-slate-200 p-4">
-            <p class="text-xs text-slate-400">{{ s.label }}</p>
-            <p class="text-2xl font-bold mt-1" [ngClass]="s.accent">{{ s.value }}</p>
-            <p class="text-[12px] text-slate-500 mt-0.5">{{ s.sub }}</p>
-          </div>
-        }
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Documentos recientes -->
-        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <p class="text-[14px] text-slate-900 font-bold">Documentos actualizados recientemente</p>
-            <button (click)="goToBiblioteca()" class="text-xs text-blue-600 font-medium hover:underline">Ir a Biblioteca →</button>
-          </div>
-          <div class="divide-y divide-slate-100">
-            @for (doc of documents(); track doc.id) {
-              <button (click)="openDocument(doc.id)" class="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-slate-50 transition-colors">
-                <div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 text-[10px] font-semibold shrink-0">
-                  {{ doc.formato.toUpperCase() }}
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-slate-700 truncate">{{ doc.name }}</p>
-                  <p class="text-xs text-slate-400">{{ doc.user }} · {{ doc.time }}</p>
-                </div>
-                <span class="text-[10px] font-semibold rounded-full px-2 py-0.5 shrink-0" [ngClass]="doc.categoryColor">{{ doc.category }}</span>
-                <span class="text-xs text-slate-400 w-16 text-right shrink-0">{{ doc.size }}</span>
-              </button>
-            } @empty {
-              <p class="px-5 py-6 text-sm text-slate-400">{{ datos() ? 'No hay documentos visibles para su nivel.' : 'Cargando…' }}</p>
+          <!-- Acciones rápidas -->
+          <nav class="flex flex-wrap gap-2" aria-label="Acciones rápidas">
+            @if (puedeSubir()) {
+            <button type="button" (click)="goToDigitalizacion()" class="btn btn-primary h-10" title="Digitalización de archivos físicos">
+              <app-icono nombre="subir" [tamano]="17" />
+              Subir Documento
+            </button>
             }
-          </div>
-        </div>
+            <button type="button" (click)="gotoBusqueda()" class="btn btn-secondary h-10" title="Busqueda de documentos, folios y metadatos">
+              <app-icono nombre="buscar" [tamano]="17" class="text-accent" />
+              Búsqueda Inteligente
+            </button>
+            <button type="button" (click)="goToNotificaciones()" class="btn btn-secondary h-10" title="Notificaciones importantes">
+              <app-icono nombre="notificacion" [tamano]="17" class="text-accent" />
+              Notificaciones
+            </button>
+          </nav>
+        </header>
 
-        <!-- Reparto real por departamento y por formato -->
-        <div class="space-y-4">
-          <div class="bg-white rounded-xl border border-slate-200 p-5">
-            <p class="text-[14px] text-slate-900 font-bold mb-3">Por departamento</p>
-            <ul class="space-y-2">
-              @for (d of datos()?.porDepartamento ?? []; track d.nombre) {
-                <li class="text-[12px]">
-                  <div class="flex justify-between text-slate-600"><span class="truncate">{{ d.nombre }}</span><span class="font-semibold">{{ d.total }}</span></div>
-                  <div class="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                    <div class="h-full bg-blue-500 rounded-full" [style.width.%]="porcentaje(d.total)"></div>
-                  </div>
-                </li>
-              } @empty {
-                <li class="text-[12px] text-slate-400">Sin datos.</li>
-              }
-            </ul>
+        @if (error()) {
+          <div class="alert alert-danger" role="alert">
+            <app-icono nombre="alerta" [tamano]="17" class="mt-0.5" />
+            <span>{{ error() }}</span>
           </div>
-          <div class="bg-white rounded-xl border border-slate-200 p-5">
-            <p class="text-[14px] text-slate-900 font-bold mb-3">Por formato</p>
-            <ul class="space-y-2">
-              @for (f of datos()?.porFormato ?? []; track f.formato) {
-                <li class="text-[12px]">
-                  <div class="flex justify-between text-slate-600"><span>{{ etiquetaFormato(f.formato) }}</span><span class="font-semibold">{{ f.total }}</span></div>
-                  <div class="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                    <div class="h-full bg-indigo-500 rounded-full" [style.width.%]="porcentaje(f.total)"></div>
-                  </div>
-                </li>
-              } @empty {
-                <li class="text-[12px] text-slate-400">Sin datos.</li>
-              }
-            </ul>
-          </div>
-        </div>
-      </div>
+        }
 
-      <!-- Almacenamiento REAL: solo Super Administrador y Oficial de Cumplimiento (el servidor no lo envía a los demás) -->
-      @if (datos()?.almacenamiento; as a) {
-        <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-3" aria-label="Almacenamiento">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <p class="text-[14px] text-slate-900 font-bold">Almacenamiento de archivos originales</p>
-            <span class="text-[12px] font-medium rounded-full px-2.5 py-1"
-              [ngClass]="a.cifradoEnReposo ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'">
-              {{ a.driver === 'r2' ? 'Cloudflare R2' : 'Disco local (desarrollo)' }}
-            </span>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-[12px]">
-            <div>
-              <p class="text-slate-400">Espacio usado</p>
-              <p class="text-2xl font-bold text-slate-800">{{ a.usado }}</p>
-              <p class="text-slate-500">{{ a.cuota ? 'de ' + a.cuota + ' · ' + a.porcentaje + ' %' : 'Sin cuota configurada' }}</p>
+        <!-- Indicadores reales de documentos (según su nivel de acceso): una sola franja, separada por divisores -->
+        @if (indicadores().length || !error()) {
+        <section class="panel overflow-hidden grid grid-cols-2 lg:grid-cols-4 gap-px bg-line" aria-label="Indicadores">
+          @for (s of indicadores(); track s.label) {
+            <div class="bg-surface px-5 py-4">
+              <p class="text-sm font-medium text-ink-3">{{ s.label }}</p>
+              <p class="text-2xl font-semibold tabular mt-1.5" [ngClass]="s.accent">{{ s.value }}</p>
+              <p class="text-sm text-ink-3 mt-0.5">{{ s.sub }}</p>
             </div>
-            <div>
-              <p class="text-slate-400">Archivos guardados</p>
-              <p class="text-2xl font-bold text-slate-800">{{ n(a.objetos) }}</p>
-              <p class="text-slate-500">Incluye todas las versiones</p>
-            </div>
-            <div>
-              <p class="text-slate-400">En la papelera</p>
-              <p class="text-2xl font-bold text-slate-800">{{ a.papelera.usado }}</p>
-              <p class="text-slate-500">{{ a.papelera.documentos }} {{ a.papelera.documentos === 1 ? 'documento' : 'documentos' }} (hasta su purga)</p>
-            </div>
-          </div>
-          @if (a.porcentaje !== null) {
-            <div class="h-2 bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-label="Uso de la cuota"
-              [attr.aria-valuenow]="a.porcentaje" aria-valuemin="0" aria-valuemax="100">
-              <div class="h-full bg-indigo-500" [style.width.%]="a.porcentaje"></div>
-            </div>
+          } @empty {
+            @for (i of [1, 2, 3, 4]; track i) {
+              <div class="bg-surface px-5 py-4 space-y-2" aria-hidden="true">
+                <div class="skeleton h-4 w-28"></div>
+                <div class="skeleton h-7 w-16"></div>
+                <div class="skeleton h-3.5 w-32"></div>
+              </div>
+            }
           }
-          <p class="text-[12px] text-slate-600">{{ a.cifrado }}</p>
         </section>
-      }
+        }
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <!-- Documentos recientes -->
+          <section class="xl:col-span-2 panel overflow-hidden">
+            <div class="panel-header">
+              <h2 class="panel-title">Documentos actualizados recientemente</h2>
+              <button type="button" (click)="goToBiblioteca()" class="btn btn-ghost btn-sm text-accent-ink">
+                Ir a Biblioteca
+                <app-icono nombre="flecha-derecha" [tamano]="15" />
+              </button>
+            </div>
+            <ul class="divide-y divide-line">
+              @for (doc of documents(); track doc.id) {
+                <li>
+                  <button type="button" (click)="openDocument(doc.id)" class="group w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-sunken transition-colors">
+                    <span class="w-10 h-10 shrink-0 rounded-md bg-surface-2 border border-line grid place-items-center text-ink-3 group-hover:text-accent transition-colors">
+                      <app-icono nombre="documento" [tamano]="18" />
+                    </span>
+                    <span class="flex-1 min-w-0">
+                      <span class="block text-base font-medium text-ink truncate">{{ doc.name }}</span>
+                      <span class="block text-sm text-ink-3 truncate">{{ doc.user }} · {{ doc.time }}</span>
+                    </span>
+                    <span class="hidden sm:inline code text-xs text-ink-3 w-12 text-center shrink-0">{{ doc.formato.toUpperCase() }}</span>
+                    <span class="badge shrink-0 border-transparent" [ngClass]="doc.categoryColor">{{ doc.category }}</span>
+                    <span class="hidden md:inline text-sm text-ink-3 w-16 text-right shrink-0 tabular">{{ doc.size }}</span>
+                  </button>
+                </li>
+              } @empty {
+                @if (datos()) {
+                  <li class="empty">
+                    <span class="empty-icon"><app-icono nombre="documento" /></span>
+                    <p>No hay documentos visibles para su nivel.</p>
+                  </li>
+                } @else {
+                  @for (i of [1, 2, 3, 4]; track i) {
+                    <li class="flex items-center gap-3 px-5 py-3" aria-hidden="true">
+                      <div class="skeleton w-10 h-10"></div>
+                      <div class="flex-1 space-y-1.5"><div class="skeleton h-4 w-2/3"></div><div class="skeleton h-3 w-1/3"></div></div>
+                    </li>
+                  }
+                  <li class="sr-only">Cargando…</li>
+                }
+              }
+            </ul>
+          </section>
+
+          <!-- Reparto real por departamento y por formato -->
+          <div class="space-y-6">
+            <section class="panel p-5">
+              <h2 class="panel-title mb-4">Por departamento</h2>
+              <ul class="space-y-3">
+                @for (d of datos()?.porDepartamento ?? []; track d.nombre) {
+                  <li class="text-sm">
+                    <div class="flex justify-between gap-3 text-ink-2"><span class="truncate">{{ d.nombre }}</span><span class="font-semibold text-ink tabular">{{ d.total }}</span></div>
+                    <div class="meter mt-1.5"><span [style.width.%]="porcentaje(d.total)"></span></div>
+                  </li>
+                } @empty {
+                  <li class="text-sm text-ink-3">Sin datos.</li>
+                }
+              </ul>
+            </section>
+            <section class="panel p-5">
+              <h2 class="panel-title mb-4">Por formato</h2>
+              <ul class="space-y-3">
+                @for (f of datos()?.porFormato ?? []; track f.formato) {
+                  <li class="text-sm">
+                    <div class="flex justify-between gap-3 text-ink-2"><span>{{ etiquetaFormato(f.formato) }}</span><span class="font-semibold text-ink tabular">{{ f.total }}</span></div>
+                    <div class="meter mt-1.5"><span class="!bg-brand-ink" [style.width.%]="porcentaje(f.total)"></span></div>
+                  </li>
+                } @empty {
+                  <li class="text-sm text-ink-3">Sin datos.</li>
+                }
+              </ul>
+            </section>
+          </div>
+        </div>
+
+        <!-- Almacenamiento REAL: solo Super Administrador y Oficial de Cumplimiento (el servidor no lo envía a los demás) -->
+        @if (datos()?.almacenamiento; as a) {
+          <section class="panel" aria-label="Almacenamiento">
+            <div class="panel-header flex-wrap">
+              <h2 class="panel-title flex items-center gap-2">
+                <app-icono nombre="almacenamiento" [tamano]="18" class="text-ink-3" />
+                Almacenamiento de archivos originales
+              </h2>
+              <span class="badge" [ngClass]="a.cifradoEnReposo ? 'badge-ok' : 'badge-warn'">
+                <app-icono [nombre]="a.cifradoEnReposo ? 'candado' : 'alerta'" [tamano]="13" />
+                {{ a.driver === 'r2' ? 'Cloudflare R2' : 'Disco local (desarrollo)' }}
+              </span>
+            </div>
+            <div class="p-5 space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 text-sm">
+                <div>
+                  <p class="text-ink-3 font-medium">Espacio usado</p>
+                  <p class="text-2xl font-semibold text-ink tabular mt-1">{{ a.usado }}</p>
+                  <p class="text-ink-3">{{ a.cuota ? 'de ' + a.cuota + ' · ' + a.porcentaje + ' %' : 'Sin cuota configurada' }}</p>
+                </div>
+                <div>
+                  <p class="text-ink-3 font-medium">Archivos guardados</p>
+                  <p class="text-2xl font-semibold text-ink tabular mt-1">{{ n(a.objetos) }}</p>
+                  <p class="text-ink-3">Incluye todas las versiones</p>
+                </div>
+                <div>
+                  <p class="text-ink-3 font-medium">En la papelera</p>
+                  <p class="text-2xl font-semibold text-ink tabular mt-1">{{ a.papelera.usado }}</p>
+                  <p class="text-ink-3">{{ a.papelera.documentos }} {{ a.papelera.documentos === 1 ? 'documento' : 'documentos' }} (hasta su purga)</p>
+                </div>
+              </div>
+              @if (a.porcentaje !== null) {
+                <div class="meter h-2" role="progressbar" aria-label="Uso de la cuota"
+                  [attr.aria-valuenow]="a.porcentaje" aria-valuemin="0" aria-valuemax="100">
+                  <span [style.width.%]="a.porcentaje"
+                    [ngClass]="a.porcentaje >= 90 ? '!bg-danger' : a.porcentaje >= 75 ? '!bg-warn' : ''"></span>
+                </div>
+              }
+              <p class="text-sm text-ink-2">{{ a.cifrado }}</p>
+            </div>
+          </section>
+        }
+      </div>
     </main>
   </div>
 </div>

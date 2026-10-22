@@ -1,111 +1,117 @@
-<div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-  <div class="flex items-center gap-2">
-    <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/time-machine.png" alt="" />
-    <p class="text-sm font-semibold text-slate-800">Historial de versiones</p>
+<section class="panel">
+  <div class="panel-header">
+    <h2 class="panel-title flex items-center gap-2">
+      <app-icono nombre="versiones" [tamano]="17" class="text-ink-3" />
+      Historial de versiones
+    </h2>
   </div>
 
-  @if (aviso()) {
-    <p class="text-[12px] rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 px-2.5 py-1.5" role="status">{{ aviso() }}</p>
-  }
+  <div class="p-5 space-y-3">
+    @if (aviso()) {
+      <p class="alert alert-ok text-sm" role="status">{{ aviso() }}</p>
+    }
 
-  @if (cargando() && !historial()) {
-    <p class="text-xs text-slate-400">Cargando versiones…</p>
-  } @else if (error()) {
-    <p class="text-xs text-red-600" role="alert">
-      {{ error() }} <button (click)="cargar()" class="underline">Reintentar</button>
-    </p>
-  } @else if (historial(); as h) {
-    <ol class="space-y-2.5">
-      @for (v of h.versiones; track v.id) {
-        <li class="rounded-lg border p-2.5" [ngClass]="v.actual ? 'border-blue-200 bg-blue-50/40' : 'border-slate-100'">
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-[13px] font-bold text-slate-800">{{ v.version }}</span>
-            @if (v.actual) {
-              <span class="text-[11px] font-semibold rounded-full px-2 py-0.5 bg-blue-100 text-blue-700">Actual</span>
-            }
-          </div>
-          <p class="text-[12px] text-slate-500">{{ v.fecha }} · {{ v.autor }}</p>
-          @if (v.comentario) {
-            <p class="text-[12px] text-slate-700 mt-0.5 break-words">{{ v.comentario }}</p>
-          }
-          @if (v.tieneArchivo) {
-            <p class="text-[11px] text-slate-400 mt-0.5">
-              {{ v.tamano }}{{ v.paginas ? ' · ' + v.paginas + (v.paginas === 1 ? ' página' : ' páginas') : '' }}
-              · <span class="font-mono" [title]="v.hash ?? ''">SHA-256 {{ v.hashCorto }}</span>
-            </p>
-            <div class="flex flex-wrap gap-1.5 mt-1.5">
-              <button (click)="verVersion(v)" [disabled]="ocupada() !== null"
-                class="text-[12px] rounded-lg px-2 py-1 border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50">
-                {{ ocupada() === v.id && !confirmarRestaurar() ? 'Cargando…' : 'Ver' }}
-              </button>
-              <button (click)="descargar(v)" [disabled]="ocupada() !== null"
-                class="text-[12px] rounded-lg px-2 py-1 border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50">
-                Descargar
-              </button>
-              @if (puedeGestionar() && !v.actual) {
-                <button (click)="pedirRestaurar(v)" [disabled]="ocupada() !== null"
-                  class="text-[12px] rounded-lg px-2 py-1 border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50">
-                  Restaurar como actual
-                </button>
+    @if (cargando() && !historial()) {
+      <div class="space-y-2" aria-hidden="true"><div class="skeleton h-16"></div><div class="skeleton h-16"></div></div>
+      <p class="sr-only">Cargando versiones…</p>
+    } @else if (error()) {
+      <p class="text-sm text-danger" role="alert">
+        {{ error() }} <button type="button" (click)="cargar()" class="underline font-medium">Reintentar</button>
+      </p>
+    } @else if (historial(); as h) {
+      <ol class="space-y-2">
+        @for (v of h.versiones; track v.id) {
+          <li class="rounded-lg border p-3" [ngClass]="v.actual ? 'border-accent/40 bg-accent-soft/50' : 'border-line'">
+            <div class="flex items-center justify-between gap-2">
+              <span class="code text-base font-semibold text-ink">{{ v.version }}</span>
+              @if (v.actual) {
+                <span class="badge badge-accent">Actual</span>
               }
             </div>
-          } @else {
-            <p class="text-[11px] text-slate-400 mt-0.5">Registro histórico sin archivo original</p>
-          }
-
-          @if (confirmarRestaurar()?.id === v.id) {
-            <div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[12px] text-amber-900" role="alertdialog" aria-label="Confirmar restauración">
-              <p>¿Hacer de la {{ v.version }} la versión actual? La {{ h.versionActual }} se conserva en el historial.</p>
-              <div class="flex gap-2 mt-1.5">
-                <button (click)="restaurar()" [disabled]="ocupada() !== null"
-                  class="font-semibold rounded-lg px-2.5 py-1 bg-blue-700 hover:bg-blue-800 text-white disabled:opacity-50">
-                  {{ ocupada() === v.id ? 'Restaurando…' : 'Sí, restaurar' }}
+            <p class="text-sm text-ink-3">{{ v.fecha }} · {{ v.autor }}</p>
+            @if (v.comentario) {
+              <p class="text-sm text-ink-2 mt-1 break-words">{{ v.comentario }}</p>
+            }
+            @if (v.tieneArchivo) {
+              <p class="text-xs text-ink-3 mt-1 tabular">
+                {{ v.tamano }}{{ v.paginas ? ' · ' + v.paginas + (v.paginas === 1 ? ' página' : ' páginas') : '' }}
+                · <span class="code" [title]="v.hash ?? ''">SHA-256 {{ v.hashCorto }}</span>
+              </p>
+              <div class="flex flex-wrap gap-1.5 mt-2">
+                <button type="button" (click)="verVersion(v)" [disabled]="ocupada() !== null" class="btn btn-secondary btn-sm">
+                  <app-icono nombre="ojo" [tamano]="14" />
+                  {{ ocupada() === v.id && !confirmarRestaurar() ? 'Cargando…' : 'Ver' }}
                 </button>
-                <button (click)="confirmarRestaurar.set(null)" class="rounded-lg px-2.5 py-1 border border-amber-300 hover:bg-amber-100">Cancelar</button>
+                <button type="button" (click)="descargar(v)" [disabled]="ocupada() !== null" class="btn btn-secondary btn-sm">
+                  <app-icono nombre="descargar" [tamano]="14" />
+                  Descargar
+                </button>
+                @if (puedeGestionar() && !v.actual) {
+                  <button type="button" (click)="pedirRestaurar(v)" [disabled]="ocupada() !== null" class="btn btn-ghost btn-sm text-accent-ink">
+                    <app-icono nombre="restaurar" [tamano]="14" />
+                    Restaurar como actual
+                  </button>
+                }
               </div>
+            } @else {
+              <p class="text-xs text-ink-3 mt-1">Registro histórico sin archivo original</p>
+            }
+
+            @if (confirmarRestaurar()?.id === v.id) {
+              <div class="alert alert-warn text-sm mt-2 block" role="alertdialog" aria-label="Confirmar restauración">
+                <p>¿Hacer de la {{ v.version }} la versión actual? La {{ h.versionActual }} se conserva en el historial.</p>
+                <div class="flex gap-2 mt-2">
+                  <button type="button" (click)="restaurar()" [disabled]="ocupada() !== null" class="btn btn-primary btn-sm">
+                    {{ ocupada() === v.id ? 'Restaurando…' : 'Sí, restaurar' }}
+                  </button>
+                  <button type="button" (click)="confirmarRestaurar.set(null)" class="btn btn-secondary btn-sm">Cancelar</button>
+                </div>
+              </div>
+            }
+            @if (errorVersion()?.id === v.id) {
+              <p class="text-sm text-danger mt-1" role="alert">{{ errorVersion()?.mensaje }}</p>
+            }
+          </li>
+        }
+      </ol>
+
+      @if (puedeGestionar()) {
+        <form class="border-t border-line pt-4 mt-2 space-y-3" (submit)="$event.preventDefault(); subir(entrada)">
+          <p class="text-base font-semibold text-ink">Subir nueva versión</p>
+          <div>
+            <span class="label">Archivo PDF</span>
+            <!-- El selector nativo muestra textos del idioma del navegador ("Choose File"): se oculta y se usa un botón propio -->
+            <input #entrada id="archivo-version" type="file" accept="application/pdf,.pdf" class="sr-only peer"
+              (change)="elegirArchivo($event)" [disabled]="subiendo()" />
+            <label for="archivo-version"
+              class="flex items-center gap-2 cursor-pointer text-sm text-ink-2 peer-focus-visible:outline-2 peer-focus-visible:outline-accent rounded-md">
+              <span class="btn btn-secondary btn-sm shrink-0">
+                <app-icono nombre="subir" [tamano]="14" />
+                Elegir PDF
+              </span>
+              <span class="truncate" [class.text-ink-3]="!archivo()">{{ archivo()?.name ?? 'Ningún archivo seleccionado' }}</span>
+            </label>
+          </div>
+          <label class="block">
+            <span class="label">¿Qué cambia en esta versión?</span>
+            <textarea rows="2" [maxlength]="maxComentario" [ngModel]="comentario()" (ngModelChange)="comentario.set($event)"
+              name="comentario" [disabled]="subiendo()" placeholder="Ej.: Ajuste de la cláusula 7 tras revisión jurídica"
+              class="textarea"></textarea>
+          </label>
+          @if (subiendo()) {
+            <div class="meter" role="progressbar" [attr.aria-valuenow]="progreso()" aria-valuemin="0" aria-valuemax="100">
+              <span [style.width.%]="progreso()"></span>
             </div>
           }
-          @if (errorVersion()?.id === v.id) {
-            <p class="text-[12px] text-red-600 mt-1" role="alert">{{ errorVersion()?.mensaje }}</p>
+          @if (errorSubida()) {
+            <p class="text-sm text-danger" role="alert">{{ errorSubida() }}</p>
           }
-        </li>
+          <button type="submit" [disabled]="!archivo() || !comentarioValido() || subiendo()" class="btn btn-primary w-full">
+            {{ subiendo() ? 'Subiendo… ' + progreso() + ' %' : 'Subir versión' }}
+          </button>
+          <p class="text-xs text-ink-3">Las versiones anteriores se conservan. La búsqueda usará el texto de la nueva.</p>
+        </form>
       }
-    </ol>
-
-    @if (puedeGestionar()) {
-      <form class="border-t border-slate-100 pt-3 space-y-2" (submit)="$event.preventDefault(); subir(entrada)">
-        <p class="text-[14px] text-slate-900 font-bold">Subir nueva versión</p>
-        <div>
-          <span class="block text-[12px] text-slate-600">Archivo PDF</span>
-          <!-- El selector nativo muestra textos del idioma del navegador ("Choose File"): se oculta y se usa un botón propio -->
-          <input #entrada id="archivo-version" type="file" accept="application/pdf,.pdf" class="sr-only"
-            (change)="elegirArchivo($event)" [disabled]="subiendo()" />
-          <label for="archivo-version"
-            class="mt-1 flex items-center gap-2 cursor-pointer text-[12px] text-slate-600">
-            <span class="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-medium hover:bg-slate-100">Elegir PDF</span>
-            <span class="truncate" [class.text-slate-400]="!archivo()">{{ archivo()?.name ?? 'Ningún archivo seleccionado' }}</span>
-          </label>
-        </div>
-        <label class="block">
-          <span class="block text-[12px] text-slate-600">¿Qué cambia en esta versión?</span>
-          <textarea rows="2" [maxlength]="maxComentario" [ngModel]="comentario()" (ngModelChange)="comentario.set($event)"
-            name="comentario" [disabled]="subiendo()" placeholder="Ej.: Ajuste de la cláusula 7 tras revisión jurídica"
-            class="mt-1 w-full px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-        </label>
-        @if (subiendo()) {
-          <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden" role="progressbar" [attr.aria-valuenow]="progreso()" aria-valuemin="0" aria-valuemax="100">
-            <div class="h-full bg-blue-600 transition-all" [style.width.%]="progreso()"></div>
-          </div>
-        }
-        @if (errorSubida()) {
-          <p class="text-[12px] text-red-600" role="alert">{{ errorSubida() }}</p>
-        }
-        <button type="submit" [disabled]="!archivo() || !comentarioValido() || subiendo()"
-          class="text-[13px] font-semibold rounded-lg px-3 py-1.5 bg-blue-900 hover:bg-blue-950 text-white disabled:opacity-40">
-          {{ subiendo() ? 'Subiendo… ' + progreso() + ' %' : 'Subir versión' }}
-        </button>
-        <p class="text-[11px] text-slate-400">Las versiones anteriores se conservan. La búsqueda usará el texto de la nueva.</p>
-      </form>
     }
-  }
-</div>
+  </div>
+</section>

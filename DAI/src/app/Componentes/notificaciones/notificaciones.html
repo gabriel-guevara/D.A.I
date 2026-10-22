@@ -1,99 +1,114 @@
-<div class="min-h-screen bg-slate-50 flex">
+<div class="min-h-screen bg-canvas flex">
   <app-barraizq active="notificaciones"></app-barraizq>
 
   <div class="flex-1 flex flex-col min-w-0">
     <app-navbar></app-navbar>
 
-    <main class="flex-1 overflow-y-auto p-6 space-y-5">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 class="text-2xl font-bold text-slate-800">Centro de Notificaciones y Auditoría en Tiempo Real</h1>
-          <p class="text-sm text-slate-500 mt-1">
-            Registro inmediato de cambios sobre documentos, ciclo de vida, aprobaciones y
-            alertas de seguridad del sistema.
-          </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2 text-xs shrink-0">
-          <button (click)="markAllAsRead()"
-            class="flex justify-center items-center gap-2 border border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-300">
-            <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 24 24">
-              <path
-                d="M 20.292969 5.2929688 L 9 16.585938 L 4.7070312 12.292969 L 3.2929688 13.707031 L 9 19.414062 L 21.707031 6.7070312 L 20.292969 5.2929688 z">
-              </path>
-            </svg>
+    <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div class="mx-auto max-w-[1440px] space-y-6">
+
+        <header class="flex flex-wrap items-end justify-between gap-4">
+          <div class="max-w-3xl">
+            <h1 class="page-title">Centro de Notificaciones y Auditoría en Tiempo Real</h1>
+            <p class="page-sub">
+              Registro inmediato de cambios sobre documentos, ciclo de vida, aprobaciones y
+              alertas de seguridad del sistema.
+            </p>
+          </div>
+          <button type="button" (click)="markAllAsRead()" class="btn btn-secondary shrink-0">
+            <app-icono nombre="check-doble" [tamano]="17" class="text-accent" />
             <span>Marcar todas como leídas</span>
           </button>
-        </div>
-      </div>
+        </header>
 
-      <!-- Tabs -->
-      <div class="flex flex-wrap items-center gap-2 text-xs" role="tablist" aria-label="Categorías de notificaciones">
-        @for (t of pestanas(); track t.id) {
-        <button (click)="setTab(t.id)" class="rounded-full px-3 py-1.5 font-medium border" role="tab" [attr.aria-selected]="activeTab() === t.id"
-          [ngClass]="activeTab() === t.id ? 'bg-blue-700 text-white border-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'">
-          {{ t.etiqueta }} {{ t.total }}
-        </button>
-        }
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
-        <!-- Lista de notificaciones -->
-        <div class="space-y-3">
-          @for (n of filtered(); track n.id) {
-          <div class="bg-white rounded-xl border border-slate-200 border-l-4 p-4 transition-opacity"
-            [ngClass]="[n.borderColor, n.read ? 'opacity-50' : '']">
-            <div class="flex flex-wrap items-start justify-between gap-2 mb-1.5">
-              <span class="flex items-center gap-2 text-xs text-slate-400">
-                <span>{{ n.fecha }} · {{ relativo(n) }}</span>
-                @if (!n.read) {
-                <span class="text-[9px] font-bold bg-blue-600 text-white rounded px-1.5 py-0.5">NUEVA</span>
-                }
-              </span>
-              <span class="text-[10px] font-semibold rounded-full px-2.5 py-1" [ngClass]="n.badgeColor">
-                {{ n.badge }}
-              </span>
-            </div>
-
-            <p class="text-sm font-semibold text-slate-800 mb-1">{{ n.title }}</p>
-            <p class="text-xs text-slate-500 leading-relaxed mb-2">{{ n.description }}</p>
-
-            <div class="text-[10px] text-slate-400 flex flex-wrap gap-x-3 gap-y-1 mb-3">
-              @for (m of n.meta; track m) {
-              <span>{{ m }}</span>
-              }
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2">
-              @if (n.documentoId) {
-              <button (click)="abrirDocumento(n)" class="text-[12px] font-medium rounded-lg px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50">
-                Abrir documento
-              </button>
-              }
-              <button (click)="markAsRead(n.id)" class="text-[12px] text-slate-800 hover:text-slate-950 ml-auto">
-                {{ n.read ? 'Leída' : 'Marcar como leída' }}
-              </button>
-            </div>
-          </div>
-          } @empty {
-          <div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-sm text-slate-400">
-            No hay notificaciones en esta categoría.
-          </div>
+        <!-- Tabs -->
+        <div class="tabs max-w-full overflow-x-auto" role="tablist" aria-label="Categorías de notificaciones">
+          @for (t of pestanas(); track t.id) {
+          <button type="button" (click)="setTab(t.id)" class="tab whitespace-nowrap" role="tab" [attr.aria-selected]="activeTab() === t.id">{{ t.etiqueta }} <span class="ml-1 tabular text-ink-3">{{ t.total }}</span></button>
           }
         </div>
 
-        <!-- Panel derecho: información real de esta pantalla -->
-        <div class="space-y-4">
-          <div class="bg-white rounded-xl border border-slate-200 p-4">
-            <p class="text-[14px] text-slate-900 font-bold mb-2">Actualización automática</p>
-            <p class="text-[12px] text-slate-800 leading-relaxed">
-              La lista se consulta cada 5 segundos mientras esta pestaña está visible.
-            </p>
-            <p class="text-[12px] text-slate-500 mt-1">Última actualización: {{ ultimaHora() }}</p>
-          </div>
-          <div class="bg-white rounded-xl border border-slate-200 p-4">
-            <p class="text-[14px] text-slate-900 font-bold mb-2">¿Detectó una anomalía?</p>
-            <p class="text-[12px] text-slate-800 leading-relaxed">Contacte al administrador del sistema.</p>
-          </div>
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
+          <!-- Lista de notificaciones -->
+          <section class="panel overflow-hidden" aria-label="Notificaciones">
+            <ul class="divide-y divide-line">
+              @for (n of filtered(); track n.id) {
+              <li class="flex gap-4 px-5 py-4 transition-colors" [ngClass]="n.read ? '' : 'bg-accent-soft/40'">
+                <span class="relative w-10 h-10 shrink-0 rounded-md grid place-items-center"
+                  [ngClass]="n.read ? 'bg-surface-2 text-ink-3' : 'bg-accent-soft text-accent'">
+                  <app-icono [nombre]="iconoCategoria[n.category]" [tamano]="18" />
+                  @if (!n.read) {
+                    <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-accent ring-2 ring-surface" aria-hidden="true"></span>
+                  }
+                </span>
+
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <p class="text-base font-semibold" [ngClass]="n.read ? 'text-ink-2' : 'text-ink'">{{ n.title }}</p>
+                    <span class="badge shrink-0" [ngClass]="n.badgeColor">{{ n.badge }}</span>
+                  </div>
+                  <p class="text-sm text-ink-2 leading-relaxed mt-0.5 max-w-[75ch]">{{ n.description }}</p>
+
+                  @if (n.meta.length) {
+                    <div class="text-xs text-ink-3 flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                      @for (m of n.meta; track m) {
+                      <span>{{ m }}</span>
+                      }
+                    </div>
+                  }
+
+                  <div class="flex flex-wrap items-center gap-2 mt-3">
+                    <span class="flex items-center gap-2 text-xs text-ink-3">
+                      <app-icono nombre="reloj" [tamano]="13" />
+                      <span>{{ n.fecha }} · {{ relativo(n) }}</span>
+                      @if (!n.read) {
+                      <span class="badge badge-accent !py-0 font-semibold">Nueva</span>
+                      }
+                    </span>
+                    <span class="ml-auto flex items-center gap-1">
+                      @if (n.documentoId) {
+                      <button type="button" (click)="abrirDocumento(n)" class="btn btn-secondary btn-sm">
+                        <app-icono nombre="documento" [tamano]="14" />
+                        Abrir documento
+                      </button>
+                      }
+                      <button type="button" (click)="markAsRead(n.id)" class="btn btn-ghost btn-sm">
+                        @if (n.read) { <app-icono nombre="check" [tamano]="14" /> }
+                        {{ n.read ? 'Leída' : 'Marcar como leída' }}
+                      </button>
+                    </span>
+                  </div>
+                </div>
+              </li>
+              } @empty {
+              <li class="empty">
+                <span class="empty-icon"><app-icono nombre="notificacion" /></span>
+                <p>No hay notificaciones en esta categoría.</p>
+              </li>
+              }
+            </ul>
+          </section>
+
+          <!-- Panel derecho: información real de esta pantalla -->
+          <aside class="space-y-4">
+            <section class="panel p-5">
+              <h2 class="panel-title flex items-center gap-2 mb-2">
+                <app-icono nombre="refrescar" [tamano]="16" class="text-ink-3" />
+                Actualización automática
+              </h2>
+              <p class="text-sm text-ink-2 leading-relaxed">
+                La lista se consulta cada 5 segundos mientras esta pestaña está visible.
+              </p>
+              <p class="text-sm text-ink-3 mt-1 tabular">Última actualización: {{ ultimaHora() }}</p>
+            </section>
+            <section class="panel p-5">
+              <h2 class="panel-title flex items-center gap-2 mb-2">
+                <app-icono nombre="alerta" [tamano]="16" class="text-warn" />
+                ¿Detectó una anomalía?
+              </h2>
+              <p class="text-sm text-ink-2 leading-relaxed">Contacte al administrador del sistema.</p>
+            </section>
+          </aside>
         </div>
       </div>
     </main>

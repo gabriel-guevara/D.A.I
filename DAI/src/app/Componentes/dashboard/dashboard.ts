@@ -5,6 +5,7 @@ import { AuthService } from '../../shared/auth';
 import { ApiService, DashboardDatos, FormatoDoc } from '../../shared/api';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { Icono } from '../ui/icono';
 
 /** Tarjeta de indicador (todas sus cifras vienen del servidor; nada fijo en la plantilla). */
 interface Indicador {
@@ -22,10 +23,12 @@ const numero = new Intl.NumberFormat('es-CO');
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, Barraizq, Navbar],
+  imports: [CommonModule, Barraizq, Navbar, Icono],
   templateUrl: './dashboard.html',
 })
 export class Dashboard {
+  /** Fecha de hoy para el encabezado ("miércoles, 22 de octubre"). */
+  hoy = new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
   private router = inject(Router);
   private api = inject(ApiService);
   auth = inject(AuthService);
@@ -40,10 +43,10 @@ export class Dashboard {
     if (!d) return [];
     const n = (x: number) => numero.format(x);
     return [
-      { label: 'Documentos visibles', value: n(d.visibles), sub: 'Según su nivel de acceso', accent: 'text-blue-600' },
-      { label: 'Altas este mes', value: n(d.altasMes), sub: 'Calendario de Colombia', accent: 'text-indigo-600' },
-      { label: 'Con archivo original', value: n(d.conArchivo), sub: `${n(d.sinArchivo)} solo con metadatos`, accent: 'text-emerald-600' },
-      { label: 'Fuera de plazo', value: n(d.fueraDePlazo), sub: d.fueraDePlazo > 0 ? 'Fecha límite vencida' : 'Al día', accent: 'text-red-600' },
+      { label: 'Documentos visibles', value: n(d.visibles), sub: 'Según su nivel de acceso', accent: 'text-ink' },
+      { label: 'Altas este mes', value: n(d.altasMes), sub: 'Calendario de Colombia', accent: 'text-ink' },
+      { label: 'Con archivo original', value: n(d.conArchivo), sub: `${n(d.sinArchivo)} solo con metadatos`, accent: 'text-ink' },
+      { label: 'Fuera de plazo', value: n(d.fueraDePlazo), sub: d.fueraDePlazo > 0 ? 'Fecha límite vencida' : 'Al día', accent: d.fueraDePlazo > 0 ? 'text-danger' : 'text-ok' },
     ];
   });
 

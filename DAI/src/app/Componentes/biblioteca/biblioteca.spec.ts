@@ -125,7 +125,7 @@ describe('Biblioteca (explorador de carpetas)', () => {
     expect(lista().request.params.get('carpeta')).toBe('7');
     harness.detectChanges();
     const nav = el().querySelector('nav[aria-label="Ubicación"]') as HTMLElement;
-    expect(nav.textContent?.replace(/\s+/g, '')).toBe('🏠Inicio›📁Legal›📁2024');
+    expect(nav.textContent?.replace(/\s+/g, '')).toBe('Inicio›Legal›2024');
     expect(nav.querySelector('[aria-current="page"]')?.textContent).toContain('2024');
 
     // Clic en "Legal": va a ?carpeta=3 conservando el filtro y vuelve a la página 1.
@@ -158,7 +158,7 @@ describe('Biblioteca (explorador de carpetas)', () => {
     expect(url()).toBe('/biblioteca?carpeta=3');
     await responderCarpeta(contenido([LEGAL], []));
     await responder(lista(), pagina([doc('5', { carpeta: { ...LEGAL, ruta: [LEGAL] } })]));
-    expect(texto()).toContain('📁 Inicio › Legal');
+    expect(texto()).toContain('Inicio › Legal');
   });
 
   it('carpeta inexistente (404): avisa y ofrece volver a Inicio', async () => {
@@ -262,11 +262,11 @@ describe('Biblioteca (explorador de carpetas)', () => {
       texto: l.textContent?.replace(/\s+/g, ''), deshabilitada: (l.querySelector('input') as HTMLInputElement).disabled,
     }));
     expect(opciones).toEqual([
-      { texto: '🏠Inicio(ubicaciónactual)', deshabilitada: false },
-      { texto: '📁Finanzas', deshabilitada: false },
-      { texto: '📁Legal—eslacarpetaquemueve', deshabilitada: true },
-      { texto: '📁2024—estádentrodelacarpetaquemueve', deshabilitada: true },
-      { texto: '📁Contratos—estádentrodelacarpetaquemueve', deshabilitada: true },
+      { texto: 'Inicio(ubicaciónactual)', deshabilitada: false },
+      { texto: 'Finanzas', deshabilitada: false },
+      { texto: 'Legal—eslacarpetaquemueve', deshabilitada: true },
+      { texto: '2024—estádentrodelacarpetaquemueve', deshabilitada: true },
+      { texto: 'Contratos—estádentrodelacarpetaquemueve', deshabilitada: true },
     ]);
     // Elegir su ubicación actual no es un movimiento.
     (el().querySelectorAll('[role="radiogroup"] input')[0] as HTMLInputElement).click();
@@ -348,7 +348,7 @@ describe('Biblioteca (explorador de carpetas)', () => {
     harness.detectChanges();
     // Al mover documentos ninguna carpeta se deshabilita; los dos están en Inicio.
     expect([...el().querySelectorAll('[role="radiogroup"] input')].some((i) => (i as HTMLInputElement).disabled)).toBe(false);
-    expect(el().querySelector('[role="radiogroup"] label')?.textContent?.replace(/\s+/g, '')).toBe('🏠Inicio(ubicaciónactual)');
+    expect(el().querySelector('[role="radiogroup"] label')?.textContent?.replace(/\s+/g, '')).toBe('Inicio(ubicaciónactual)');
     await comp.moverSeleccion();
     expect(comp.errorDialogo()).toContain('Elija la carpeta');
     comp.destino.set('7');

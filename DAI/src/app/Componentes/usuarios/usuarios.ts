@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { Icono } from '../ui/icono';
 import { ApiService } from '../../shared/api';
 import { AuthService } from '../../shared/auth';
 
@@ -53,7 +54,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 @Component({
   selector: 'app-usuarios-gestion',
   standalone: true,
-  imports: [CommonModule, FormsModule, Barraizq, Navbar],
+  imports: [CommonModule, FormsModule, Barraizq, Navbar, Icono],
   templateUrl: './usuarios.html',
 })
 export class UsuariosGestion {

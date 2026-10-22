@@ -8,22 +8,20 @@ import { Component, input, signal } from '@angular/core';
   selector: 'app-codigos-recuperacion',
   standalone: true,
   template: `
-    <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-800 mb-3">
+    <div class="alert alert-warn text-sm mb-3 block">
       Guarde estos códigos en un lugar seguro (gestor de contraseñas o impresos). Cada uno sirve
       <strong>una sola vez</strong> para entrar si pierde su teléfono. No se volverán a mostrar.
     </div>
     <ul class="grid grid-cols-2 gap-2 mb-3" aria-label="Códigos de recuperación">
       @for (c of codigos(); track c) {
-        <li class="font-mono text-[13px] text-slate-800 bg-slate-50 border border-slate-200 rounded-md px-2 py-1.5 text-center tracking-wider">{{ c }}</li>
+        <li class="code text-base text-ink bg-sunken border border-line rounded-md px-2 py-1.5 text-center tracking-wider">{{ c }}</li>
       }
     </ul>
     <div class="flex flex-wrap gap-2">
-      <button type="button" (click)="copiar()"
-        class="text-[13px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+      <button type="button" (click)="copiar()" class="btn btn-secondary btn-sm">
         {{ copiado() ? 'Copiados' : 'Copiar' }}
       </button>
-      <button type="button" (click)="descargar()"
-        class="text-[13px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+      <button type="button" (click)="descargar()" class="btn btn-secondary btn-sm">
         Descargar .txt
       </button>
     </div>

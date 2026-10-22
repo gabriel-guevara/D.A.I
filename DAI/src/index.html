@@ -1,11 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>DAI</title>
+  <title>DAI · Gestión Documental</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/svg+xml" href="logotipo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <!-- Aplica el tema guardado (o el del sistema) antes de pintar, para que no parpadee al cargar. -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('dai-tema');
+        var oscuro = t ? t === 'oscuro' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (oscuro) document.documentElement.classList.add('dark');
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { Icono } from '../ui/icono';
 import { AltaDosPasos, ApiService, EstadoSeguridadCuenta, SegundoFactor } from '../../shared/api';
 import { AuthService } from '../../shared/auth';
 import { Alta2fa } from '../../shared/alta-2fa';
@@ -31,7 +32,7 @@ function leerFactor(f: FactorForm): SegundoFactor | string {
 @Component({
   selector: 'app-seguridad-cuenta',
   standalone: true,
-  imports: [CommonModule, FormsModule, Barraizq, Navbar, Alta2fa, CodigosRecuperacion],
+  imports: [CommonModule, FormsModule, Barraizq, Navbar, Alta2fa, CodigosRecuperacion, Icono],
   templateUrl: './seguridad-cuenta.html',
 })
 export class SeguridadCuenta {

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse, HttpEventType } from '@angular/common/http';
 import { ApiService, HistorialVersiones, VersionDocumento, leerErrorApi } from '../../shared/api';
 import { guardarComo } from '../../shared/archivo-pdf';
+import { Icono } from '../ui/icono';
 
 const MIN_COMENTARIO = 3;
 const MAX_COMENTARIO = 300;
@@ -23,7 +24,7 @@ export interface VersionParaVer {
 @Component({
   selector: 'app-versiones-documento',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Icono],
   templateUrl: './versiones-documento.html',
 })
 export class VersionesDocumento implements OnInit {

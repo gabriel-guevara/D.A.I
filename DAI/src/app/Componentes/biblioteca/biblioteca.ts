@@ -14,6 +14,7 @@ import { guardarComo } from '../../shared/archivo-pdf';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
 import { ArbolDestino } from './arbol-destino';
+import { Icono } from '../ui/icono';
 import { rutaEnArbol, textoCarpeta, textoRuta, ubicacion } from './arbol-carpetas';
 import {
   ETIQUETA_DIAS, ETIQUETA_FORMATO, ETIQUETA_ORDEN, FILTROS_POR_DEFECTO, filtrosDesdeUrl, paginasVisibles, queryParamsDe,
@@ -39,7 +40,7 @@ async function mensajeDe(err: unknown, porDefecto: string): Promise<string> {
 @Component({
   selector: 'app-biblioteca',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, Barraizq, Navbar, ArbolDestino],
+  imports: [CommonModule, FormsModule, RouterLink, Barraizq, Navbar, ArbolDestino, Icono],
   templateUrl: './biblioteca.html',
 })
 export class Biblioteca {

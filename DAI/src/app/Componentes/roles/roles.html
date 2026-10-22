@@ -1,135 +1,130 @@
-<div class="min-h-screen bg-slate-50 flex">
+<div class="min-h-screen bg-canvas flex">
   <app-barraizq active="roles"></app-barraizq>
 
   <div class="flex-1 flex flex-col min-w-0">
     <app-navbar></app-navbar>
 
-    <main class="flex-1 overflow-y-auto p-6 space-y-5">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 class="text-2xl font-bold text-slate-800">Gestión de Usuarios, Roles y Permisos de Seguridad</h1>
-          <p class="text-sm text-slate-500 mt-1 max-w-2xl">
-            Control de acceso basado en roles
-          </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2 text-[16px] shrink-0">
+    <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div class="mx-auto max-w-[1440px] space-y-6">
+
+        <header class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 class="page-title">Gestión de Usuarios, Roles y Permisos de Seguridad</h1>
+            <p class="page-sub">Control de acceso basado en roles</p>
+          </div>
           @if (esSuperAdmin()) {
-            <button (click)="crearUsuario()" class=" flex justify-center items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white rounded-lg px-3 py-1.5 font-medium">
-              <img width="20" height="20" src="https://img.icons8.com/material-outlined/24/filled-plus-2-math.png" alt="filled-plus-2-math"/>
+            <button type="button" (click)="crearUsuario()" class="btn btn-primary shrink-0">
+              <app-icono nombre="usuario-mas" [tamano]="17" />
               <span>Crear Usuario</span>
             </button>
           }
-        </div>
-      </div>
+        </header>
 
-      @if (confirmationMessage()) {
-        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-2.5">
-          ✅ {{ confirmationMessage() }}
-        </div>
-      }
+        @if (confirmationMessage()) {
+          <div class="alert alert-ok" role="status">
+            <app-icono nombre="check" [tamano]="17" class="mt-0.5" />
+            <span>{{ confirmationMessage() }}</span>
+          </div>
+        }
 
-      <!-- Filtros -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="relative flex-1 min-w-[200px]">
-            <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.34-4.34M18 10.5a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
-              </svg>
-            </span>
-            <input
-              type="text"
-              placeholder="Filtrar por nombre o correo"
-              [ngModel]="searchText()"
-              (ngModelChange)="searchText.set($event)"
-              class="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+        <section class="panel overflow-hidden" aria-label="Usuarios">
+          <!-- Filtros -->
+          <div class="flex flex-wrap items-center gap-2 p-4 border-b border-line">
+            <div class="relative flex-1 min-w-[220px] max-w-md">
+              <span class="absolute inset-y-0 left-3 flex items-center text-ink-3 pointer-events-none">
+                <app-icono nombre="buscar" [tamano]="16" />
+              </span>
+              <input
+                type="text"
+                placeholder="Filtrar por nombre o correo"
+                aria-label="Filtrar por nombre o correo"
+                [ngModel]="searchText()"
+                (ngModelChange)="searchText.set($event)"
+                class="input pl-9"
+              />
+            </div>
+
+            <select aria-label="Rol" [ngModel]="selectedRole()" (ngModelChange)="selectedRole.set($event)" class="select w-auto">
+              <option value="todos">Todos los Roles</option>
+              @for (r of rolesCatalogo(); track r.clave) {
+                <option [value]="r.clave">{{ r.nombre }}</option>
+              }
+            </select>
+
+            @if (searchText() || selectedRole() !== 'todos' || selectedNivel() !== 'todos' || selectedMfa() !== 'todos') {
+              <button type="button" (click)="resetFiltros()" class="btn btn-ghost btn-sm">
+                <app-icono nombre="cerrar" [tamano]="14" />
+                Limpiar filtros
+              </button>
+            }
           </div>
 
-          <select
-            [ngModel]="selectedRole()"
-            (ngModelChange)="selectedRole.set($event)"
-            class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600"
-          >
-            <option value="todos">Todos los Roles</option>
-            @for (r of rolesCatalogo(); track r.clave) {
-              <option [value]="r.clave">{{ r.nombre }}</option>
-            }
-          </select>
-
-
-          @if (searchText() || selectedRole() !== 'todos' || selectedNivel() !== 'todos' || selectedMfa() !== 'todos') {
-            <button (click)="resetFiltros()" class="text-xs text-slate-400 hover:text-slate-600 underline">
-              Limpiar filtros
-            </button>
-          }
-        </div>
-      </div>
-
-      <!-- Tabla de usuarios -->
-      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left text-[11px] text-slate-400 border-b border-slate-100">
-              <th class="px-4 py-3">USUARIO CORPORATIVO</th>
-              <th class="px-2 py-3">DEPARTAMENTO / ÁREA</th>
-              <th class="px-2 py-3">ROL ASIGNADO</th>
-              <th class="px-4 py-3 text-right">ÚLTIMO ACCESO</th>
-              @if (esSuperAdmin()) {
-                <th class="px-4 py-3 text-right">ACCIONES</th>
-              }
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            @for (u of filteredUsers(); track u.id) {
-              <tr class="hover:bg-slate-50 transition-colors">
-                <td class="px-4 py-3">
-                  <div class="flex items-center gap-3">
-                    <div
-                      class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-                      [ngClass]="u.avatarColor"
-                    >
-                      {{ u.initials }}
-                    </div>
-                    <div class="min-w-0">
-                      <p class="font-medium text-slate-700 truncate">
-                        {{ u.name }}
-                        @if (u.activo === false) {
-                          <span class="ml-1 text-[9px] font-semibold bg-slate-100 text-slate-500 rounded px-1.5 py-0.5 align-middle">INACTIVO</span>
-                        }
-                      </p>
-                      <p class="text-[10px] text-slate-400 truncate">{{ u.email }}</p>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-2 py-3 text-xs text-slate-500">{{ u.departamento }}</td>
-                <td class="px-2 py-3">
-                  <span class="text-[11px] font-medium rounded-full px-2 py-0.5" [ngClass]="u.rolColor">
-                    {{ u.rolLabel }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-xs text-slate-500 text-right whitespace-nowrap">{{ u.ultimoAcceso }}</td>
-                @if (esSuperAdmin()) {
-                  <td class="px-4 py-3 text-right">
-                    <button (click)="editarUsuario(u.id)" class="text-2xs text-blue-600 font-medium hover:underline">Editar</button>
-                  </td>
+          <!-- Tabla de usuarios -->
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Usuario corporativo</th>
+                  <th>Departamento / área</th>
+                  <th>Rol asignado</th>
+                  <th class="!text-right">Último acceso</th>
+                  @if (esSuperAdmin()) {
+                    <th class="!text-right"><span class="sr-only">Acciones</span></th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (u of filteredUsers(); track u.id) {
+                  <tr [ngClass]="u.activo === false ? 'opacity-60' : ''">
+                    <td>
+                      <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0" [ngClass]="u.avatarColor">
+                          {{ u.initials }}
+                        </div>
+                        <div class="min-w-0">
+                          <p class="font-medium text-ink truncate">
+                            {{ u.name }}
+                            @if (u.activo === false) {
+                              <span class="badge ml-1 align-middle !py-0">Inactivo</span>
+                            }
+                          </p>
+                          <p class="text-sm text-ink-3 truncate">{{ u.email }}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-sm">{{ u.departamento }}</td>
+                    <td>
+                      <span class="badge border-transparent" [ngClass]="u.rolColor">{{ u.rolLabel }}</span>
+                    </td>
+                    <td class="text-sm !text-right whitespace-nowrap">{{ u.ultimoAcceso }}</td>
+                    @if (esSuperAdmin()) {
+                      <td class="!text-right">
+                        <button type="button" (click)="editarUsuario(u.id)" class="btn btn-ghost btn-sm text-accent-ink">
+                          <app-icono nombre="editar" [tamano]="14" />
+                          Editar
+                        </button>
+                      </td>
+                    }
+                  </tr>
+                } @empty {
+                  <tr class="hover:!bg-transparent">
+                    <td [attr.colspan]="esSuperAdmin() ? 5 : 4">
+                      <div class="empty">
+                        <span class="empty-icon"><app-icono nombre="usuarios" /></span>
+                        <p>No se encontraron usuarios con ese criterio.</p>
+                      </div>
+                    </td>
+                  </tr>
                 }
-              </tr>
-            } @empty {
-              <tr>
-                <td [attr.colspan]="esSuperAdmin() ? 5 : 4" class="px-4 py-8 text-center text-sm text-slate-400">
-                  No se encontraron usuarios con ese criterio.
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          </div>
 
-        <div class="px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
-          Mostrando {{ filteredUsers().length }} de {{ users().length }} {{ users().length === 1 ? 'usuario' : 'usuarios' }}
-        </div>
+          <div class="px-4 py-3 border-t border-line text-sm text-ink-3 tabular">
+            Mostrando {{ filteredUsers().length }} de {{ users().length }} {{ users().length === 1 ? 'usuario' : 'usuarios' }}
+          </div>
+        </section>
       </div>
-
     </main>
   </div>
 </div>

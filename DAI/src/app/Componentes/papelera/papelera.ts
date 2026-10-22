@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { Icono } from '../ui/icono';
 import { ApiService, DocumentoEnPapelera, EstadoPapelera, SegundoFactor } from '../../shared/api';
 
 /** Qué se va a purgar: un documento concreto o toda la papelera. */
@@ -22,7 +23,7 @@ const mensajeDe = (err: unknown, porDefecto: string): string =>
 @Component({
   selector: 'app-papelera',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, Barraizq, Navbar],
+  imports: [CommonModule, FormsModule, RouterLink, Barraizq, Navbar, Icono],
   templateUrl: './papelera.html',
 })
 export class Papelera {

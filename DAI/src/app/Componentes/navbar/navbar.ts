@@ -1,17 +1,20 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../shared/auth';
+import { Icono } from '../ui/icono';
+import { Tema } from '../ui/tema';
 
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Icono],
   templateUrl: './navbar.html',
 })
 export class Navbar {
+  tema = inject(Tema);
   searchQuery = signal('');
   /** "Nuevo Documento" solo para quien puede subir (Super Administrador y Operador OCR; el servidor también lo exige). */
   puedeSubir = computed(() => ['super-admin', 'ocr-operator'].includes(this.auth.currentUser()?.rolClave ?? ''));

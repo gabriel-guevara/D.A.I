@@ -1,0 +1,67 @@
+/* Panel de marca del login: "el cielo de DAI". El logo es una nube; el fondo, nubes que derivan. */
+
+.cielo {
+  background:
+    radial-gradient(circle at 50% 42%, rgb(0 157 221 / 0.32) 0%, rgb(0 157 221 / 0.1) 28%, transparent 58%),
+    linear-gradient(180deg, var(--brand) 0%, color-mix(in srgb, var(--brand) 68%, #000) 100%);
+}
+
+/* Carril de una nube: ocupa todo el ancho; la nube arranca justo fuera del borde izquierdo
+   y el carril la desplaza hasta salir por la derecha. */
+.carril {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  animation: nube-deriva linear infinite;
+  will-change: transform;
+}
+
+.carril > svg {
+  position: absolute;
+  right: 100%;
+  top: 0;
+  color: #fff;
+}
+
+.capa-lejana { animation-duration: 95s; }
+.capa-media { animation-duration: 64s; }
+.capa-cercana { animation-duration: 42s; }
+
+.capa-lejana > svg { opacity: 0.06; }
+.capa-media > svg { opacity: 0.1; }
+.capa-cercana > svg {
+  opacity: 0.14;
+  color: #bfe9fb;
+  filter: blur(1.5px);
+}
+
+@keyframes nube-deriva {
+  from { transform: translateX(0); }
+  to { transform: translateX(160%); }
+}
+
+/* Placa del logo: flotación muy leve, a ritmo de las nubes */
+.placa-logo {
+  animation: logo-flota 6s ease-in-out infinite;
+  box-shadow:
+    0 28px 56px -16px rgb(0 18 45 / 0.55),
+    0 0 0 10px rgb(255 255 255 / 0.06),
+    0 0 80px 10px rgb(0 157 221 / 0.25);
+}
+
+@keyframes logo-flota {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Movimiento reducido: todo quieto (no al final de la animación) */
+@media (prefers-reduced-motion: reduce) {
+  .carril,
+  .placa-logo {
+    animation: none !important;
+  }
+  .carril {
+    transform: translateX(60%);
+  }
+}

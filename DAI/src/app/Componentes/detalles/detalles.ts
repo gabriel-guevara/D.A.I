@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Barraizq } from '../barraizq/barraizq';
 import { Navbar } from '../navbar/navbar';
+import { Icono } from '../ui/icono';
 import { ApiService, CarpetaConRuta, EstadoIndexacion, EstadoTexto, ResultadoIntegridad, leerErrorApi } from '../../shared/api';
 import { ubicacion } from '../biblioteca/arbol-carpetas';
 import { UrlPdf, guardarComo, paginaDeConsulta } from '../../shared/archivo-pdf';
@@ -62,11 +63,11 @@ const INTERVALO_SONDEO_MS = 4000;
 const MAX_SONDEOS = 75;
 
 const CLASES_ESTADO_TEXTO: Record<EstadoTexto, string> = {
-  pendiente: 'bg-slate-100 text-slate-600',
-  procesando: 'bg-blue-50 text-blue-700',
-  procesado: 'bg-emerald-50 text-emerald-700',
-  sin_texto: 'bg-amber-50 text-amber-700',
-  error: 'bg-red-50 text-red-700',
+  pendiente: '',
+  procesando: 'badge-accent',
+  procesado: 'badge-ok',
+  sin_texto: 'badge-warn',
+  error: 'badge-danger',
 };
 
 interface RegistroAuditoria {
@@ -105,7 +106,7 @@ const ETIQUETAS_ACCION: Record<string, string> = {
 @Component({
   selector: 'app-document-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, Barraizq, Navbar, VersionesDocumento],
+  imports: [CommonModule, RouterLink, Barraizq, Navbar, VersionesDocumento, Icono],
   templateUrl: './detalles.html',
 })
 export class detalles {

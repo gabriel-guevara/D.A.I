@@ -1,325 +1,319 @@
-<div class="min-h-screen bg-slate-50 flex">
+<div class="min-h-screen bg-canvas flex">
   <app-barraizq active="roles"></app-barraizq>
 
   <div class="flex-1 flex flex-col min-w-0">
     <app-navbar></app-navbar>
 
-    <main class="flex-1 overflow-y-auto p-6 space-y-5">
-      <!-- Encabezado -->
-      <div>
-        <button (click)="volver()" class="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1 mb-1">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
-          Roles y Permisos
-        </button>
-        <h1 class="text-2xl font-bold text-slate-800">Gestión de Usuarios</h1>
-        <p class="text-sm text-slate-500 mt-1 max-w-2xl">
-          Cree cuentas nuevas y asígneles su rol.
-        </p>
-      </div>
+    <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div class="mx-auto max-w-[1440px] space-y-6">
 
-      <!-- Pestañas -->
-      <div>
-        <div class="flex items-center gap-1 border-b border-slate-200">
-          <button
-            (click)="setTab('crear')"
-            class="px-4 py-2 text-sm font-medium -mb-px border-b-2"
-            [ngClass]="tab() === 'crear' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
-          >
-            Crear usuario
+        <!-- Encabezado -->
+        <header class="space-y-3">
+          <button type="button" (click)="volver()" class="inline-flex items-center gap-1.5 text-sm text-ink-3 hover:text-accent-ink transition-colors">
+            <app-icono nombre="flecha-izquierda" [tamano]="15" />
+            Roles y Permisos
           </button>
-          <button
-            (click)="setTab('modificar')"
-            [disabled]="!esSuperAdmin()"
-            class="px-4 py-2 text-sm font-medium -mb-px border-b-2 disabled:cursor-not-allowed"
-            [ngClass]="
-              tab() === 'modificar'
-                ? 'border-blue-600 text-blue-700'
-                : esSuperAdmin()
-                  ? 'border-transparent text-slate-500 hover:text-slate-700'
-                  : 'border-transparent text-slate-300'
-            "
-          >
-            Modificar usuario
-            @if (!esSuperAdmin()) {
-              <span aria-hidden="true">🔒</span>
-            }
-          </button>
-        </div>
-        @if (!esSuperAdmin()) {
-          <p class="text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
-            Solo el Super Administrador puede crear y modificar usuarios.
-          </p>
-        }
-      </div>
-
-      <!-- Avisos -->
-      @if (mensajeOk()) {
-        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-2.5">✅ {{ mensajeOk() }}</div>
-      }
-      @if (mensajeError()) {
-        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5" role="alert">{{ mensajeError() }}</div>
-      }
-
-      <!-- Formulario reutilizado por las dos pestañas -->
-      <ng-template #formulario let-modo="modo" let-f="f">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Nombre completo *</label>
-            <input
-              type="text"
-              maxlength="120"
-              [ngModel]="f.nombre"
-              (ngModelChange)="parche(modo, { nombre: $event })"
-              placeholder="Ej. Lic. Ana María Torres"
-              class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            <h1 class="page-title">Gestión de Usuarios</h1>
+            <p class="page-sub">Cree cuentas nuevas y asígneles su rol.</p>
           </div>
+        </header>
 
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Correo corporativo *</label>
-            <input
-              type="email"
-              maxlength="160"
-              [ngModel]="f.email"
-              (ngModelChange)="parche(modo, { email: $event })"
-              placeholder="usuario@dai.corp"
-              class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+        <!-- Pestañas -->
+        <div class="space-y-3">
+          <div class="tabs" role="tablist" aria-label="Acciones sobre usuarios">
+            <button type="button" role="tab" (click)="setTab('crear')" class="tab inline-flex items-center gap-1.5"
+              [attr.aria-selected]="tab() === 'crear'">
+              <app-icono nombre="usuario-mas" [tamano]="15" />
+              Crear usuario
+            </button>
+            <button type="button" role="tab" (click)="setTab('modificar')" [disabled]="!esSuperAdmin()"
+              class="tab inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              [attr.aria-selected]="tab() === 'modificar'">
+              <app-icono [nombre]="esSuperAdmin() ? 'editar' : 'candado'" [tamano]="15" />
+              Modificar usuario
+            </button>
           </div>
-
-          <div class="md:col-span-2">
-            <label class="block text-xs font-medium text-slate-600 mb-1">
-              {{ modo === 'crear' ? 'Contraseña inicial *' : 'Nueva contraseña (déjela vacía para no cambiarla)' }}
-            </label>
-            <div class="flex flex-wrap items-center gap-2">
-              <input
-                [type]="verPassword() ? 'text' : 'password'"
-                maxlength="72"
-                autocomplete="new-password"
-                [ngModel]="f.password"
-                (ngModelChange)="parche(modo, { password: $event })"
-                placeholder="Mínimo 10 caracteres, con letras y números"
-                class="flex-1 min-w-[220px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                type="button"
-                (click)="verPassword.set(!verPassword())"
-                class="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
-              >
-                {{ verPassword() ? 'Ocultar' : 'Mostrar' }}
-              </button>
-              <button
-                type="button"
-                (click)="generarPassword(modo)"
-                class="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
-              >
-                Generar contraseña
-              </button>
-            </div>
-            <p class="text-[11px] text-slate-400 mt-1">Compártala con la persona por un canal seguro.</p>
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Rol *</label>
-            <select
-              [ngModel]="f.rol"
-              (ngModelChange)="parche(modo, { rol: $event })"
-              [disabled]="modo === 'editar' && esMiCuenta()"
-              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
-            >
-              <option value="">Seleccione un rol…</option>
-              @for (r of rolesDisponibles(); track r.clave) {
-                <option [value]="r.clave">{{ r.nombre }}</option>
-              }
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Nivel de confidencialidad *</label>
-            <select
-              [ngModel]="f.nivel"
-              (ngModelChange)="parche(modo, { nivel: $event })"
-              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700"
-            >
-              <option value="">Seleccione un nivel…</option>
-              @for (n of nivelesDisponibles(); track n.id) {
-                <option [value]="n.nombre">{{ n.nombre }}</option>
-              }
-            </select>
-            <p class="text-[11px] text-slate-400 mt-1">Define qué documentos podrá ver (los de su nivel o inferior).</p>
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Departamento / Área</label>
-            <select
-              [ngModel]="f.departamento"
-              (ngModelChange)="parche(modo, { departamento: $event })"
-              class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-700"
-            >
-              <option value="">Sin departamento</option>
-              @for (d of catalogos()?.departamentos ?? []; track d.id) {
-                <option [value]="d.nombre">{{ d.nombre }}</option>
-              }
-            </select>
-          </div>
-
-          @if (modo === 'editar') {
-            <div class="md:col-span-2">
-              <label class="inline-flex items-center gap-2 text-sm text-slate-700" [class.opacity-50]="esMiCuenta()">
-                <input
-                  type="checkbox"
-                  [ngModel]="f.activo"
-                  (ngModelChange)="parche(modo, { activo: $event })"
-                  [disabled]="esMiCuenta()"
-                  class="w-4 h-4 rounded border-slate-300"
-                />
-                Cuenta activa (si se desactiva, la persona pierde el acceso de inmediato)
-              </label>
-              @if (esMiCuenta()) {
-                <p class="text-[11px] text-slate-400 mt-1">Esta es su propia cuenta: no puede cambiarse el rol ni desactivarla.</p>
-              }
-            </div>
+          @if (!esSuperAdmin()) {
+            <p class="alert alert-warn text-sm">
+              <app-icono nombre="candado" [tamano]="16" class="mt-0.5" />
+              <span>Solo el Super Administrador puede crear y modificar usuarios.</span>
+            </p>
           }
         </div>
-      </ng-template>
 
-      <!-- ======================= PESTAÑA: CREAR ======================= -->
-      @if (tab() === 'crear' && esSuperAdmin()) {
-        <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-5 max-w-3xl">
-          <h2 class="text-sm font-semibold text-slate-800">Datos del nuevo usuario</h2>
-
-          <ng-container *ngTemplateOutlet="formulario; context: { modo: 'crear', f: formCrear() }"></ng-container>
-
-          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-            <button
-              (click)="crearUsuario()"
-              [disabled]="guardando()"
-              class="bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-4 py-2"
-            >
-              {{ guardando() ? 'Creando…' : 'Crear usuario' }}
-            </button>
-            <button
-              (click)="volver()"
-              class="text-sm border border-slate-200 rounded-lg px-4 py-2 text-slate-600 hover:bg-slate-50"
-            >
-              Cancelar
-            </button>
+        <!-- Avisos -->
+        @if (mensajeOk()) {
+          <div class="alert alert-ok" role="status">
+            <app-icono nombre="check" [tamano]="17" class="mt-0.5" />
+            <span>{{ mensajeOk() }}</span>
           </div>
-        </section>
-      }
+        }
+        @if (mensajeError()) {
+          <div class="alert alert-danger" role="alert">
+            <app-icono nombre="alerta" [tamano]="17" class="mt-0.5" />
+            <span>{{ mensajeError() }}</span>
+          </div>
+        }
 
-      <!-- ====================== PESTAÑA: MODIFICAR ====================== -->
-      @if (tab() === 'modificar') {
-        <div class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 items-start">
-          <!-- Lista de usuarios -->
-          <section class="bg-white rounded-xl border border-slate-200 p-3 space-y-3">
-            <input
-              type="text"
-              [ngModel]="busqueda()"
-              (ngModelChange)="busqueda.set($event)"
-              placeholder="Buscar por nombre o correo"
-              class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <ul class="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
-              @if (cargandoUsuarios()) {
-                <li class="px-2 py-4 text-xs text-slate-400">Cargando usuarios…</li>
-              } @else if (errorCarga()) {
-                <li class="px-2 py-4 text-xs text-red-600">{{ errorCarga() }}</li>
-              } @else {
-                @for (u of usuariosFiltrados(); track u.id) {
-                  <li>
-                    <button
-                      (click)="seleccionar(u)"
-                      class="w-full flex items-center gap-3 px-2 py-2.5 text-left rounded-lg hover:bg-slate-50"
-                      [ngClass]="seleccionado()?.id === u.id ? 'bg-blue-50' : ''"
-                    >
-                      <span
-                        class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
-                        [ngClass]="u.avatarColor"
-                      >
-                        {{ u.initials }}
-                      </span>
-                      <span class="min-w-0">
-                        <span class="block text-sm font-medium text-slate-700 truncate">
-                          {{ u.name }}
-                          @if (!u.activo) {
-                            <span class="ml-1 text-[9px] font-semibold bg-slate-100 text-slate-500 rounded px-1.5 py-0.5 align-middle">INACTIVO</span>
-                          }
-                          @if (!u.mfaActivo) {
-                            <span class="ml-1 text-[9px] font-semibold bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 align-middle" title="Configurará el 2FA en su próximo ingreso">SIN 2FA</span>
-                          }
-                        </span>
-                        <span class="block text-[10px] text-slate-400 truncate">{{ u.email }}</span>
-                      </span>
-                    </button>
-                  </li>
-                } @empty {
-                  <li class="px-2 py-4 text-xs text-slate-400">No se encontraron usuarios.</li>
+        <!-- Formulario reutilizado por las dos pestañas -->
+        <ng-template #formulario let-modo="modo" let-f="f">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+            <div>
+              <label class="label" [for]="modo + '-nombre'">Nombre completo <span class="text-danger" aria-hidden="true">*</span></label>
+              <input
+                [id]="modo + '-nombre'"
+                type="text"
+                maxlength="120"
+                [ngModel]="f.nombre"
+                (ngModelChange)="parche(modo, { nombre: $event })"
+                placeholder="Ej. Lic. Ana María Torres"
+                class="input"
+              />
+            </div>
+
+            <div>
+              <label class="label" [for]="modo + '-correo'">Correo corporativo <span class="text-danger" aria-hidden="true">*</span></label>
+              <input
+                [id]="modo + '-correo'"
+                type="email"
+                maxlength="160"
+                [ngModel]="f.email"
+                (ngModelChange)="parche(modo, { email: $event })"
+                placeholder="usuario@dai.corp"
+                class="input"
+              />
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="label" [for]="modo + '-clave'">
+                {{ modo === 'crear' ? 'Contraseña inicial *' : 'Nueva contraseña (déjela vacía para no cambiarla)' }}
+              </label>
+              <div class="flex flex-wrap items-center gap-2">
+                <input
+                  [id]="modo + '-clave'"
+                  [type]="verPassword() ? 'text' : 'password'"
+                  maxlength="72"
+                  autocomplete="new-password"
+                  [ngModel]="f.password"
+                  (ngModelChange)="parche(modo, { password: $event })"
+                  placeholder="Mínimo 10 caracteres, con letras y números"
+                  class="input flex-1 min-w-[220px] w-auto font-mono"
+                />
+                <button type="button" (click)="verPassword.set(!verPassword())" class="btn btn-secondary">
+                  <app-icono [nombre]="verPassword() ? 'ojo-off' : 'ojo'" [tamano]="15" />
+                  {{ verPassword() ? 'Ocultar' : 'Mostrar' }}
+                </button>
+                <button type="button" (click)="generarPassword(modo)" class="btn btn-secondary">
+                  <app-icono nombre="llave" [tamano]="15" />
+                  Generar contraseña
+                </button>
+              </div>
+              <p class="hint">Compártala con la persona por un canal seguro.</p>
+            </div>
+
+            <div>
+              <label class="label" [for]="modo + '-rol'">Rol <span class="text-danger" aria-hidden="true">*</span></label>
+              <select
+                [id]="modo + '-rol'"
+                [ngModel]="f.rol"
+                (ngModelChange)="parche(modo, { rol: $event })"
+                [disabled]="modo === 'editar' && esMiCuenta()"
+                class="select"
+              >
+                <option value="">Seleccione un rol…</option>
+                @for (r of rolesDisponibles(); track r.clave) {
+                  <option [value]="r.clave">{{ r.nombre }}</option>
                 }
-              }
-            </ul>
+              </select>
+            </div>
+
+            <div>
+              <label class="label" [for]="modo + '-nivel'">Nivel de confidencialidad <span class="text-danger" aria-hidden="true">*</span></label>
+              <select
+                [id]="modo + '-nivel'"
+                [ngModel]="f.nivel"
+                (ngModelChange)="parche(modo, { nivel: $event })"
+                class="select"
+              >
+                <option value="">Seleccione un nivel…</option>
+                @for (n of nivelesDisponibles(); track n.id) {
+                  <option [value]="n.nombre">{{ n.nombre }}</option>
+                }
+              </select>
+              <p class="hint">Define qué documentos podrá ver (los de su nivel o inferior).</p>
+            </div>
+
+            <div>
+              <label class="label" [for]="modo + '-depto'">Departamento / Área</label>
+              <select
+                [id]="modo + '-depto'"
+                [ngModel]="f.departamento"
+                (ngModelChange)="parche(modo, { departamento: $event })"
+                class="select"
+              >
+                <option value="">Sin departamento</option>
+                @for (d of catalogos()?.departamentos ?? []; track d.id) {
+                  <option [value]="d.nombre">{{ d.nombre }}</option>
+                }
+              </select>
+            </div>
+
+            @if (modo === 'editar') {
+              <div class="md:col-span-2">
+                <label class="inline-flex items-center gap-2 text-base text-ink-2 cursor-pointer" [class.opacity-50]="esMiCuenta()">
+                  <input
+                    type="checkbox"
+                    [ngModel]="f.activo"
+                    (ngModelChange)="parche(modo, { activo: $event })"
+                    [disabled]="esMiCuenta()"
+                    class="w-4 h-4"
+                  />
+                  Cuenta activa (si se desactiva, la persona pierde el acceso de inmediato)
+                </label>
+                @if (esMiCuenta()) {
+                  <p class="hint">Esta es su propia cuenta: no puede cambiarse el rol ni desactivarla.</p>
+                }
+              </div>
+            }
+          </div>
+        </ng-template>
+
+        <!-- ======================= PESTAÑA: CREAR ======================= -->
+        @if (tab() === 'crear' && esSuperAdmin()) {
+          <section class="panel max-w-3xl">
+            <div class="panel-header"><h2 class="panel-title">Datos del nuevo usuario</h2></div>
+            <div class="p-5">
+              <ng-container *ngTemplateOutlet="formulario; context: { modo: 'crear', f: formCrear() }"></ng-container>
+            </div>
+            <div class="flex flex-wrap items-center justify-end gap-2 px-5 py-4 border-t border-line">
+              <button type="button" (click)="volver()" class="btn btn-secondary">Cancelar</button>
+              <button type="button" (click)="crearUsuario()" [disabled]="guardando()" class="btn btn-primary">
+                @if (guardando()) { <span class="spinner"></span> } @else { <app-icono nombre="usuario-mas" [tamano]="16" /> }
+                {{ guardando() ? 'Creando…' : 'Crear usuario' }}
+              </button>
+            </div>
           </section>
+        }
 
-          <!-- Formulario de edición -->
-          <section class="bg-white rounded-xl border border-slate-200 p-5 space-y-5">
-            @if (seleccionado(); as sel) {
-              <div class="flex items-center justify-between gap-3">
-                <h2 class="text-sm font-semibold text-slate-800">Modificar: {{ sel.name }}</h2>
-                <span class="text-[11px] text-slate-400">Último acceso: {{ sel.ultimoAcceso }}</span>
+        <!-- ====================== PESTAÑA: MODIFICAR ====================== -->
+        @if (tab() === 'modificar') {
+          <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 items-start">
+            <!-- Lista de usuarios -->
+            <section class="panel p-3 space-y-3" aria-label="Usuarios">
+              <div class="relative">
+                <span class="absolute inset-y-0 left-3 flex items-center text-ink-3 pointer-events-none">
+                  <app-icono nombre="buscar" [tamano]="16" />
+                </span>
+                <input
+                  type="text"
+                  [ngModel]="busqueda()"
+                  (ngModelChange)="busqueda.set($event)"
+                  placeholder="Buscar por nombre o correo"
+                  aria-label="Buscar por nombre o correo"
+                  class="input pl-9"
+                />
               </div>
-
-              <ng-container *ngTemplateOutlet="formulario; context: { modo: 'editar', f: formEditar() }"></ng-container>
-
-              <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-                <button
-                  (click)="guardarCambios()"
-                  [disabled]="guardando()"
-                  class="bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-4 py-2"
-                >
-                  {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
-                </button>
-                <button
-                  (click)="descartarCambios()"
-                  class="text-sm border border-slate-200 rounded-lg px-4 py-2 text-slate-600 hover:bg-slate-50"
-                >
-                  Descartar cambios
-                </button>
-              </div>
-
-              <!-- Restablecer 2FA: solo Super Administrador, sobre OTRA cuenta, confirmando con su propio código -->
-              @if (!esMiCuenta()) {
-                <div class="pt-4 border-t border-slate-100 space-y-2">
-                  <h3 class="text-[14px] text-slate-900 font-bold">Verificación en dos pasos</h3>
-                  @if (sel.mfaActivo) {
-                    <p class="text-[12px] text-slate-500">
-                      Si la persona perdió su teléfono y sus códigos de recuperación, restablezca su 2FA: se cerrarán sus
-                      sesiones y en su próximo ingreso deberá configurar una app nueva. La acción queda auditada.
-                    </p>
-                    <div class="flex flex-wrap items-end gap-2">
-                      <label class="block">
-                        <span class="text-[12px] text-slate-600">Su código 2FA (confirmación)</span>
-                        <input type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456"
-                          [ngModel]="codigoRestablecer()" (ngModelChange)="codigoRestablecer.set($event)"
-                          class="mt-1 block w-36 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </label>
-                      <button type="button" (click)="restablecer2fa()" [disabled]="restableciendo()"
-                        class="text-sm border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-60 rounded-lg px-4 py-2">
-                        {{ restableciendo() ? 'Restableciendo…' : 'Restablecer 2FA' }}
-                      </button>
-                    </div>
-                  } @else {
-                    <p class="text-[12px] text-amber-700">Esta cuenta aún no tiene 2FA: lo configurará obligatoriamente en su próximo ingreso.</p>
+              <ul class="max-h-[60vh] overflow-y-auto space-y-0.5">
+                @if (cargandoUsuarios()) {
+                  @for (i of [1, 2, 3, 4]; track i) {
+                    <li class="flex items-center gap-3 px-2 py-2.5" aria-hidden="true">
+                      <div class="skeleton w-8 h-8 !rounded-full"></div>
+                      <div class="flex-1 space-y-1.5"><div class="skeleton h-3.5 w-3/4"></div><div class="skeleton h-3 w-1/2"></div></div>
+                    </li>
                   }
+                  <li class="sr-only">Cargando usuarios…</li>
+                } @else if (errorCarga()) {
+                  <li class="px-2 py-4 text-sm text-danger">{{ errorCarga() }}</li>
+                } @else {
+                  @for (u of usuariosFiltrados(); track u.id) {
+                    <li>
+                      <button type="button" (click)="seleccionar(u)"
+                        class="w-full flex items-center gap-3 px-2 py-2.5 text-left rounded-md transition-colors"
+                        [ngClass]="seleccionado()?.id === u.id ? 'bg-accent-soft' : 'hover:bg-sunken'"
+                        [attr.aria-current]="seleccionado()?.id === u.id ? 'true' : null">
+                        <span class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" [ngClass]="u.avatarColor">
+                          {{ u.initials }}
+                        </span>
+                        <span class="min-w-0 flex-1">
+                          <span class="flex items-center gap-1 text-base font-medium text-ink">
+                            <span class="truncate">{{ u.name }}</span>
+                            @if (!u.activo) {
+                              <span class="badge !py-0 shrink-0">Inactivo</span>
+                            }
+                            @if (!u.mfaActivo) {
+                              <span class="badge badge-warn !py-0 shrink-0" title="Configurará el 2FA en su próximo ingreso">Sin 2FA</span>
+                            }
+                          </span>
+                          <span class="block text-xs text-ink-3 truncate">{{ u.email }}</span>
+                        </span>
+                      </button>
+                    </li>
+                  } @empty {
+                    <li class="px-2 py-4 text-sm text-ink-3">No se encontraron usuarios.</li>
+                  }
+                }
+              </ul>
+            </section>
+
+            <!-- Formulario de edición -->
+            <section class="panel">
+              @if (seleccionado(); as sel) {
+                <div class="panel-header flex-wrap">
+                  <h2 class="panel-title">Modificar: {{ sel.name }}</h2>
+                  <span class="text-sm text-ink-3">Último acceso: {{ sel.ultimoAcceso }}</span>
+                </div>
+
+                <div class="p-5">
+                  <ng-container *ngTemplateOutlet="formulario; context: { modo: 'editar', f: formEditar() }"></ng-container>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-end gap-2 px-5 py-4 border-t border-line">
+                  <button type="button" (click)="descartarCambios()" class="btn btn-secondary">Descartar cambios</button>
+                  <button type="button" (click)="guardarCambios()" [disabled]="guardando()" class="btn btn-primary">
+                    @if (guardando()) { <span class="spinner"></span> }
+                    {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+                  </button>
+                </div>
+
+                <!-- Restablecer 2FA: solo Super Administrador, sobre OTRA cuenta, confirmando con su propio código -->
+                @if (!esMiCuenta()) {
+                  <div class="px-5 py-5 border-t border-line space-y-3">
+                    <h3 class="text-base font-semibold text-ink flex items-center gap-2">
+                      <app-icono nombre="movil" [tamano]="16" class="text-ink-3" />
+                      Verificación en dos pasos
+                    </h3>
+                    @if (sel.mfaActivo) {
+                      <p class="text-sm text-ink-3 max-w-[70ch]">
+                        Si la persona perdió su teléfono y sus códigos de recuperación, restablezca su 2FA: se cerrarán sus
+                        sesiones y en su próximo ingreso deberá configurar una app nueva. La acción queda auditada.
+                      </p>
+                      <div class="flex flex-wrap items-end gap-2">
+                        <label class="block">
+                          <span class="label">Su código 2FA (confirmación)</span>
+                          <input type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456"
+                            [ngModel]="codigoRestablecer()" (ngModelChange)="codigoRestablecer.set($event)"
+                            class="input w-36 font-mono tracking-widest" />
+                        </label>
+                        <button type="button" (click)="restablecer2fa()" [disabled]="restableciendo()" class="btn btn-danger-ghost border-danger/30">
+                          {{ restableciendo() ? 'Restableciendo…' : 'Restablecer 2FA' }}
+                        </button>
+                      </div>
+                    } @else {
+                      <p class="text-sm text-warn-ink">Esta cuenta aún no tiene 2FA: lo configurará obligatoriamente en su próximo ingreso.</p>
+                    }
+                  </div>
+                }
+              } @else {
+                <div class="empty py-16">
+                  <span class="empty-icon"><app-icono nombre="usuario" /></span>
+                  <p>Seleccione un usuario de la lista para modificarlo.</p>
                 </div>
               }
-            } @else {
-              <p class="text-sm text-slate-400 py-10 text-center">Seleccione un usuario de la lista para modificarlo.</p>
-            }
-          </section>
-        </div>
-      }
+            </section>
+          </div>
+        }
+      </div>
     </main>
   </div>
 </div>

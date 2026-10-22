@@ -1,38 +1,49 @@
-<aside class="w-60 bg-white border-r border-slate-200 flex flex-col shrink-0">
+<!--
+  Barra lateral: en pantallas grandes muestra icono + texto; por debajo de lg se reduce a solo iconos
+  (cada enlace conserva su nombre en title y aria-label).
+-->
+<aside class="sticky top-0 h-screen w-16 lg:w-64 shrink-0 flex flex-col bg-surface-2 border-r border-line">
   <a routerLink="/dashboard" aria-label="DAI, ir al Dashboard" title="Ir al Dashboard"
-    class="h-16 flex items-center gap-3 px-4 bg-white border-b border-slate-100 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
-    <img [src]="'Dai.svg'" alt="" class="h-8 w-auto object-contain">
-    <div class="leading-tight">
-      <p class="text-sm font-semibold text-slate-800">DAI</p>
-      <p class="text-[10px] text-slate-400">Gestión Documental</p>
-    </div>
+    class="h-16 flex items-center gap-3 px-3 lg:px-5 border-b border-line hover:bg-sunken transition-colors">
+    <span class="grid place-items-center w-10 h-10 shrink-0">
+      <img src="Dai.svg" alt="" class="h-7 w-auto object-contain">
+    </span>
+    <span class="hidden lg:block leading-tight">
+      <span class="block text-md font-semibold text-ink tracking-tight">DAI</span>
+      <span class="block text-xs text-ink-3">Gestión documental</span>
+    </span>
   </a>
 
-  <nav class="flex-1 py-4 px-3 space-y-1">
-    @for (item of itemsVisibles(); track item.id) {
-    <a [routerLink]="item.route"
-      class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-      [ngClass]="item.id === active
-          ? 'bg-blue-50 text-blue-700'
-          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'">
-      <span class="flex items-center gap-2">
-        <span class="w-1.5 h-1.5 rounded-full" [ngClass]="item.id === active ? 'bg-blue-600' : 'bg-transparent'"></span>
-        {{ item.label }}
-      </span>
-      @if (badgeDe(item.id) > 0) {
-      <span class="text-[10px] font-semibold bg-red-500 text-white rounded-full px-1.5 py-0.5"
-        [attr.aria-label]="badgeDe(item.id) + ' notificaciones sin leer'">
-        {{ textoBadge(badgeDe(item.id)) }}
-      </span>
+  <nav class="flex-1 overflow-y-auto py-4 px-2 lg:px-3" aria-label="Secciones">
+    <p class="hidden lg:block px-3 pb-2 text-xs font-medium text-ink-3">Menú</p>
+    <ul class="space-y-0.5">
+      @for (item of itemsVisibles(); track item.id) {
+      <li>
+        <a [routerLink]="item.route" [title]="item.label" [attr.aria-current]="item.id === active ? 'page' : null"
+          class="group relative flex items-center gap-3 h-10 px-3 rounded-md text-base transition-colors justify-center lg:justify-start"
+          [ngClass]="item.id === active
+              ? 'bg-surface text-ink font-semibold shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-line'
+              : 'text-ink-2 hover:bg-sunken hover:text-ink'">
+          <app-icono [nombre]="item.icono" [tamano]="18"
+            [class]="item.id === active ? 'text-accent' : 'text-ink-3 group-hover:text-ink-2'" />
+          <span class="hidden lg:block flex-1 truncate">{{ item.label }}</span>
+          @if (badgeDe(item.id) > 0) {
+          <span class="badge badge-count absolute -top-0.5 right-1 lg:static"
+            [attr.aria-label]="badgeDe(item.id) + ' notificaciones sin leer'">
+            {{ textoBadge(badgeDe(item.id)) }}
+          </span>
+          }
+        </a>
+      </li>
       }
-    </a>
-    }
+    </ul>
   </nav>
 
-  <div class="p-4 border-t border-slate-100">
-    <div class="rounded-lg bg-slate-50 border border-slate-100 p-3 text-center">
-      <p class="text-[12px] font-semibold text-slate-600">Ayuda</p>
-      <p class="text-[12px] text-slate-500 mt-0.5">Contacte al administrador del sistema.</p>
-    </div>
+  <div class="p-3 border-t border-line">
+    <p class="flex items-center gap-2 px-2 py-1.5 text-sm text-ink-3 justify-center lg:justify-start"
+      title="¿Necesita ayuda? Contacte al administrador del sistema.">
+      <app-icono nombre="ayuda" [tamano]="16" />
+      <span class="hidden lg:inline">¿Ayuda? Contacte al administrador del sistema.</span>
+    </p>
   </div>
 </aside>
