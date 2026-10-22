@@ -55,6 +55,29 @@
   50% { transform: translateY(-6px); }
 }
 
+/* Columna del formulario: escala de lectura más grande que el resto de la app (pantalla de entrada) */
+.acceso .label {
+  font-size: 0.9375rem;
+  margin-bottom: 0.5rem;
+}
+.acceso .input,
+.acceso .btn {
+  font-size: 1rem;
+}
+.acceso .input.otp {
+  font-size: 1.5rem;
+}
+.acceso .btn-sm {
+  font-size: 0.875rem;
+}
+.acceso .hint,
+.acceso .link {
+  font-size: 0.875rem;
+}
+.acceso .alert {
+  font-size: 0.9375rem;
+}
+
 /* Movimiento reducido: todo quieto (no al final de la animación) */
 @media (prefers-reduced-motion: reduce) {
   .carril,

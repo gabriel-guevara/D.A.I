@@ -35,6 +35,11 @@ export class Barraizq {
     return id === 'notificaciones' ? this.estado.noLeidas() : 0;
   }
 
+  /** Posición del ítem activo en la lista visible (para colocar el indicador detrás de él); -1 si no está. */
+  indiceActivo(): number {
+    return this.itemsVisibles().findIndex((i) => i.id === this.active);
+  }
+
   textoBadge(n: number): string {
     return n > 99 ? '99+' : String(n);
   }

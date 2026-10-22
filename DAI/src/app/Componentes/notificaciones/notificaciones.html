@@ -22,18 +22,28 @@
         </header>
 
         <!-- Tabs -->
-        <div class="tabs max-w-full overflow-x-auto" role="tablist" aria-label="Categorías de notificaciones">
+        <div #barraPestanas class="tabs relative max-w-full overflow-x-auto" role="tablist" aria-label="Categorías de notificaciones">
+          <!-- Píldora de la pestaña activa: se desliza al cambiar de pestaña -->
+          @if (pildora(); as p) {
+          <span class="absolute top-1 bottom-1 left-0 rounded-md bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.08)] pointer-events-none"
+            [ngClass]="p.animar ? 'transition-[transform,width] duration-[260ms] ease-out-quint motion-reduce:transition-none' : ''"
+            [style.width.px]="p.w" [style.transform]="'translateX(' + p.x + 'px)'" aria-hidden="true"></span>
+          }
           @for (t of pestanas(); track t.id) {
-          <button type="button" (click)="setTab(t.id)" class="tab whitespace-nowrap" role="tab" [attr.aria-selected]="activeTab() === t.id">{{ t.etiqueta }} <span class="ml-1 tabular text-ink-3">{{ t.total }}</span></button>
+          <button type="button" (click)="setTab(t.id)" class="tab relative whitespace-nowrap transition-colors duration-200"
+            [ngClass]="pildora() ? 'aria-selected:!bg-transparent aria-selected:!shadow-none' : ''"
+            role="tab" [attr.aria-selected]="activeTab() === t.id">{{ t.etiqueta }} <span class="ml-1 tabular text-ink-3">{{ t.total }}</span></button>
           }
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
-          <!-- Lista de notificaciones -->
+          <!-- Lista de notificaciones: se vuelve a crear solo al cambiar de pestaña, con una entrada suave -->
           <section class="panel overflow-hidden" aria-label="Notificaciones">
+            @for (pestana of [activeTab()]; track pestana) {
             <ul class="divide-y divide-line">
               @for (n of filtered(); track n.id) {
-              <li class="flex gap-4 px-5 py-4 transition-colors" [ngClass]="n.read ? '' : 'bg-accent-soft/40'">
+              <li class="flex gap-4 px-5 py-4 transition-colors motion-reduce:!animate-none" [ngClass]="n.read ? '' : 'bg-accent-soft/40'"
+                [style.animation]="'dai-entrada 220ms var(--ease-out-quint) ' + ($index < 8 ? $index * 25 : 200) + 'ms both'">
                 <span class="relative w-10 h-10 shrink-0 rounded-md grid place-items-center"
                   [ngClass]="n.read ? 'bg-surface-2 text-ink-3' : 'bg-accent-soft text-accent'">
                   <app-icono [nombre]="iconoCategoria[n.category]" [tamano]="18" />
@@ -87,6 +97,7 @@
               </li>
               }
             </ul>
+            }
           </section>
 
           <!-- Panel derecho: información real de esta pantalla -->

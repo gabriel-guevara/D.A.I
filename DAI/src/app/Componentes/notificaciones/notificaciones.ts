@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, exhaustMap, tap, timer } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -80,7 +80,40 @@ export class Notificaciones {
     return t === null ? '—' : formatoHora.format(t);
   });
 
+  /**
+   * Píldora que marca la pestaña activa y se desliza al cambiar (solo presentación).
+   * `animar` es false en la primera medida para que no "vuele" desde la izquierda al cargar.
+   */
+  private barraPestanas = viewChild<ElementRef<HTMLElement>>('barraPestanas');
+  private injector = inject(Injector);
+  pildora = signal<{ x: number; w: number; animar: boolean } | null>(null);
+
+  private medirPildora(barra: HTMLElement): void {
+    const activa = barra.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    if (!activa) return;
+    this.pildora.update((antes) => ({ x: activa.offsetLeft, w: activa.offsetWidth, animar: antes !== null }));
+  }
+
   constructor() {
+    // Vuelve a medir tras cada cambio de pestaña o de contadores (después de que Angular pinte).
+    effect((onCleanup) => {
+      this.activeTab();
+      this.pestanas();
+      const barra = this.barraPestanas()?.nativeElement;
+      if (!barra) return;
+      const ref = afterNextRender(() => this.medirPildora(barra), { injector: this.injector });
+      onCleanup(() => ref.destroy());
+    });
+    // Y cuando cambia el tamaño de la barra (ventana, fuentes que terminan de cargar).
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const barra = this.barraPestanas()?.nativeElement;
+      if (!barra || typeof ResizeObserver === 'undefined') return;
+      const observador = new ResizeObserver(() => this.medirPildora(barra));
+      observador.observe(barra);
+      destroyRef.onDestroy(() => observador.disconnect());
+    });
+
     this.api.notificacionesCategorias().subscribe({
       next: (r) => this.categorias.set(r.categorias),
       error: (err) => console.error('No se pudieron cargar las categorías de notificaciones', err),

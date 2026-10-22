@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-canvas grid lg:grid-cols-[minmax(0,1fr)_minmax(440px,560px)]">
+<div class="min-h-screen bg-canvas grid lg:grid-cols-[minmax(0,1fr)_minmax(480px,620px)]">
 
   <!-- Panel de marca: "el cielo de DAI" (solo en pantallas grandes). El logo es una nube y el fondo, nubes que derivan. -->
   <aside class="cielo relative hidden lg:flex flex-col overflow-hidden text-on-brand p-12" aria-hidden="true">
@@ -43,23 +43,23 @@
       <app-icono [nombre]="tema.oscuro() ? 'sol' : 'luna'" />
     </button>
 
-    <div class="w-full max-w-sm mx-auto">
+    <div class="acceso w-full max-w-md mx-auto">
       <!-- Logo (pantallas pequeñas) -->
       <div class="lg:hidden flex justify-center mb-6">
-        <span class="grid place-items-center w-16 h-16 rounded-2xl bg-white border border-line">
-          <img src="Dai.svg" alt="Logo DAI" class="h-11 w-auto object-contain">
+        <span class="grid place-items-center h-20 px-5 rounded-2xl bg-white border border-line">
+          <img src="Dai.svg" alt="Logo DAI" class="h-13 w-auto object-contain">
         </span>
       </div>
 
-      <h1 class="text-2xl font-semibold text-ink">Acceso</h1>
-      <p class="text-base text-ink-3 mt-1 mb-8 lg:hidden">
+      <h1 class="text-[2.25rem] leading-tight font-semibold tracking-tight text-ink">Acceso</h1>
+      <p class="text-md text-ink-3 mt-2 mb-10 lg:hidden">
         Sistema de Digitalización y Almacenamiento de Información
       </p>
-      <p class="text-base text-ink-3 mt-1 mb-8 hidden lg:block">Ingrese con su cuenta corporativa.</p>
+      <p class="text-md text-ink-3 mt-2 mb-10 hidden lg:block">Ingrese con su cuenta corporativa.</p>
 
       @if (errorMessage()) {
       <div class="alert alert-danger mb-5" role="alert">
-        <app-icono nombre="alerta" [tamano]="17" class="mt-0.5" />
+        <app-icono nombre="alerta" [tamano]="19" class="mt-0.5" />
         <span>{{ errorMessage() }}</span>
       </div>
       }
@@ -67,17 +67,17 @@
       <!-- Usuario y contraseña -->
       @if (step() === 'credentials') {
       <!-- Esto es para el paso de credenciales y segundo factor -->
-      <form (ngSubmit)="onSubmitCredentials()" class="space-y-5">
+      <form (ngSubmit)="onSubmitCredentials()" class="space-y-6">
         <div>
           <label class="label" for="login-usuario">Correo corporativo</label>
           <div class="relative">
-            <span class="absolute inset-y-0 left-3 flex items-center text-ink-3 pointer-events-none">
-              <app-icono nombre="correo" [tamano]="17" />
+            <span class="absolute inset-y-0 left-3.5 flex items-center text-ink-3 pointer-events-none">
+              <app-icono nombre="correo" [tamano]="19" />
             </span>
             <!-- El ngModel se usa para enlazar el valor del input con la propiedad username del componente -->
             <input id="login-usuario" type="email" name="username" placeholder="Su correo corporativo" autocomplete="username" [ngModel]="username()"
               (ngModelChange)="username.set($event)"
-              class="input h-11 pl-10" />
+              class="input h-13 pl-11" />
           </div>
         </div>
 
@@ -85,24 +85,24 @@
         <div>
           <label class="label" for="login-clave">Contraseña</label>
           <div class="relative">
-            <span class="absolute inset-y-0 left-3 flex items-center text-ink-3 pointer-events-none">
-              <app-icono nombre="candado" [tamano]="17" />
+            <span class="absolute inset-y-0 left-3.5 flex items-center text-ink-3 pointer-events-none">
+              <app-icono nombre="candado" [tamano]="19" />
             </span>
             <!-- Esta es la funcionalidad de mostrar y ocultar la contraseña -->
             <input id="login-clave" [type]="showPassword() ? 'text' : 'password'" name="password" placeholder="••••••••••••"
               autocomplete="current-password" [ngModel]="password()" (ngModelChange)="password.set($event)"
-              class="input h-11 pl-10 pr-11" />
+              class="input h-13 pl-11 pr-13" />
             <button type="button" (click)="togglePassword()"
               [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-              class="absolute inset-y-0 right-0 w-11 grid place-items-center text-ink-3 hover:text-ink transition-colors">
-              <app-icono [nombre]="showPassword() ? 'ojo-off' : 'ojo'" [tamano]="17" />
+              class="absolute inset-y-0 right-0 w-13 grid place-items-center text-ink-3 hover:text-ink transition-colors">
+              <app-icono [nombre]="showPassword() ? 'ojo-off' : 'ojo'" [tamano]="19" />
             </button>
           </div>
         </div>
 
-        <button type="submit" class="btn btn-brand w-full h-11 mt-2">
+        <button type="submit" class="btn btn-brand w-full h-13 mt-2">
           Continuar
-          <app-icono nombre="flecha-derecha" [tamano]="17" />
+          <app-icono nombre="flecha-derecha" [tamano]="19" />
         </button>
       </form>
       }
@@ -128,7 +128,7 @@
           <input [id]="'otp-' + $index" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1"
             [value]="digit" [attr.aria-label]="'Dígito ' + ($index + 1)"
             (input)="onDigitInput($index, $event)" (keydown)="onDigitKeydown($index, $event)" (paste)="onDigitPaste($event)"
-            class="input h-12 px-0 text-center text-xl font-semibold font-mono" />
+            class="input otp h-14 px-0 text-center font-semibold font-mono" />
           }
         </div>
       </ng-template>
@@ -148,12 +148,12 @@
             <span class="label">Código de recuperación</span>
             <input type="text" name="codigoRecuperacion" placeholder="XXXXX-XXXXX" autocomplete="off" maxlength="11"
               [ngModel]="codigoRecuperacion()" (ngModelChange)="codigoRecuperacion.set($event)" (keydown.enter)="onVerify()"
-              class="input h-11 font-mono tracking-widest uppercase" />
+              class="input h-13 font-mono tracking-widest uppercase" />
             <span class="hint">Cada código sirve una sola vez.</span>
           </label>
         }
 
-        <button type="button" (click)="onVerify()" [disabled]="isVerifying()" class="btn btn-brand w-full h-11">
+        <button type="button" (click)="onVerify()" [disabled]="isVerifying()" class="btn btn-brand w-full h-13">
           @if (isVerifying()) { <span class="spinner"></span> }
           {{ isVerifying() ? 'Verificando...' : 'Verificar e Iniciar Sesión' }}
         </button>
@@ -184,7 +184,7 @@
           <div class="mt-5">
             <ng-container *ngTemplateOutlet="casillasOtp"></ng-container>
           </div>
-          <button type="button" (click)="confirmarAlta()" [disabled]="isVerifying()" class="btn btn-brand w-full h-11">
+          <button type="button" (click)="confirmarAlta()" [disabled]="isVerifying()" class="btn btn-brand w-full h-13">
             @if (isVerifying()) { <span class="spinner"></span> }
             {{ isVerifying() ? 'Confirmando...' : 'Confirmar y activar' }}
           </button>
@@ -194,7 +194,7 @@
             <p>Generando su código QR…</p>
           </div>
         } @else {
-          <button type="button" (click)="generarQr()" class="btn btn-secondary w-full h-11">
+          <button type="button" (click)="generarQr()" class="btn btn-secondary w-full h-13">
             Generar código QR
           </button>
         }
@@ -221,14 +221,14 @@
           <input type="checkbox" class="w-4 h-4" [ngModel]="codigosGuardados()" (ngModelChange)="codigosGuardados.set($event)" />
           Ya guardé mis códigos de recuperación
         </label>
-        <button type="button" (click)="continuarTrasCodigos()" [disabled]="!codigosGuardados()" class="btn btn-brand w-full h-11 mt-4">
+        <button type="button" (click)="continuarTrasCodigos()" [disabled]="!codigosGuardados()" class="btn btn-brand w-full h-13 mt-4">
           Continuar al sistema
         </button>
       </div>
       }
 
-      <p class="mt-10 pt-5 border-t border-line text-sm text-ink-3 flex gap-2">
-        <app-icono nombre="ayuda" [tamano]="16" class="mt-0.5" />
+      <p class="mt-12 pt-6 border-t border-line text-base text-ink-3 flex gap-2.5">
+        <app-icono nombre="ayuda" [tamano]="18" class="mt-0.5" />
         <span>¿Olvidó su contraseña o necesita ayuda? Contacte al administrador del sistema.</span>
       </p>
     </div>

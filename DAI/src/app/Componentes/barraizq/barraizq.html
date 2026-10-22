@@ -2,11 +2,12 @@
   Barra lateral: en pantallas grandes muestra icono + texto; por debajo de lg se reduce a solo iconos
   (cada enlace conserva su nombre en title y aria-label).
 -->
-<aside class="sticky top-0 h-screen w-16 lg:w-64 shrink-0 flex flex-col bg-surface-2 border-r border-line">
+<aside class="sticky top-0 h-screen w-16 lg:w-64 shrink-0 flex flex-col bg-surface-2 border-r border-line [view-transition-name:barra-lateral]">
   <a routerLink="/dashboard" aria-label="DAI, ir al Dashboard" title="Ir al Dashboard"
-    class="h-16 flex items-center gap-3 px-3 lg:px-5 border-b border-line hover:bg-sunken transition-colors">
-    <span class="grid place-items-center w-10 h-10 shrink-0">
-      <img src="Dai.svg" alt="" class="h-7 w-auto object-contain">
+    class="h-16 flex items-center gap-3 px-2 lg:px-4 border-b border-line hover:bg-sunken transition-colors">
+    <!-- Placa blanca: el logo es azul marino y se perdería sobre el fondo oscuro -->
+    <span class="grid place-items-center shrink-0 w-12 lg:w-auto h-11 px-1">
+      <img src="Dai.svg" alt="" class="w-10 h-auto lg:w-auto lg:h-9 object-contain">
     </span>
     <span class="hidden lg:block leading-tight">
       <span class="block text-md font-semibold text-ink tracking-tight">DAI</span>
@@ -16,27 +17,38 @@
 
   <nav class="flex-1 overflow-y-auto py-4 px-2 lg:px-3" aria-label="Secciones">
     <p class="hidden lg:block px-3 pb-2 text-xs font-medium text-ink-3">Menú</p>
-    <ul class="space-y-0.5">
-      @for (item of itemsVisibles(); track item.id) {
-      <li>
-        <a [routerLink]="item.route" [title]="item.label" [attr.aria-current]="item.id === active ? 'page' : null"
-          class="group relative flex items-center gap-3 h-10 px-3 rounded-md text-base transition-colors justify-center lg:justify-start"
-          [ngClass]="item.id === active
-              ? 'bg-surface text-ink font-semibold shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-line'
-              : 'text-ink-2 hover:bg-sunken hover:text-ink'">
-          <app-icono [nombre]="item.icono" [tamano]="18"
-            [class]="item.id === active ? 'text-accent' : 'text-ink-3 group-hover:text-ink-2'" />
-          <span class="hidden lg:block flex-1 truncate">{{ item.label }}</span>
-          @if (badgeDe(item.id) > 0) {
-          <span class="badge badge-count absolute -top-0.5 right-1 lg:static"
-            [attr.aria-label]="badgeDe(item.id) + ' notificaciones sin leer'">
-            {{ textoBadge(badgeDe(item.id)) }}
-          </span>
-          }
-        </a>
-      </li>
+    <!--
+      El indicador activo va DETRÁS de la lista (primero en el DOM) y cada ítem tiene su propio nombre de transición:
+      así, mientras el indicador se desliza ("nav-activo"), los nombres se pintan encima y nunca desaparecen.
+    -->
+    <div class="relative">
+      @if (indiceActivo() >= 0) {
+        <span class="absolute inset-x-0 top-0 h-10 rounded-md bg-surface ring-1 ring-line shadow-[0_1px_2px_rgb(0_0_0/0.06)] pointer-events-none [view-transition-name:nav-activo]"
+          [style.transform]="'translateY(' + indiceActivo() * 42 + 'px)'" aria-hidden="true"></span>
       }
-    </ul>
+      <ul class="relative space-y-0.5">
+        @for (item of itemsVisibles(); track item.id) {
+        <li>
+          <a [routerLink]="item.route" [title]="item.label" [attr.aria-current]="item.id === active ? 'page' : null"
+            class="group relative flex items-center h-10 px-3 rounded-md text-base transition-colors"
+            [ngClass]="item.id === active ? 'text-ink font-semibold' : 'text-ink-2 hover:bg-sunken hover:text-ink'">
+            <span class="nav-texto flex-1 min-w-0 flex items-center gap-3 justify-center lg:justify-start"
+              [style.view-transition-name]="'nav-' + item.id">
+              <app-icono [nombre]="item.icono" [tamano]="18"
+                [class]="item.id === active ? 'text-accent' : 'text-ink-3 group-hover:text-ink-2'" />
+              <span class="hidden lg:block flex-1 truncate">{{ item.label }}</span>
+            </span>
+            @if (badgeDe(item.id) > 0) {
+            <span class="badge badge-count absolute -top-0.5 right-1 lg:static"
+              [attr.aria-label]="badgeDe(item.id) + ' notificaciones sin leer'">
+              {{ textoBadge(badgeDe(item.id)) }}
+            </span>
+            }
+          </a>
+        </li>
+        }
+      </ul>
+    </div>
   </nav>
 
   <div class="p-3 border-t border-line">

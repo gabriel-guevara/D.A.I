@@ -20,17 +20,18 @@
 :root {
   color-scheme: light;
 
-  --canvas: #f5f7fa;
-  --surface: #ffffff;
-  --surface-2: #eef2f6;
-  --sunken: #f3f6f9;
-  --overlay: rgb(11 18 32 / 0.45);
+  /* Neutros crema: menos brillo que el blanco puro, más cómodos para jornadas largas */
+  --canvas: #f5f0e6;
+  --surface: #fffcf5;
+  --surface-2: #efe8da;
+  --sunken: #f7f2e8;
+  --overlay: rgb(30 26 18 / 0.42);
 
   --ink: #14213d;
-  --ink-2: #3a4a63;
-  --ink-3: #5b6b82;
-  --line: #dde3ea;
-  --line-strong: #c3ccd8;
+  --ink-2: #3d4558;
+  --ink-3: #5f5d58;
+  --line: #e4dccc;
+  --line-strong: #cfc4b0;
 
   --brand: #004583;
   --brand-ink: #004583;
@@ -56,7 +57,7 @@
   --info-soft: #e6f2fa;
   --info-ink: #005a8c;
 
-  --shadow-float: 0 8px 24px -6px rgb(20 33 61 / 0.18), 0 2px 6px -2px rgb(20 33 61 / 0.1);
+  --shadow-float: 0 8px 24px -6px rgb(60 48 28 / 0.16), 0 2px 6px -2px rgb(60 48 28 / 0.1);
 }
 
 .dark {
@@ -375,7 +376,7 @@
   .select {
     appearance: none;
     padding-right: 2rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6b82' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235f5d58' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.5rem center;
     background-size: 1rem;
@@ -672,6 +673,46 @@
     color: var(--ink-3);
     font-family: var(--font-mono);
     font-size: 0.6875rem;
+  }
+}
+
+/* ───────────── Transiciones de navegación (View Transitions del router) ─────────────
+   La barra lateral se queda fija, su indicador activo se desliza al nuevo ítem y el contenido hace un fundido corto. */
+::view-transition-group(barra-lateral),
+::view-transition-old(barra-lateral),
+::view-transition-new(barra-lateral) {
+  animation: none;
+}
+::view-transition-group(nav-activo) {
+  animation-duration: 280ms;
+  animation-timing-function: var(--ease-out-quint);
+}
+/* Nombres de la barra (nav-dashboard, nav-biblioteca…): se pintan encima del indicador y cambian al instante,
+   sin fundido, para que el texto nunca desaparezca mientras el indicador se desliza. */
+::view-transition-group(nav-dashboard), ::view-transition-group(nav-biblioteca), ::view-transition-group(nav-busqueda),
+::view-transition-group(nav-ocr), ::view-transition-group(nav-notificaciones), ::view-transition-group(nav-papelera),
+::view-transition-group(nav-roles), ::view-transition-group(nav-cuenta) {
+  animation: none;
+}
+::view-transition-old(nav-dashboard), ::view-transition-old(nav-biblioteca), ::view-transition-old(nav-busqueda),
+::view-transition-old(nav-ocr), ::view-transition-old(nav-notificaciones), ::view-transition-old(nav-papelera),
+::view-transition-old(nav-roles), ::view-transition-old(nav-cuenta) {
+  display: none;
+}
+::view-transition-new(nav-dashboard), ::view-transition-new(nav-biblioteca), ::view-transition-new(nav-busqueda),
+::view-transition-new(nav-ocr), ::view-transition-new(nav-notificaciones), ::view-transition-new(nav-papelera),
+::view-transition-new(nav-roles), ::view-transition-new(nav-cuenta) {
+  animation: none;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }
 
